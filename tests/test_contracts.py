@@ -4,7 +4,7 @@ Run: `pytest -q`
 """
 import pytest
 
-from core.schemas import ContextBundle, DecisionBrief, DeterministicDecision, TelemetryEvent
+from core.schemas import ContextBundle, DecisionBrief, TelemetryEvent
 from fixtures.acme import acme_bundle, acme_expected_decision, acme_workspace
 
 

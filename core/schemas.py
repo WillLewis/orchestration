@@ -95,6 +95,20 @@ class ClaimMap(BaseModel):
     claims: list[Claim] = []
 
 
+class SourceEdge(BaseModel):
+    """A typed dependency between two artifacts in a SourceGraph."""
+    from_id: str
+    to_id: str
+    relation: str = "derived_from"   # e.g. derived_from, cites, supersedes
+
+
+class SourceGraph(BaseModel):
+    """§7 primitive. Dependency map between work products and source artifacts.
+    Nodes are object ids; edges carry the relation between them."""
+    nodes: list[str] = []            # object ids (work products + sources)
+    edges: list[SourceEdge] = []
+
+
 # --------------------------------------------------------------------------- #
 # Context states + bundle (WS-B)
 # --------------------------------------------------------------------------- #
@@ -118,6 +132,7 @@ class ContextBundle(BaseModel):
     user_id: str
     intent: str
     sources: list[SourceRef] = []
+    source_graph: Optional[SourceGraph] = None
     claims: ClaimMap = Field(default_factory=ClaimMap)
     permission_boundary: PermissionBoundary = Field(default_factory=PermissionBoundary)
     missing_evidence: list[MissingEvidenceState] = []
@@ -162,11 +177,34 @@ class CalculationCheck(BaseModel):
     matches: bool
 
 
+class PolicyNode(BaseModel):
+    """A policy/prerequisite node in a PolicyGraph."""
+    id: str
+    description: str = ""
+    requires: list[str] = []         # ids of prerequisite policy nodes
+
+
+class PolicyGraph(BaseModel):
+    """§5 F2 primitive. Prerequisite graph for policy gates — which policies must
+    clear before others apply (e.g. risk-rating approval before committee review)."""
+    id: str
+    vertical: Vertical
+    nodes: list[PolicyNode] = []
+
+
+class SchemaValidation(BaseModel):
+    """Result of the deterministic output-schema check (SchemaValidator, WS-C)."""
+    schema_name: str
+    valid: bool
+    errors: list[str] = []
+
+
 class DeterministicDecision(BaseModel):
     approval_ready: bool
     firings: list[RuleFiring] = []
     approvals: ApprovalMatrix = Field(default_factory=ApprovalMatrix)
     calculations: list[CalculationCheck] = []
+    schema_validation: Optional[SchemaValidation] = None
 
 
 class ComplianceTrace(BaseModel):
@@ -203,6 +241,16 @@ class ToolCard(BaseModel):
     side_effect: SideEffectClass
     input_schema: dict = {}
     requires_approver: Optional[str] = None
+    max_retries: int = 0
+
+
+class ApprovalPolicy(BaseModel):
+    """§5 F3 primitive. Declares the approval required for a class of action —
+    consulted by the Executor before anything with side effects runs."""
+    side_effect: SideEffectClass = SideEffectClass.write
+    required_approver: Optional[str] = None
+    risk_threshold: Literal["low", "medium", "high"] = "low"
+    auto_approve: bool = False
 
 
 class ActionDiff(BaseModel):
@@ -238,6 +286,16 @@ class RollbackPlan(BaseModel):
     inverse: ActionDiff
 
 
+class DryRunResult(BaseModel):
+    """§5 F3 primitive. Output of the DryRunExecutor (WS-E): what WOULD happen if an
+    action ran, with no side effects. Powers the action-diff drawer preview."""
+    action_index: int
+    would_succeed: bool = True
+    diff: Optional[ActionDiff] = None
+    audit_preview: Optional[AuditEvent] = None
+    blocked_reason: Optional[str] = None
+
+
 # --------------------------------------------------------------------------- #
 # Work-product lifecycle & revalidation (WS-F)
 # --------------------------------------------------------------------------- #
@@ -247,12 +305,52 @@ class StaleSectionState(BaseModel):
     reason: str = ""
 
 
+class RevalidationRule(BaseModel):
+    """§5 F4 primitive. When a triggering source changes, the named sections must be
+    revalidated. Referenced from WorkProductContract.revalidation_rules by id."""
+    id: str
+    description: str = ""
+    trigger_object_ids: list[str] = []
+    affected_sections: list[str] = []
+
+
+class EventTrigger(BaseModel):
+    """§5 F4 primitive. A source/status change event that may invalidate a work product."""
+    event_type: str = "source_changed"
+    object_id: str
+    occurred_at: datetime = Field(default_factory=_now)
+    detail: dict = {}
+
+
+class ReapprovalRoute(BaseModel):
+    """§5 F4 primitive. Where a stale section must be routed for re-approval."""
+    section: str
+    required_approver: str
+    reason: str = ""
+
+
+class SourceDependencyGraph(BaseModel):
+    """§5 F4 primitive. The per-work-product slice of the SourceGraph: which source
+    artifacts a single work product depends on (drives revalidation)."""
+    work_product_id: str
+    source_ids: list[str] = []
+    edges: list[SourceEdge] = []
+
+
+class ChangeImpactMap(BaseModel):
+    """§5 F4 primitive. Given a changed object, which sections went stale and where they
+    must be re-routed for approval."""
+    changed_object_id: str
+    impacted_sections: list[StaleSectionState] = []
+    reapproval_routes: list[ReapprovalRoute] = []
+
+
 class WorkProductContract(BaseModel):
     id: str
     schema_name: str = "DecisionBrief"
     owners: list[str] = []
     source_dependencies: list[str] = []    # object ids
-    revalidation_rules: list[str] = []
+    revalidation_rules: list[str] = []     # RevalidationRule ids
     stale_sections: list[StaleSectionState] = []
 
 
@@ -271,6 +369,15 @@ class EvalPack(BaseModel):
     id: str
     vertical: Vertical
     cases: list[EvalCase] = []
+
+
+class RegressionSuite(BaseModel):
+    """§5 F2/F5 primitive. A versioned, named set of regression cases (by EvalCase id)
+    that must keep passing — accept/edit/reject telemetry becomes the regression set."""
+    id: str
+    version: int = 1
+    case_ids: list[str] = []
+    rulepack_id: Optional[str] = None
 
 
 class EvalTrace(BaseModel):
@@ -314,6 +421,39 @@ class TelemetryEvent(BaseModel):
     error_code: Optional[str] = None
 
 
+class FeedbackReasonCode(BaseModel):
+    """§5 F5 primitive. Structured reason for an accept/edit/reject decision — feeds the
+    RegressionSuite. Codes only; never raw content."""
+    code: str                        # e.g. "wrong_approver", "missing_source"
+    label: str = ""
+    category: Literal["accuracy", "permission", "policy", "formatting", "other"] = "other"
+
+
+class RedactedFailurePacket(BaseModel):
+    """§5 F5 primitive. Opt-in, customer-approved failure sample. Privacy-preserving:
+    extra fields are FORBIDDEN by construction so raw prompt/response/document/transcript
+    content cannot be attached — only typed, redacted signals travel."""
+
+    model_config = {"extra": "forbid"}
+
+    case_id: str
+    recipe_id: str
+    failure_reason_code: str
+    rule_firings: list[RuleFiring] = []
+    source_type_counts: dict = {}
+    schema_pass: Optional[bool] = None
+    citation_coverage_score: Optional[float] = None
+    claim_support_score: Optional[float] = None
+
+
+class PrivacyBudget(BaseModel):
+    """§5 F5 primitive. Differential-privacy budget for aggregate analytics. DP helps
+    aggregate trend learning, NOT row-level debugging (see plan §5 F5 caveat)."""
+    epsilon: float
+    delta: float = 0.0
+    spent: float = 0.0
+
+
 # --------------------------------------------------------------------------- #
 # Recipes — the platform-generalization mechanism (WS-I)
 # --------------------------------------------------------------------------- #
@@ -328,4 +468,29 @@ class AgentRecipe(BaseModel):
     eval_pack_id: Optional[str] = None
 
 
-__all__ = [n for n in dir() if n[0].isupper()]
+class VerticalScore(BaseModel):
+    """One row of the three-vertical proof (§14): per-vertical eval scores."""
+    vertical: Vertical
+    deterministic_rule_pass: float = 0.0
+    citation_correctness: float = 0.0
+    permission_denial_pass: float = 0.0
+    missing_evidence_honesty: float = 0.0
+    cases_passed: int = 0
+    cases_total: int = 0
+
+
+class RecipeScorecard(BaseModel):
+    """§14 / §17 (WS-I) primitive. The three-vertical eval scorecard proving the same
+    substrate powers finance, legal, and health."""
+    pack_id: str
+    scores: list[VerticalScore] = []
+
+
+# Export only the contract types defined in THIS module (BaseModel + Enum subclasses).
+# Robust against imported names (BaseModel/Field/Enum/Literal/Optional) and deterministic
+# for JSON-Schema export. `Vertical` is a Literal alias, imported explicitly where needed.
+__all__ = sorted(
+    name
+    for name, obj in list(globals().items())
+    if isinstance(obj, type) and issubclass(obj, (BaseModel, Enum)) and obj.__module__ == __name__
+)

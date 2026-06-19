@@ -11,10 +11,13 @@ substrate runs **finance + legal + health** recipes through one eval scorecard.
 ## Quickstart
 ```bash
 make install        # pip install -e ".[dev]"
-make test           # pytest — should be green from the start (WS-0 baseline)
-make schemas-json   # export JSON Schema for the Lovable frontend
+make test           # pytest — green from the start (WS-0 baseline)
+make lint           # ruff check .
+make run            # end-to-end demo pipeline over fixtures.acme (stubs)
+make schemas-json   # export JSON Schema for the Lovable frontend -> frontend/schemas.json
 cp .env.example .env # then add your API keys
 ```
+New here? Read `CONTRIBUTING.md` for the contract-first rules every workstream follows.
 
 ## How the work is split (contract-first, then fan out)
 `core/schemas.py` + `core/pipeline.py` are the **locked contracts**. Every workstream owns one
