@@ -1,16 +1,23 @@
 import { Shield, ArrowUp } from "lucide-react";
 import { useState } from "react";
 
-export function InputBar({ onSubmit }: { onSubmit: () => void }) {
+export function InputBar({
+  onSubmit,
+  pending = false,
+}: {
+  onSubmit: (text: string) => void;
+  pending?: boolean;
+}) {
   const [v, setV] = useState("");
   return (
     <div className="sticky bottom-0 border-t border-border bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!v.trim()) return;
+          const text = v.trim();
+          if (!text || pending) return;
           setV("");
-          onSubmit();
+          onSubmit(text);
         }}
         className="flex items-center gap-2 rounded-full border border-border bg-card pl-4 pr-1.5 py-1.5 shadow-card focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-[var(--primary-tint)]"
       >
@@ -23,7 +30,8 @@ export function InputBar({ onSubmit }: { onSubmit: () => void }) {
         <button
           type="submit"
           aria-label="Send"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-ai text-white transition-transform hover:brightness-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          disabled={pending}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-ai text-white transition-transform hover:brightness-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.75} />
         </button>

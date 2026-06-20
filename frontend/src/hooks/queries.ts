@@ -286,3 +286,63 @@ export function useVerifyWorkProductMutation(recordId: string) {
     },
   });
 }
+
+/* --------------------------------- Governed chat (POST /chat) --------------------------------- */
+
+// One conversational turn. `role`/`content` are the wire shape the gateway accepts as `history`;
+// the panel layers UI-only fields (an assistant turn's governance `meta`) on top and never sends
+// them upstream.
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+// Contract-shaped response (api/models.py ChatResponse). Everything but `reply` is optional so a
+// future backend field never breaks decode, and an absent boolean never falsely lights a chip.
+export interface ChatResponse {
+  reply: string;
+  citations?: Array<{ object_id: string; span?: string }>;
+  permission_boundary_hit?: boolean;
+  gate_held?: boolean;
+  missing_evidence?: boolean;
+}
+
+// POST a governed question to the gateway. Mirrors the workproduct mutations above (inline
+// fetch(POST) + throw on !ok). Chat is ephemeral UI state, so there is no query-cache write.
+// `user_id`/`intent` are hardcoded for the Acme scenario exactly like the loop query; `intent` is
+// REQUIRED by the contract (no default) — omitting it 422s.
+export function useChatMutation() {
+  return useMutation({
+    mutationFn: async (input: {
+      message: string;
+      history: ChatMessage[];
+    }): Promise<ChatResponse> => {
+      // Chat needs the live gateway — there is no single canned reply. Degrade gracefully (no
+      // crash). Never re-implement the refusals in JS; that would recreate the canned-state problem
+      // this wiring exists to kill.
+      if (!LIVE) {
+        return {
+          reply:
+            "Live chat is offline in this preview. Run the gateway (make api) and set " +
+            "VITE_USE_MOCKS=false to ask governed questions.",
+          citations: [],
+          permission_boundary_hit: false,
+          gate_held: false,
+          missing_evidence: false,
+        };
+      }
+      const res = await fetch(`${API_BASE}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: "u_rm",
+          intent: "prepare_decision_brief",
+          message: input.message,
+          history: input.history,
+        }),
+      });
+      if (!res.ok) throw new Error(`/chat → ${res.status}`);
+      return (await res.json()) as ChatResponse;
+    },
+  });
+}
