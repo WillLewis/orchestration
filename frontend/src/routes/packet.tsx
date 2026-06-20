@@ -13,9 +13,7 @@ import {
   Pin,
   Plus,
   ShieldCheck,
-  Share2,
   Sparkles,
-  Upload,
   Users,
   Workflow,
   X,
@@ -28,7 +26,7 @@ import { type SourceStatus, type SourceType } from "@/data/brief";
 import { pinPacket, usePacketPinned } from "@/lib/packet-store";
 import { openDrawer, usePathReady } from "@/lib/actions-store";
 import { action_key } from "@/data/actions";
-import { useActionPlanQuery, useBriefQuery } from "@/hooks/queries";
+import { useActionPlanQuery, useBriefQuery, useMintWorkProductMutation } from "@/hooks/queries";
 
 const searchSchema = z.object({
   focus: z.enum(["next-steps"]).optional(),
@@ -147,6 +145,7 @@ function PacketWorkspace() {
 
   const { decision_brief, sources, source_count, approval_role_labels } = useBriefQuery().data;
   const { actions: planActions } = useActionPlanQuery().data;
+  const mint = useMintWorkProductMutation();
   const b = decision_brief;
 
   const sourceSummary = useMemo(() => {
@@ -195,20 +194,6 @@ function PacketWorkspace() {
       </button>
       <button
         type="button"
-        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      >
-        <Share2 className="h-3.5 w-3.5" />
-        Share
-      </button>
-      <button
-        type="button"
-        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      >
-        <Upload className="h-3.5 w-3.5" />
-        Export
-      </button>
-      <button
-        type="button"
         onClick={handlePin}
         disabled={pinned}
         className={[
@@ -229,6 +214,28 @@ function PacketWorkspace() {
             Pin as committee packet
           </>
         )}
+      </button>
+      <button
+        type="button"
+        disabled={mint.isPending}
+        onClick={() => {
+          mint.mutate(
+            { work_product_id: "wp_acme_committee_packet" },
+            {
+              onSuccess: (data) => {
+                toast.success("Sealed as governed record", {
+                  description: "Opening the governance certificate…",
+                });
+                window.open(`/record/${data.record_id}`, "_blank", "noopener");
+              },
+              onError: () => toast.error("Could not seal record"),
+            },
+          );
+        }}
+        className="inline-flex h-8 items-center gap-1.5 rounded-md bg-foreground px-3 text-[12.5px] font-semibold text-background transition-colors hover:bg-foreground/90 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      >
+        <ShieldCheck className="h-3.5 w-3.5" />
+        {mint.isPending ? "Sealing…" : "Seal as governed record"}
       </button>
     </>
   );

@@ -6,7 +6,7 @@
 // gateway (`api/main.py`). Responses are contract-shaped (core/schemas.py) and are
 // merged over the mock, so UI-only fields (labels, derived status, telemetry) survive
 // and only real values are overlaid.
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   approval_role_labels,
@@ -23,6 +23,12 @@ import {
   type VerticalScore,
 } from "@/data/ops";
 import { loop_state as mockLoop, type LoopState } from "@/data/loop";
+import {
+  governance_certificate,
+  verify_result_stale,
+  type GovernanceCertificate,
+  type VerifyResult,
+} from "@/data/record";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
 // Mocks on by default → Lovable parity. Live only when explicitly disabled + a base URL.
@@ -194,6 +200,89 @@ export function useLoopQuery() {
         "/api/loop?user_id=u_rm&intent=prepare_decision_brief",
       );
       return { ...mockLoop, ...live };
+    },
+  });
+}
+
+/* --------------------------------- Governed record (surface 6) --------------------------------- */
+
+// The sealed governed-record certificate + its verification. Mock by default (the bundled
+// `governance_certificate`); live mode hits the gateway's `/workproducts/*` endpoints. The mint
+// response wraps the sealed record under `record` (backend contract) — we also accept `certificate`
+// so the hook tolerates either noun. `useVerification` holds the latest verify result client-side
+// (set by the verify mutation on the same page); it never fetches on its own.
+const recordKey = (id: string) => ["workproduct", id] as const;
+const verifyKey = (id: string) => ["workproduct", id, "verification"] as const;
+
+export function useRecordQuery(recordId: string) {
+  return useQuery<GovernanceCertificate>({
+    queryKey: recordKey(recordId),
+    initialData: governance_certificate,
+    staleTime: STALE,
+    queryFn: async (): Promise<GovernanceCertificate> => {
+      if (!LIVE) return governance_certificate;
+      return getJSON<GovernanceCertificate>(`/workproducts/${recordId}`);
+    },
+  });
+}
+
+export function useVerification(recordId: string) {
+  // Null until the user verifies; the verify mutation populates this cache entry. Never fetches.
+  return useQuery<VerifyResult | null>({
+    queryKey: verifyKey(recordId),
+    queryFn: async () => null,
+    initialData: null,
+    staleTime: Infinity,
+    enabled: false,
+  });
+}
+
+export function useMintWorkProductMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      input: { work_product_id?: string } = {},
+    ): Promise<{ record_id: string; certificate: GovernanceCertificate }> => {
+      if (!LIVE) {
+        return {
+          record_id: governance_certificate.record_id,
+          certificate: governance_certificate,
+        };
+      }
+      const res = await fetch(`${API_BASE}/workproducts/mint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) throw new Error(`/workproducts/mint → ${res.status}`);
+      const data = await res.json();
+      // Backend returns { record_id, record }; tolerate { certificate } too.
+      return { record_id: data.record_id, certificate: data.record ?? data.certificate };
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(recordKey(data.record_id), data.certificate);
+      qc.setQueryData(verifyKey(data.record_id), null);
+    },
+  });
+}
+
+export function useVerifyWorkProductMutation(recordId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      input: { event?: string } = { event: "legal_needs_review" },
+    ): Promise<VerifyResult> => {
+      if (!LIVE) return verify_result_stale;
+      const res = await fetch(`${API_BASE}/workproducts/${recordId}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) throw new Error(`/workproducts/${recordId}/verify → ${res.status}`);
+      return (await res.json()) as VerifyResult;
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(verifyKey(recordId), data);
     },
   });
 }

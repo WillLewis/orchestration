@@ -13,6 +13,7 @@ import { Route as PacketRouteImport } from './routes/packet'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
 
 const PacketRoute = PacketRouteImport.update({
   id: '/packet',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordRecordIdRoute = RecordRecordIdRouteImport.update({
+  id: '/record/$recordId',
+  path: '/record/$recordId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/loop' | '/ops' | '/packet'
+  fullPaths: '/' | '/loop' | '/ops' | '/packet' | '/record/$recordId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/loop' | '/ops' | '/packet'
-  id: '__root__' | '/' | '/loop' | '/ops' | '/packet'
+  to: '/' | '/loop' | '/ops' | '/packet' | '/record/$recordId'
+  id: '__root__' | '/' | '/loop' | '/ops' | '/packet' | '/record/$recordId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   LoopRoute: typeof LoopRoute
   OpsRoute: typeof OpsRoute
   PacketRoute: typeof PacketRoute
+  RecordRecordIdRoute: typeof RecordRecordIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/record/$recordId': {
+      id: '/record/$recordId'
+      path: '/record/$recordId'
+      fullPath: '/record/$recordId'
+      preLoaderRoute: typeof RecordRecordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoopRoute: LoopRoute,
   OpsRoute: OpsRoute,
   PacketRoute: PacketRoute,
+  RecordRecordIdRoute: RecordRecordIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
