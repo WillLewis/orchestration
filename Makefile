@@ -1,4 +1,4 @@
-.PHONY: install test lint run eval schemas-json fmt serve
+.PHONY: install test lint run eval schemas-json fmt serve api openapi
 
 install:    ## install runtime + dev deps
 	pip install -e ".[dev]" --break-system-packages
@@ -23,3 +23,9 @@ run:        ## run the demo pipeline end-to-end (integration)
 
 serve:      ## run the FastAPI gateway for the frontend (WS-H)
 	uvicorn api.main:app --reload --port 8000
+
+api:        ## run the integration API gateway (live composed pipeline)
+	uvicorn api.main:app --reload --port 8000
+
+openapi:    ## export the gateway OpenAPI schema to frontend/openapi.json
+	python -m api.export_openapi
