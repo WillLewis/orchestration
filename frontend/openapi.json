@@ -1026,6 +1026,16 @@
               }
             ]
           },
+          "section_dependencies": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Section Dependencies",
+            "type": "object"
+          },
           "source_versions": {
             "items": {
               "$ref": "#/components/schemas/SourceVersionSnapshot"

@@ -38,6 +38,7 @@ from core.schemas import (
     WorkspaceObject,
 )
 from corpus import apply_change, load
+from lifecycle.revalidation import build_dependency_graph
 
 from api.models import (
     ChangedSource,
@@ -196,6 +197,7 @@ def mint(user_id: str, intent: str) -> MintResponse:
         path_to_ready=list(_PATH_TO_READY),
         permission_omissions=_permission_omissions(bundle, workspace),
         source_versions=list(snapshot.values()),
+        section_dependencies=build_dependency_graph(brief, contract).section_dependencies,
         rulepack_id=RULEPACK_ID,
     )
 

@@ -233,6 +233,10 @@ class GovernanceEnvelope(BaseModel):
     path_to_ready: list[str] = Field(default_factory=list)
     permission_omissions: list[PermissionOmission] = Field(default_factory=list)
     source_versions: list[SourceVersionSnapshot] = Field(default_factory=list)
+    # section -> the source object ids it depends on (WS-F dependency graph), so the UI can show
+    # why a given source change makes specific sections stale. API-layer convenience, not a core
+    # contract change.
+    section_dependencies: dict[str, list[str]] = Field(default_factory=dict)
     loop_summary: Optional[dict] = None
     seal: Optional[RecordSeal] = None
 

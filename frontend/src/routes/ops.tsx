@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Lock,
   Play,
   ShieldCheck,
@@ -12,19 +13,15 @@ import {
   Cpu,
 } from "lucide-react";
 import {
-  eval_rows,
-  eval_source_mix,
-  failure_taxonomy,
   privacy,
   recipes,
-  telemetry_sample,
   METRIC_LABELS,
   METRIC_TARGETS,
   TAXONOMY_LABELS,
   VERTICAL_LABELS,
   type Vertical,
 } from "@/data/ops";
-import { useOpsQuery } from "@/hooks/queries";
+import { useOpsQuery, useOpsReportQuery } from "@/hooks/queries";
 
 export const Route = createFileRoute("/ops")({
   head: () => ({
@@ -54,6 +51,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Mono({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <span className={`font-mono text-[11.5px] ${className}`}>{children}</span>;
+}
+
+function TraceField({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rounded-md border border-border bg-background px-2.5 py-1.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-fg)]">
+        {label}
+      </div>
+      <div className="mt-0.5 break-words font-mono text-[11.5px] text-foreground">
+        {value ?? "—"}
+      </div>
+    </div>
+  );
 }
 
 const VERTICAL_TINT: Record<Vertical, string> = {
@@ -184,6 +194,9 @@ function ScorecardCard({
 /* ------------------------------------------------------------------ */
 
 function AgentOpsPage() {
+  const { eval_rows, telemetry_sample, eval_source_mix, failure_taxonomy } =
+    useOpsReportQuery().data;
+  const [openTrace, setOpenTrace] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(1); // 0..1
   const [rowsRevealed, setRowsRevealed] = useState(eval_rows.length);
@@ -374,55 +387,97 @@ function AgentOpsPage() {
             <ul className="divide-y divide-border">
               {eval_rows.map((r, i) => {
                 const visible = i < rowsRevealed;
+                const expandable = !r.passed;
+                const open = openTrace === r.case_id;
                 return (
-                  <li
-                    key={r.case_id}
-                    onMouseEnter={() => setHoveredVertical(r.vertical)}
-                    onMouseLeave={() => setHoveredVertical(null)}
-                    onFocus={() => setHoveredVertical(r.vertical)}
-                    onBlur={() => setHoveredVertical(null)}
-                    tabIndex={0}
-                    className={[
-                      "grid grid-cols-[80px_minmax(0,1fr)_minmax(0,200px)_110px_110px] items-center gap-2 px-4 py-2.5 text-[12.5px] outline-none transition-all",
-                      visible ? "opacity-100" : "opacity-30",
-                      hoveredVertical === r.vertical
-                        ? "bg-[var(--primary-tint)]/40"
-                        : "hover:bg-[var(--canvas)]/60 focus-visible:bg-[var(--canvas)]/60",
-                    ].join(" ")}
-                  >
-                    <div>
-                      <VerticalChip v={r.vertical} />
-                    </div>
-                    <div className="min-w-0 text-foreground">
-                      <div className="truncate">{r.description}</div>
-                      <Mono className="text-[var(--muted-fg)]">{r.case_id}</Mono>
-                      {r.note && !r.passed && (
-                        <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[var(--warning)]">
-                          <AlertTriangle className="h-3 w-3" />
-                          {r.note}
+                  <Fragment key={r.case_id}>
+                    <li
+                      onMouseEnter={() => setHoveredVertical(r.vertical)}
+                      onMouseLeave={() => setHoveredVertical(null)}
+                      onFocus={() => setHoveredVertical(r.vertical)}
+                      onBlur={() => setHoveredVertical(null)}
+                      onClick={expandable ? () => setOpenTrace(open ? null : r.case_id) : undefined}
+                      onKeyDown={
+                        expandable
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setOpenTrace(open ? null : r.case_id);
+                              }
+                            }
+                          : undefined
+                      }
+                      tabIndex={0}
+                      aria-expanded={expandable ? open : undefined}
+                      className={[
+                        "grid grid-cols-[80px_minmax(0,1fr)_minmax(0,200px)_110px_110px] items-center gap-2 px-4 py-2.5 text-[12.5px] outline-none transition-all",
+                        visible ? "opacity-100" : "opacity-30",
+                        expandable ? "cursor-pointer" : "",
+                        hoveredVertical === r.vertical
+                          ? "bg-[var(--primary-tint)]/40"
+                          : "hover:bg-[var(--canvas)]/60 focus-visible:bg-[var(--canvas)]/60",
+                      ].join(" ")}
+                    >
+                      <div>
+                        <VerticalChip v={r.vertical} />
+                      </div>
+                      <div className="min-w-0 text-foreground">
+                        <div className="truncate">{r.description}</div>
+                        <Mono className="text-[var(--muted-fg)]">{r.case_id}</Mono>
+                        {r.note && !r.passed && (
+                          <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[var(--warning)]">
+                            <AlertTriangle className="h-3 w-3" />
+                            {r.note}
+                          </div>
+                        )}
+                      </div>
+                      <div className="truncate text-[var(--secondary-text)]">{r.check}</div>
+                      <div>
+                        <span className="inline-flex items-center rounded-full border border-border bg-[var(--canvas)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--secondary-text)]">
+                          {r.kind}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {r.passed ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--success)]">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Pass
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--danger-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--danger)]">
+                            <XCircle className="h-3 w-3" />
+                            Fail
+                          </span>
+                        )}
+                        {expandable && (
+                          <ChevronDown
+                            aria-hidden
+                            className={[
+                              "h-3.5 w-3.5 text-[var(--muted-fg)] transition-transform",
+                              open ? "rotate-180" : "",
+                            ].join(" ")}
+                          />
+                        )}
+                      </div>
+                    </li>
+                    {expandable && open && (
+                      <li className="bg-[var(--canvas)]/60 px-4 py-3">
+                        <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-fg)]">
+                          Failure trace · <Mono>{r.case_id}</Mono>
                         </div>
-                      )}
-                    </div>
-                    <div className="truncate text-[var(--secondary-text)]">{r.check}</div>
-                    <div>
-                      <span className="inline-flex items-center rounded-full border border-border bg-[var(--canvas)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--secondary-text)]">
-                        {r.kind}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      {r.passed ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--success)]">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Pass
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--danger-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--danger)]">
-                          <XCircle className="h-3 w-3" />
-                          Fail
-                        </span>
-                      )}
-                    </div>
-                  </li>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                          <TraceField label="Input class" value={r.input_class} />
+                          <TraceField label="Expected signal" value={r.expected_signal} />
+                          <TraceField label="Observed" value={r.observed_signal} />
+                        </div>
+                        <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[var(--success-bg)] px-2 py-1 text-[11px] text-[var(--success)]">
+                          <Lock className="h-3 w-3" />
+                          Typed signals only — no prompt, response, or document text leaves the
+                          tenant.
+                        </div>
+                      </li>
+                    )}
+                  </Fragment>
                 );
               })}
             </ul>

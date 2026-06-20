@@ -25,12 +25,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChatThread, type Turn } from "@/components/agent/ChatThread";
 import { TopBar } from "@/components/meeting/TopBar";
 import { type SourceStatus, type SourceType } from "@/data/brief";
 import { pinPacket, usePacketPinned } from "@/lib/packet-store";
 import { openDrawer, usePathReady } from "@/lib/actions-store";
 import { action_key } from "@/data/actions";
-import { useActionPlanQuery, useBriefQuery, useMintWorkProductMutation } from "@/hooks/queries";
+import {
+  useActionPlanQuery,
+  useBriefQuery,
+  useChatMutation,
+  useMintWorkProductMutation,
+} from "@/hooks/queries";
 
 const searchSchema = z.object({
   focus: z.enum(["next-steps"]).optional(),
@@ -318,6 +324,32 @@ function PacketWorkspace() {
   const { actions: planActions } = useActionPlanQuery().data;
   const mint = useMintWorkProductMutation();
   const b = decision_brief;
+
+  // "Ask about this packet" reuses the governed /chat answerer (permission refusal, gate-hold,
+  // missing-evidence honesty, validated citations) — same Acme scope as the meeting panel.
+  const chat = useChatMutation();
+  const [askInput, setAskInput] = useState("");
+  const [messages, setMessages] = useState<Turn[]>([]);
+  function sendAsk(text: string) {
+    const t = text.trim();
+    if (!t || chat.isPending) return;
+    const history = messages.map(({ role, content }) => ({ role, content }));
+    setMessages((m) => [...m, { role: "user", content: t }]);
+    setAskInput("");
+    chat.mutate(
+      { message: t, history },
+      {
+        onSuccess: (data) =>
+          setMessages((m) => [...m, { role: "assistant", content: data.reply, meta: data }]),
+        onError: () => {
+          toast.error("Couldn't reach the agent", {
+            description: "Run the gateway with `make api` to ask governed questions.",
+          });
+          setMessages((m) => m.slice(0, -1));
+        },
+      },
+    );
+  }
 
   const sourceSummary = useMemo(() => {
     const counts = { used: 0, restricted: 0, conflicting: 0, missing: 0 };
@@ -948,12 +980,15 @@ function PacketWorkspace() {
                   );
                 })}
               </ul>
+              {messages.length > 0 && (
+                <div className="max-h-[42vh] overflow-y-auto border-t border-border">
+                  <ChatThread messages={messages} pending={chat.isPending} />
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  toast("Agent scope: this packet", {
-                    description: "Ask-about-packet is wired in a later surface.",
-                  });
+                  sendAsk(askInput);
                 }}
                 className="flex items-center gap-2 border-t border-border bg-[var(--canvas)] px-3 py-2.5"
               >
@@ -965,6 +1000,8 @@ function PacketWorkspace() {
                 </span>
                 <input
                   type="text"
+                  value={askInput}
+                  onChange={(e) => setAskInput(e.target.value)}
                   placeholder="Ask about this packet…"
                   className="flex-1 bg-transparent text-[12.5px] text-foreground placeholder:text-[var(--muted-fg)] focus:outline-none"
                 />

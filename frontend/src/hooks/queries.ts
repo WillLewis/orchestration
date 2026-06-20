@@ -20,7 +20,12 @@ import {
 import { action_plan as mockActionPlan } from "@/data/actions";
 import { entry_actions, meeting as mockMeeting, plan_steps } from "@/lib/meeting-data";
 import {
+  eval_rows as mockEvalRows,
+  eval_source_mix as mockEvalSourceMix,
+  failure_taxonomy as mockFailureTaxonomy,
+  telemetry_sample as mockTelemetrySample,
   vertical_scores as mockVerticalScores,
+  type EvalRow,
   type Vertical,
   type VerticalScore,
 } from "@/data/ops";
@@ -195,6 +200,45 @@ export function useOpsQuery() {
         };
       }
       return next;
+    },
+  });
+}
+
+/* ----------------------- Agent Ops full report (GET /ops/evals) ----------------------- */
+
+// The full OpsReport (eval rows + telemetry sample + source mix + failure taxonomy). Live mode
+// fetches the real run; mock is the bundled static data. Eval rows carry content-free trace signals
+// (input_class/expected_signal/observed_signal) for the failed-row drill-in.
+export interface OpsReportData {
+  eval_rows: EvalRow[];
+  telemetry_sample: Record<string, unknown>;
+  eval_source_mix: { synthetic: number; tenant_local: number; redacted: number; aggregate: number };
+  failure_taxonomy: Array<{ category: string; count: number }>;
+}
+
+const opsReportData: OpsReportData = {
+  eval_rows: mockEvalRows,
+  telemetry_sample: mockTelemetrySample,
+  eval_source_mix: mockEvalSourceMix,
+  failure_taxonomy: mockFailureTaxonomy,
+};
+
+export function useOpsReportQuery() {
+  return useQuery({
+    queryKey: ["ops-report"],
+    initialData: opsReportData,
+    staleTime: STALE,
+    queryFn: async (): Promise<OpsReportData> => {
+      if (!LIVE) return opsReportData;
+      const r = await getJSON<Partial<OpsReportData>>("/ops/evals");
+      return {
+        eval_rows: r.eval_rows?.length ? r.eval_rows : opsReportData.eval_rows,
+        telemetry_sample: r.telemetry_sample ?? opsReportData.telemetry_sample,
+        eval_source_mix: r.eval_source_mix ?? opsReportData.eval_source_mix,
+        failure_taxonomy: r.failure_taxonomy?.length
+          ? r.failure_taxonomy
+          : opsReportData.failure_taxonomy,
+      };
     },
   });
 }

@@ -92,6 +92,11 @@ export type EvalRow = {
   kind: EvalKind;
   passed: boolean;
   note?: string;
+  // Content-free trace signals for the failed-row drill-in (Phase A4): intent class, the expected
+  // typed signal, and the observed typed result. Never prompt/response/document text.
+  input_class?: string;
+  expected_signal?: string;
+  observed_signal?: string;
 };
 
 // Presentational join of EvalCase ⋈ EvalResult.
@@ -176,6 +181,9 @@ export const eval_rows: EvalRow[] = [
     kind: "synthetic",
     passed: false,
     note: "Flagged for review — clarification prompt under-specified.",
+    input_class: "clarify_ambiguous_followup",
+    expected_signal: "min_claim_support=1.01",
+    observed_signal: "passed=False; claim_support=1.0, schema_validity=1.0",
   },
 ];
 

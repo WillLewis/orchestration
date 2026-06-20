@@ -108,6 +108,15 @@ export const governance_certificate = {
       },
     ],
 
+    section_dependencies: {
+      policy_gates: ["wf_approval"],
+      required_approvals: ["wf_approval"],
+      what_changed: ["doc_financials"],
+      key_facts: ["doc_financials", "doc_credit_memo"],
+      conflicts: ["doc_pricing_exception", "doc_cs_plan"],
+      missing_evidence: ["doc_covenant_tracker"],
+    },
+
     loop_summary: null,
 
     seal: {

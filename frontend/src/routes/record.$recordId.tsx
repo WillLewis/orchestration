@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  GitBranch,
   GitCompareArrows,
   Lock,
   Printer,
@@ -77,6 +78,17 @@ function StatusPill({
   );
 }
 
+// The meaningful sections of the dependency graph (the conservative all-sources fallback sections
+// are omitted for legibility). Order = render order.
+const DEP_SECTIONS = [
+  { key: "policy_gates", label: "Policy & approval gates" },
+  { key: "required_approvals", label: "Required approvals" },
+  { key: "what_changed", label: "What changed" },
+  { key: "key_facts", label: "Key financial facts" },
+  { key: "conflicts", label: "Conflicting evidence" },
+  { key: "missing_evidence", label: "Missing evidence" },
+] as const;
+
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
@@ -114,6 +126,7 @@ function RecordPage() {
 
   const b = cert.decision_brief;
   const gov = cert.governance;
+  const depMap = (gov.section_dependencies ?? {}) as Record<string, readonly string[]>;
   const isStale = v?.freshness === "stale";
   const integrityValid = v ? v.integrity_valid : true;
 
@@ -284,6 +297,68 @@ function RecordPage() {
             </div>
           </section>
         )}
+
+        {/* Dependency map — which sources each section cites; explains the staleness above */}
+        <section className="mt-6 rounded-2xl border border-border bg-background p-7 shadow-card">
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-primary" />
+            <SectionLabel>Dependency map</SectionLabel>
+          </div>
+          <p className="mt-1.5 text-[12.5px] text-[var(--secondary-text)]">
+            Which sources each section depends on. When a source changes, the sections that cite it
+            go stale — which is why the two events affect different sections.
+          </p>
+          <div className="mt-4 space-y-2">
+            {DEP_SECTIONS.map((s) => {
+              const deps = depMap[s.key] ?? [];
+              if (!deps.length) return null;
+              const stale = staleSectionSet.has(s.key);
+              const route = v?.reapproval_routes.find((r) => r.section === s.key);
+              return (
+                <div
+                  key={s.key}
+                  className={[
+                    "grid items-start gap-2 rounded-lg border px-3 py-2.5 sm:grid-cols-[200px_minmax(0,1fr)]",
+                    stale
+                      ? "border-[var(--warning)]/40 bg-[var(--warning-bg)]/40"
+                      : "border-border bg-background",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-foreground">{s.label}</span>
+                    {stale && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warning-bg)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--warning)]">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                        {route ? `→ ${route.approver_role}` : "stale"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {deps.map((id) => {
+                      const changed = changedSourceMap.has(id);
+                      const sv = gov.source_versions.find((x) => x.object_id === id);
+                      return (
+                        <span
+                          key={id}
+                          className={[
+                            "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11.5px] font-medium",
+                            changed
+                              ? "border-[var(--warning)]/50 bg-[var(--warning-bg)] text-[var(--warning)]"
+                              : "border-border bg-[var(--canvas)] text-[var(--secondary-text)]",
+                          ].join(" ")}
+                        >
+                          <FileText className="h-3 w-3" />
+                          {sv?.title ?? id}
+                          {changed && <span className="font-semibold">· changed</span>}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Decision packet body (read-only) */}
         <article className="mt-6 rounded-2xl border border-border bg-background p-7 shadow-card">
