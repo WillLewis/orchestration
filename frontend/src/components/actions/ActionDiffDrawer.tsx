@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  Ban,
   Calendar,
   CheckCircle2,
   CheckSquare,
@@ -10,6 +11,7 @@ import {
   History,
   Lock,
   Pencil,
+  Play,
   Send,
   ShieldCheck,
   Sparkles,
@@ -43,7 +45,12 @@ import {
   useActionsStore,
   type UserStatus,
 } from "@/lib/actions-store";
-import { useActionPlanQuery } from "@/hooks/queries";
+import {
+  LIVE,
+  useActionPlanQuery,
+  useExecuteActionsMutation,
+  type ServerAuditEvent,
+} from "@/hooks/queries";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -148,6 +155,30 @@ export function ActionDiffDrawer() {
   const planActions = useActionPlanQuery().data.actions;
   const [tab, setTab] = useState<"changes" | "audit">("changes");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const execute = useExecuteActionsMutation();
+  const [serverResult, setServerResult] = useState<ServerAuditEvent[] | null>(null);
+
+  // Anti-bypass demo (live only): approve EVERY index — including blocked ones — and let the gateway
+  // recompose + re-gate the plan. Blocked actions come back `skipped`, proving a client can't bypass.
+  function onRunGateway() {
+    execute.mutate(
+      { approved_indices: planActions.map((_, i) => i) },
+      {
+        onSuccess: (events) => {
+          setServerResult(events);
+          setTab("audit");
+          const skipped = events.filter((e) => e.action === "skipped").length;
+          toast.success(
+            `Gateway executed ${events.length - skipped}, refused ${skipped} (re-gated)`,
+          );
+        },
+        onError: () =>
+          toast.error("Gateway didn't respond", {
+            description: "Start it with `make api`, or use the client-side execute.",
+          }),
+      },
+    );
+  }
 
   // Switch to audit tab when commits land; back to changes on reopen.
   useEffect(() => {
@@ -325,6 +356,11 @@ export function ActionDiffDrawer() {
                 );
               })}
             </ul>
+          ) : LIVE && serverResult ? (
+            <>
+              <GatewayResult events={serverResult} />
+              {audit.length > 0 && <AuditLog />}
+            </>
           ) : (
             <AuditLog />
           )}
@@ -333,6 +369,23 @@ export function ActionDiffDrawer() {
         {/* Footer */}
         {tab === "changes" && (
           <div className="shrink-0 border-t border-border bg-background px-5 py-3">
+            {LIVE && (
+              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-md border border-[var(--primary)]/20 bg-[var(--primary-tint)]/40 px-2.5 py-1.5">
+                <span className="text-[11px] leading-snug text-[var(--secondary-text)]">
+                  <span className="font-semibold text-primary">Server-gated:</span> approve all{" "}
+                  {planActions.length} &amp; let the gateway re-gate blocked ones.
+                </span>
+                <button
+                  type="button"
+                  onClick={onRunGateway}
+                  disabled={execute.isPending}
+                  className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-gradient-ai px-2.5 text-[11.5px] font-semibold text-white transition-opacity hover:opacity-95 disabled:opacity-60"
+                >
+                  <Play className="h-3 w-3" />
+                  {execute.isPending ? "Running…" : "Run all on gateway"}
+                </button>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-3">
               <div className="text-[11.5px] leading-snug text-[var(--secondary-text)]">
                 <span className="font-semibold text-[var(--success)]">
@@ -349,30 +402,36 @@ export function ActionDiffDrawer() {
                   {counts.rejected} rejected · {counts.blocked} blocked
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={approveAllReady}
-                  className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  Approve all ready
-                </button>
-                <button
-                  type="button"
-                  onClick={onExecute}
-                  disabled={executableCount === 0}
-                  className={[
-                    "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold text-white transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                    executableCount === 0
-                      ? "cursor-not-allowed bg-[var(--muted-fg)] opacity-60"
-                      : "bg-gradient-ai hover:opacity-95",
-                  ].join(" ")}
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  Execute {executableCount > 0 ? executableCount : ""} approved
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              {LIVE ? (
+                <span className="text-[11px] leading-snug text-[var(--muted-fg)]">
+                  Client execute is off in live — run on the gateway above.
+                </span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={approveAllReady}
+                    className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Approve all ready
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExecute}
+                    disabled={executableCount === 0}
+                    className={[
+                      "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold text-white transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                      executableCount === 0
+                        ? "cursor-not-allowed bg-[var(--muted-fg)] opacity-60"
+                        : "bg-gradient-ai hover:opacity-95",
+                    ].join(" ")}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Execute {executableCount > 0 ? executableCount : ""} approved
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -869,6 +928,78 @@ function AuditLog() {
           );
         })}
     </ol>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Gateway execution result (live) — proof the server re-gates the plan        */
+/* -------------------------------------------------------------------------- */
+
+function GatewayResult({ events }: { events: ServerAuditEvent[] }) {
+  const skipped = events.filter((e) => e.action === "skipped").length;
+  const executed = events.length - skipped;
+  return (
+    <div className="border-b border-border bg-background px-5 py-4">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-gradient-ai text-white">
+          <ShieldCheck className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[13px] font-semibold text-foreground">
+            Gateway execution · server-gated
+          </div>
+          <div className="text-[11.5px] leading-snug text-[var(--secondary-text)]">
+            Approved all {events.length} indices · gateway executed{" "}
+            <span className="font-semibold text-[var(--success)]">{executed}</span> · refused{" "}
+            <span className="font-semibold text-[var(--danger)]">{skipped}</span> (re-gated
+            server-side)
+          </div>
+        </div>
+      </div>
+
+      <ol className="mt-3 space-y-1.5">
+        {events.map((e, i) => {
+          const ok = e.action === "executed";
+          const toolLabel =
+            tool_labels[e.detail.tool as keyof typeof tool_labels] ?? e.detail.tool ?? "action";
+          const target = e.detail.target ? labelFor(String(e.detail.target)) : "";
+          return (
+            <li
+              key={i}
+              className={[
+                "flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-[12px]",
+                ok
+                  ? "border-[var(--success)]/25 bg-[var(--success-bg)]/50"
+                  : "border-[var(--danger)]/25 bg-[var(--danger-bg)]/40",
+              ].join(" ")}
+            >
+              {ok ? (
+                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
+              ) : (
+                <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
+              )}
+              <div className="min-w-0 flex-1">
+                <span className="font-medium text-foreground">{toolLabel}</span>
+                {target ? <span className="text-[var(--secondary-text)]"> · {target}</span> : null}
+                <span className={ok ? "ml-1 text-[var(--success)]" : "ml-1 text-[var(--danger)]"}>
+                  {ok ? "· executed" : "· refused"}
+                </span>
+                {!ok && e.detail.reason ? (
+                  <div className="mt-0.5 font-mono text-[10.5px] leading-snug text-[var(--danger)]">
+                    {e.detail.reason}
+                  </div>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="mt-2.5 text-[11px] leading-snug text-[var(--muted-fg)]">
+        Every index was submitted as approved. The gateway recomposed the plan and refused the
+        blocked actions — a client cannot bypass a deterministic gate.
+      </p>
+    </div>
   );
 }
 

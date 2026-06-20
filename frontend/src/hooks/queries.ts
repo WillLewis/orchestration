@@ -35,7 +35,7 @@ import {
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
 // Mocks on by default → Lovable parity. Live only when explicitly disabled + a base URL.
-const LIVE = import.meta.env.VITE_USE_MOCKS === "false" && API_BASE.length > 0;
+export const LIVE = import.meta.env.VITE_USE_MOCKS === "false" && API_BASE.length > 0;
 // Mock mode: never refetch (instant, no flash). Live mode: 0 so the mock seed is
 // immediately stale and React Query fetches the gateway on mount.
 const STALE = LIVE ? 0 : Infinity;
@@ -134,15 +134,22 @@ const actionData = { actions: mockActionPlan.actions };
 export type ActionData = typeof actionData;
 
 export function useActionPlanQuery() {
-  // Actions stay on the bundled mock in BOTH modes: the live action engine (WS-E) isn't
-  // merged yet, and its stub output carries null diffs the drawer doesn't model. The
-  // drawer is globally mounted, so a live fetch here would crash every route. Flip the
-  // queryFn to fetch "/api/actions" once WS-E lands (the gateway endpoint already exists).
+  // Live mode fetches the real composed ActionPlan (`GET /api/actions`, full typed diffs +
+  // blocked_reasons); mock is the bundled plan. `initialData` keeps the globally-mounted drawer
+  // safe — a failed/absent fetch falls back to the mock instead of throwing on every route.
   return useQuery({
     queryKey: ["actions"],
     initialData: actionData,
-    staleTime: Infinity,
-    queryFn: (): ActionData => actionData,
+    staleTime: STALE,
+    queryFn: async (): Promise<ActionData> => {
+      if (!LIVE) return actionData;
+      try {
+        const live = await getJSON<{ actions: ActionData["actions"] }>("/api/actions");
+        return live.actions?.length ? { actions: live.actions } : actionData;
+      } catch {
+        return actionData;
+      }
+    },
   });
 }
 
@@ -293,6 +300,45 @@ export function useVerifyWorkProductMutation(recordId: string) {
     },
     onSuccess: (data) => {
       qc.setQueryData(verifyKey(recordId), data);
+    },
+  });
+}
+
+/* --------------------------------- Safe actions — live execute (POST /actions/execute) --------------------------------- */
+
+// One server-side execution outcome (core/schemas.py AuditEvent). The executor re-gates the plan
+// server-side: a blocked action is `skipped` (with its blocked_reason) even when its index is
+// submitted as approved — so a client can't bypass a gate. `executed` carries the applied diff.
+export interface ServerAuditEvent {
+  actor: string;
+  action: "executed" | "skipped" | string;
+  detail: {
+    index?: number;
+    tool?: string;
+    target?: string;
+    reason?: string;
+    before?: Record<string, unknown>;
+    after?: Record<string, unknown>;
+  };
+}
+
+// POST approved indices to the gateway; it recomposes + executes the gated plan and returns the
+// audit. Live-only (the drawer keeps its client-side simulation for offline/mock). Used to prove
+// the anti-bypass guarantee: approve every index, the blocked ones still come back `skipped`.
+export function useExecuteActionsMutation() {
+  return useMutation({
+    mutationFn: async (input: { approved_indices: number[] }): Promise<ServerAuditEvent[]> => {
+      const res = await fetch(`${API_BASE}/actions/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: "u_rm",
+          intent: "prepare_decision_brief",
+          approved_indices: input.approved_indices,
+        }),
+      });
+      if (!res.ok) throw new Error(`/actions/execute → ${res.status}`);
+      return (await res.json()) as ServerAuditEvent[];
     },
   });
 }
