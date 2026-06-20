@@ -41,9 +41,14 @@ from api.models import (
     ChatRequest,
     ChatResponse,
     ExecuteRequest,
+    GovernedRecord,
     LoopRequest,
+    MintRecordRequest,
+    MintResponse,
     OpsReport,
+    RecordVerification,
     RevalidateRequest,
+    VerifyRecordRequest,
 )
 from api.orchestrator import (
     assemble_brief,
@@ -56,6 +61,9 @@ from api.orchestrator import (
     run_revalidation,
     verify_context,
 )
+from api.workproducts import get as get_workproduct
+from api.workproducts import mint as mint_workproduct
+from api.workproducts import verify as verify_workproduct
 
 app = FastAPI(title="ConnectWork Command Agent — gateway", version="0.2.0")
 
@@ -164,6 +172,31 @@ def post_revalidate(req: RevalidateRequest) -> RevalidationResult:
     """Stale sections + reapproval routes for a source-change event (e.g. `legal_needs_review`
     on `wf_approval` → approval sections stale, reapproval routed to legal)."""
     return run_revalidation(req.user_id, req.intent, req.changed_object_id, req.event)
+
+
+# --------------------------------------------------------------------------- #
+# Governed record: seal + verify (the governed work product, made literal)
+# --------------------------------------------------------------------------- #
+@app.post("/workproducts/mint", response_model=MintResponse)
+def post_workproduct_mint(req: MintRecordRequest) -> MintResponse:
+    """Seal the decision packet into a governed record: decision + gate results + evidence +
+    permission omissions + a source-version snapshot + a server-minted HMAC integrity seal. Honest
+    by construction — the Acme record stays `approval_ready=False`. Runs no actions and no loop."""
+    return mint_workproduct(req.user_id, req.intent)
+
+
+@app.get("/workproducts/{record_id}", response_model=GovernedRecord)
+def get_workproduct_record(record_id: str) -> GovernedRecord:
+    """Fetch a sealed governed record (with its latest verification, if any). 404 if unknown."""
+    return get_workproduct(record_id)
+
+
+@app.post("/workproducts/{record_id}/verify", response_model=RecordVerification)
+def post_workproduct_verify(record_id: str, req: VerifyRecordRequest) -> RecordVerification:
+    """Re-check a record against current sources on three independent axes: integrity (HMAC),
+    freshness (WS-F revalidation), approval-readiness. A change event (e.g. `legal_needs_review`)
+    flips freshness to `stale` and routes reapproval to Legal — the record discovers the change."""
+    return verify_workproduct(record_id, req.event)
 
 
 # --------------------------------------------------------------------------- #

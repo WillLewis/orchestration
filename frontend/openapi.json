@@ -215,6 +215,34 @@
         "title": "ApprovalRequirement",
         "type": "object"
       },
+      "Assignment": {
+        "properties": {
+          "action_index": {
+            "title": "Action Index",
+            "type": "integer"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "owner_role": {
+            "title": "Owner Role",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_index",
+          "owner_role",
+          "tool"
+        ],
+        "title": "Assignment",
+        "type": "object"
+      },
       "AuditEvent": {
         "properties": {
           "action": {
@@ -315,6 +343,125 @@
           "changed_object_id"
         ],
         "title": "ChangeImpactMap",
+        "type": "object"
+      },
+      "ChangedSource": {
+        "description": "One source field that changed after the record was sealed. `before`/`after` are free-typed\nbecause event payloads carry strings, numbers, or nested values.",
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id",
+          "field"
+        ],
+        "title": "ChangedSource",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "description": "One turn of prior conversation. UNTRUSTED: history is conversational context only and is\nnever treated as evidence \u2014 it cannot introduce sources, claims, or override a gate.",
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "default": "user",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "title": "ChatMessage",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "description": "Body for `/chat`. `message` is the current (untrusted) question; `history` is prior turns\n(also untrusted). All factual grounding comes from the freshly-assembled ContextBundle.",
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "intent": {
+            "title": "Intent",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent",
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
+      "ChatResponse": {
+        "description": "The governed answer. Prose may be model-drafted, but every field below is set by the API\nwrapper's deterministic post-processing \u2014 never by the model:\n\n* ``citations`` are validated against ``bundle.sources`` (hallucinated/excluded ids dropped);\n* ``permission_boundary_hit`` is derived from ``bundle.permission_boundary`` + the request;\n* ``gate_held`` reflects the deterministic decision (the model can't grant approval);\n* ``missing_evidence`` mirrors ``bundle.missing_evidence``.\n\nKeep this set MINIMAL \u2014 adding a field changes the wire contract the frontend consumes.",
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/SourceRef"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "gate_held": {
+            "default": false,
+            "title": "Gate Held",
+            "type": "boolean"
+          },
+          "missing_evidence": {
+            "default": false,
+            "title": "Missing Evidence",
+            "type": "boolean"
+          },
+          "permission_boundary_hit": {
+            "default": false,
+            "title": "Permission Boundary Hit",
+            "type": "boolean"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply"
+        ],
+        "title": "ChatResponse",
         "type": "object"
       },
       "Claim": {
@@ -582,6 +729,29 @@
         "title": "DeterministicDecision",
         "type": "object"
       },
+      "Escalation": {
+        "properties": {
+          "action_index": {
+            "title": "Action Index",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_index",
+          "to",
+          "reason"
+        ],
+        "title": "Escalation",
+        "type": "object"
+      },
       "EvalRow": {
         "description": "Presentational EvalCase \u22c8 EvalResult row for Agent Ops.",
         "properties": {
@@ -713,6 +883,156 @@
         "title": "FailureTaxonomyEntry",
         "type": "object"
       },
+      "GovernanceEnvelope": {
+        "description": "The governance metadata wrapped around the decision \u2014 what makes the record *governed*\nrather than a static export. The `seal` is attached AFTER canonicalization (so it is never\npart of its own preimage).",
+        "properties": {
+          "approval_ready": {
+            "default": false,
+            "title": "Approval Ready",
+            "type": "boolean"
+          },
+          "approval_reason": {
+            "default": "",
+            "title": "Approval Reason",
+            "type": "string"
+          },
+          "approval_stamp": {
+            "default": "NOT APPROVAL-READY",
+            "title": "Approval Stamp",
+            "type": "string"
+          },
+          "loop_summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loop Summary"
+          },
+          "path_to_ready": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Path To Ready",
+            "type": "array"
+          },
+          "permission_omissions": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionOmission"
+            },
+            "title": "Permission Omissions",
+            "type": "array"
+          },
+          "recipe_id": {
+            "default": "finance_credit_committee",
+            "title": "Recipe Id",
+            "type": "string"
+          },
+          "rulepack_id": {
+            "default": "finance_credit_v1",
+            "title": "Rulepack Id",
+            "type": "string"
+          },
+          "rulepack_version": {
+            "default": 1,
+            "title": "Rulepack Version",
+            "type": "integer"
+          },
+          "schema_name": {
+            "default": "DecisionBrief",
+            "title": "Schema Name",
+            "type": "string"
+          },
+          "seal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordSeal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_versions": {
+            "items": {
+              "$ref": "#/components/schemas/SourceVersionSnapshot"
+            },
+            "title": "Source Versions",
+            "type": "array"
+          },
+          "vertical": {
+            "default": "finance",
+            "title": "Vertical",
+            "type": "string"
+          }
+        },
+        "title": "GovernanceEnvelope",
+        "type": "object"
+      },
+      "GovernedRecord": {
+        "description": "The sealed governed record \u2014 a point-in-time, verifiable artifact of a decision packet.\nThe product noun is 'governed record'; the frontend may title the page 'Governance Certificate'\nas a visual metaphor only.",
+        "properties": {
+          "decision_brief": {
+            "$ref": "#/components/schemas/DecisionBrief"
+          },
+          "governance": {
+            "$ref": "#/components/schemas/GovernanceEnvelope"
+          },
+          "minted_at": {
+            "format": "date-time",
+            "title": "Minted At",
+            "type": "string"
+          },
+          "minted_by": {
+            "default": "Dana R.",
+            "title": "Minted By",
+            "type": "string"
+          },
+          "record_id": {
+            "title": "Record Id",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RecordSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordVerification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "work_product_id": {
+            "title": "Work Product Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "work_product_id",
+          "title",
+          "minted_at",
+          "decision_brief",
+          "governance"
+        ],
+        "title": "GovernedRecord",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -724,6 +1044,152 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LoopRequest": {
+        "description": "Body for `/actions/loop`. `approved_indices=None` uses the loop's default approval policy\n(`approve_nonblocked`); a provided list approves exactly those indices (blocked actions are\nstill never executed).",
+        "properties": {
+          "approved_indices": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Indices"
+          },
+          "intent": {
+            "title": "Intent",
+            "type": "string"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent"
+        ],
+        "title": "LoopRequest",
+        "type": "object"
+      },
+      "LoopState": {
+        "description": "The work-loop dossier \u2014 the audit-ready record of one decision cycle.",
+        "properties": {
+          "approvals": {
+            "$ref": "#/components/schemas/ApprovalMatrix"
+          },
+          "approved_indices": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Approved Indices",
+            "type": "array"
+          },
+          "assignments": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Assignment"
+            },
+            "title": "Assignments",
+            "type": "array"
+          },
+          "audit": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "title": "Audit",
+            "type": "array"
+          },
+          "brief": {
+            "$ref": "#/components/schemas/DecisionBrief"
+          },
+          "bundle": {
+            "$ref": "#/components/schemas/ContextBundle"
+          },
+          "closed": {
+            "default": false,
+            "title": "Closed",
+            "type": "boolean"
+          },
+          "escalations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Escalation"
+            },
+            "title": "Escalations",
+            "type": "array"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ActionPlan"
+          },
+          "replies": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PersonaReply"
+            },
+            "title": "Replies",
+            "type": "array"
+          },
+          "scheduled": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ScheduledItem"
+            },
+            "title": "Scheduled",
+            "type": "array"
+          }
+        },
+        "required": [
+          "bundle",
+          "brief",
+          "plan",
+          "approvals"
+        ],
+        "title": "LoopState",
+        "type": "object"
+      },
+      "MintRecordRequest": {
+        "description": "Body for `POST /workproducts/mint`.",
+        "properties": {
+          "intent": {
+            "default": "prepare_decision_brief",
+            "title": "Intent",
+            "type": "string"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "title": "MintRecordRequest",
+        "type": "object"
+      },
+      "MintResponse": {
+        "description": "`POST /workproducts/mint` \u2192 the new record id + the full governed record.",
+        "properties": {
+          "record": {
+            "$ref": "#/components/schemas/GovernedRecord"
+          },
+          "record_id": {
+            "title": "Record Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "record"
+        ],
+        "title": "MintResponse",
         "type": "object"
       },
       "MissingEvidenceState": {
@@ -821,6 +1287,66 @@
         "title": "PermissionBoundary",
         "type": "object"
       },
+      "PermissionOmission": {
+        "description": "A source excluded from the record because the user lacked access at mint time.",
+        "properties": {
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "reason": {
+            "default": "permission_restricted",
+            "title": "Reason",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ],
+        "title": "PermissionOmission",
+        "type": "object"
+      },
+      "PersonaReply": {
+        "description": "A persona's async reply to an assignment. Carries a typed decision and message text only \u2014\nnever raw sensitive content.",
+        "properties": {
+          "action_index": {
+            "title": "Action Index",
+            "type": "integer"
+          },
+          "decision": {
+            "enum": [
+              "sign_off",
+              "question",
+              "escalate",
+              "decline",
+              "acknowledge"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "action_index",
+          "decision"
+        ],
+        "title": "PersonaReply",
+        "type": "object"
+      },
       "ReapprovalRoute": {
         "description": "Route an impacted section back to the role that must re-approve it.",
         "properties": {
@@ -843,6 +1369,128 @@
           "approver_role"
         ],
         "title": "ReapprovalRoute",
+        "type": "object"
+      },
+      "RecordSeal": {
+        "description": "The server-minted integrity seal. `value` is a keyed HMAC over the canonical content \u2014\nunforgeable without the server key; `payload_hash` is a display-only content fingerprint.\n\nThe HMAC is SYMMETRIC: this server verifies its own seal (proves the record is unaltered since\nit minted it). Independent third-party verification would require asymmetric signing.",
+        "properties": {
+          "algorithm": {
+            "default": "HMAC-SHA256 over canonical JSON",
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "kind": {
+            "default": "Server-minted integrity seal",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload_hash": {
+            "title": "Payload Hash",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payload_hash",
+          "value"
+        ],
+        "title": "RecordSeal",
+        "type": "object"
+      },
+      "RecordSource": {
+        "description": "An evidence source the record was built from (permission-filtered).",
+        "properties": {
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "used",
+            "enum": [
+              "used",
+              "conflicting"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id"
+        ],
+        "title": "RecordSource",
+        "type": "object"
+      },
+      "RecordVerification": {
+        "description": "Result of re-checking a sealed record against current sources. THREE INDEPENDENT AXES:\n`integrity_valid` (HMAC seal matches), `freshness` (sealed sources changed?), and\n`approval_ready` (the deterministic gate \u2014 unchanged by verification).",
+        "properties": {
+          "approval_ready": {
+            "title": "Approval Ready",
+            "type": "boolean"
+          },
+          "changed_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ChangedSource"
+            },
+            "title": "Changed Sources",
+            "type": "array"
+          },
+          "freshness": {
+            "enum": [
+              "current",
+              "stale"
+            ],
+            "title": "Freshness",
+            "type": "string"
+          },
+          "integrity_valid": {
+            "title": "Integrity Valid",
+            "type": "boolean"
+          },
+          "reapproval_routes": {
+            "items": {
+              "$ref": "#/components/schemas/ReapprovalRoute"
+            },
+            "title": "Reapproval Routes",
+            "type": "array"
+          },
+          "record_id": {
+            "title": "Record Id",
+            "type": "string"
+          },
+          "stale_sections": {
+            "items": {
+              "$ref": "#/components/schemas/StaleSectionState"
+            },
+            "title": "Stale Sections",
+            "type": "array"
+          },
+          "verified_at": {
+            "format": "date-time",
+            "title": "Verified At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "integrity_valid",
+          "freshness",
+          "approval_ready",
+          "verified_at"
+        ],
+        "title": "RecordVerification",
         "type": "object"
       },
       "RevalidateRequest": {
@@ -920,6 +1568,32 @@
           "passed"
         ],
         "title": "RuleFiring",
+        "type": "object"
+      },
+      "ScheduledItem": {
+        "properties": {
+          "attendees": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Attendees",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "reason"
+        ],
+        "title": "ScheduledItem",
         "type": "object"
       },
       "SchemaValidation": {
@@ -1028,6 +1702,40 @@
           "object_id"
         ],
         "title": "SourceRef",
+        "type": "object"
+      },
+      "SourceVersionSnapshot": {
+        "description": "A source object's version + metadata at mint time \u2014 the basis for staleness detection.",
+        "properties": {
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "",
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "object_id"
+        ],
+        "title": "SourceVersionSnapshot",
         "type": "object"
       },
       "StaleSectionState": {
@@ -1250,6 +1958,24 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerifyRecordRequest": {
+        "description": "Body for `POST /workproducts/{record_id}/verify`. `event` names a deterministic WS-A\nsource-change event (e.g. `legal_needs_review`); `None` re-checks against unchanged sources.",
+        "properties": {
+          "event": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event"
+          }
+        },
+        "title": "VerifyRecordRequest",
+        "type": "object"
+      },
       "VerticalScore": {
         "description": "Agent Ops vertical score shape from `frontend/src/data/ops.ts`.",
         "properties": {
@@ -1374,6 +2100,45 @@
           }
         },
         "summary": "Post Actions Execute"
+      }
+    },
+    "/actions/loop": {
+      "post": {
+        "description": "Run the controlled work loop and return the dossier (assignments \u00b7 replies \u00b7 escalations \u00b7\nscheduled \u00b7 approved_indices \u00b7 audit \u00b7 closed, plus bundle/brief/plan).\n\nNOTE: `closed=True` means the loop CYCLE completed \u2014 not that every item is resolved. Derive\n'Open \u2014 escalation in flight' from `escalations` + any remaining blocked actions, not `closed`.",
+        "operationId": "post_actions_loop_actions_loop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoopState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Actions Loop"
       }
     },
     "/api/actions": {
@@ -1501,6 +2266,57 @@
         "summary": "Health"
       }
     },
+    "/api/loop": {
+      "get": {
+        "description": "Convenience GET: same dossier as `POST /actions/loop` with the loop's default approval\n(`approve_nonblocked`); `closed` still means cycle-completed, not fully-resolved.",
+        "operationId": "api_loop_api_loop_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "default": "u_rm",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "default": "prepare_decision_brief",
+              "title": "Intent",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoopState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Loop"
+      }
+    },
     "/api/meeting": {
       "get": {
         "operationId": "api_meeting_api_meeting_get",
@@ -1611,6 +2427,45 @@
           }
         },
         "summary": "Post Brief"
+      }
+    },
+    "/chat": {
+      "post": {
+        "description": "Answer a question about the meeting/decision using ONLY the permission-filtered bundle.\n\nThe LLM may draft prose, but the wrapper owns governance deterministically: restricted sources\nare refused (never revealed), the deterministic gate can't be overridden, citations are\nvalidated against the bundle, and missing evidence is surfaced honestly. Offline/deterministic\nby default (no API key); history is untrusted context, never evidence.",
+        "operationId": "post_chat_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Chat"
       }
     },
     "/context": {
@@ -1747,6 +2602,135 @@
           }
         },
         "summary": "Post Verify"
+      }
+    },
+    "/workproducts/mint": {
+      "post": {
+        "description": "Seal the decision packet into a governed record: decision + gate results + evidence +\npermission omissions + a source-version snapshot + a server-minted HMAC integrity seal. Honest\nby construction \u2014 the Acme record stays `approval_ready=False`. Runs no actions and no loop.",
+        "operationId": "post_workproduct_mint_workproducts_mint_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MintResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Workproduct Mint"
+      }
+    },
+    "/workproducts/{record_id}": {
+      "get": {
+        "description": "Fetch a sealed governed record (with its latest verification, if any). 404 if unknown.",
+        "operationId": "get_workproduct_record_workproducts__record_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GovernedRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workproduct Record"
+      }
+    },
+    "/workproducts/{record_id}/verify": {
+      "post": {
+        "description": "Re-check a record against current sources on three independent axes: integrity (HMAC),\nfreshness (WS-F revalidation), approval-readiness. A change event (e.g. `legal_needs_review`)\nflips freshness to `stale` and routes reapproval to Legal \u2014 the record discovers the change.",
+        "operationId": "post_workproduct_verify_workproducts__record_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordVerification"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Workproduct Verify"
       }
     }
   }

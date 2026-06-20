@@ -25,6 +25,9 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 | POST | `/actions/compose` | `ActionPlan` | WS-E (+B,C,D) | Action Diff Drawer ([actions.ts](../frontend/src/data/actions.ts)) |
 | POST | `/actions/execute` | `list[AuditEvent]` | WS-E | Action Diff Drawer |
 | POST | `/revalidate` | `RevalidationResult` | WS-F (+B,C,D) | Stale-decision alert |
+| POST | `/workproducts/mint` | `MintResponse` | WS-B→D + WS-F snapshot | Seal as governed record |
+| GET | `/workproducts/{record_id}` | `GovernedRecord` | (in-memory store) | Governed-record page |
+| POST | `/workproducts/{record_id}/verify` | `RecordVerification` | WS-F | Verify record (integrity/stale) |
 | GET | `/ops/evals` | `OpsReport` | WS-I + WS-G | Agent Ops ([ops.ts](../frontend/src/data/ops.ts)) |
 | GET | `/api/health` | `{ok}` | — | — |
 | GET | `/api/brief` · `/api/actions` · `/api/meeting` · `/api/ops/scorecard` | dict | real-backed | compat shims for the currently-wired `queries.ts` |
@@ -56,6 +59,25 @@ it rebuilds the `ChatResponse` through deterministic post-processing so the mode
 The LLM client is injectable (`ChatLLMClient` protocol). The default `DeterministicChatClient` is
 **offline** (no key), so the suite is reproducible; `LLMChatClient` is opt-in and used only when
 both `CHAT_MODEL` and `ANTHROPIC_API_KEY` are set (model name comes from env, never hardcoded).
+
+## Governed record (`POST /workproducts/mint` · `/verify`)
+Seals a decision packet into a **governed record** ([`workproducts.py`](workproducts.py)) — the
+governed work product, made literal. The record is a point-in-time artifact carrying the decision,
+deterministic gate results, evidence, permission omissions, a snapshot of the **source versions** it
+was built from, and a **server-minted HMAC integrity seal**. It composes the live brief + gate
+(never re-authoring a gate) and runs **no actions and no loop**. Three independent trust axes:
+
+- **integrity** — `verify` re-HMACs the sealed canonical bytes; tampering flips `integrity_valid`.
+- **freshness** — `verify` applies a source-change event and reuses WS-F revalidation: e.g.
+  `legal_needs_review` flips `freshness` to `stale`, reports the changed field
+  (`wf_approval.legal_status: pending → Needs Review`), and routes reapproval to Legal.
+- **approval-readiness** — the deterministic gate, unchanged; the Acme record stays NOT approval-ready.
+
+Honesty boundary: the seal is **symmetric** (HMAC) — this server verifies its *own* seal, proving the
+record is unaltered since it minted it. Independent third-party verification would require asymmetric
+signing (the upgrade path). The key is read from `WORKPRODUCT_SECRET` (a non-secret demo fallback
+keeps tests/CI offline). The store is in-memory (demo only). Shape-compatible with
+`frontend/src/data/record.ts` (the Lovable governed-record page).
 
 ## Run
 ```bash
