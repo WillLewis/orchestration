@@ -16,7 +16,7 @@ schemas-json:  ## export JSON Schema for the Lovable frontend (WS-H)
 	python -m core.export_schemas
 
 eval:       ## run the three-vertical eval proof (WS-G/WS-I)
-	@echo "TODO(WS-G): python -m evals.run --pack three_vertical"
+	python -m evals.run --pack three_vertical
 
 run:        ## run the demo pipeline end-to-end (integration)
 	python -m core.demo
