@@ -24,6 +24,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from actions.loop import LoopState
 from core.schemas import (
     ActionPlan,
     AuditEvent,
@@ -34,7 +35,16 @@ from core.schemas import (
 from evals import build_scorecard
 from lifecycle.revalidation import RevalidationResult
 
-from api.models import BriefRequest, ExecuteRequest, OpsReport, RevalidateRequest
+from api.chat import answer as chat_answer
+from api.models import (
+    BriefRequest,
+    ChatRequest,
+    ChatResponse,
+    ExecuteRequest,
+    LoopRequest,
+    OpsReport,
+    RevalidateRequest,
+)
 from api.orchestrator import (
     assemble_brief,
     assemble_context,
@@ -42,6 +52,7 @@ from api.orchestrator import (
     compose_and_execute,
     default_action_plan,
     ops_report,
+    run_loop,
     run_revalidation,
     verify_context,
 )
@@ -92,6 +103,20 @@ def post_verify(req: BriefRequest) -> DeterministicDecision:
 
 
 # --------------------------------------------------------------------------- #
+# Governed chat: answer over the permission-filtered ContextBundle (WS-B → WS-C)
+# --------------------------------------------------------------------------- #
+@app.post("/chat", response_model=ChatResponse)
+def post_chat(req: ChatRequest) -> ChatResponse:
+    """Answer a question about the meeting/decision using ONLY the permission-filtered bundle.
+
+    The LLM may draft prose, but the wrapper owns governance deterministically: restricted sources
+    are refused (never revealed), the deterministic gate can't be overridden, citations are
+    validated against the bundle, and missing evidence is surfaced honestly. Offline/deterministic
+    by default (no API key); history is untrusted context, never evidence."""
+    return chat_answer(req.user_id, req.intent, req.message, req.history)
+
+
+# --------------------------------------------------------------------------- #
 # Safe action composer + executor: WS-E
 # --------------------------------------------------------------------------- #
 @app.post("/actions/compose", response_model=ActionPlan)
@@ -106,6 +131,29 @@ def post_actions_execute(req: ExecuteRequest) -> list[AuditEvent]:
     """Execute only approved, non-blocked actions. The plan is recomposed server-side, so a
     blocked action is never executed even if its index is submitted as approved."""
     return compose_and_execute(req.user_id, req.intent, req.approved_indices)
+
+
+# --------------------------------------------------------------------------- #
+# Controlled work loop: WS-E (distribute → collect → escalate → schedule → close)
+# --------------------------------------------------------------------------- #
+# `LoopState` is a Pydantic v2 model (all fields are Pydantic models / primitives), so FastAPI
+# accepts it directly as a response_model — no api-only mirror needed.
+@app.post("/actions/loop", response_model=LoopState)
+def post_actions_loop(req: LoopRequest) -> LoopState:
+    """Run the controlled work loop and return the dossier (assignments · replies · escalations ·
+    scheduled · approved_indices · audit · closed, plus bundle/brief/plan).
+
+    NOTE: `closed=True` means the loop CYCLE completed — not that every item is resolved. Derive
+    'Open — escalation in flight' from `escalations` + any remaining blocked actions, not `closed`.
+    """
+    return run_loop(req.user_id, req.intent, req.approved_indices)
+
+
+@app.get("/api/loop", response_model=LoopState)
+def api_loop(user_id: str = "u_rm", intent: str = "prepare_decision_brief") -> LoopState:
+    """Convenience GET: same dossier as `POST /actions/loop` with the loop's default approval
+    (`approve_nonblocked`); `closed` still means cycle-completed, not fully-resolved."""
+    return run_loop(user_id, intent, None)
 
 
 # --------------------------------------------------------------------------- #

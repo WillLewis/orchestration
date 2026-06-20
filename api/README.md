@@ -8,6 +8,8 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 ## Layout
 - [`orchestrator.py`](orchestrator.py) — composes the live stages (imports only; never reimplements
   a gate): WS-B context · WS-C verify · WS-D brief · WS-E actions · WS-F revalidation · WS-G/WS-I evals.
+- [`chat.py`](chat.py) — the governed `/chat` answerer: drafts prose with an injectable LLM client
+  but owns every governance check (permission, gate, citations, missing evidence) deterministically.
 - [`models.py`](models.py) — request bodies + the `OpsReport` aggregate (shaped to `ops.ts`).
   Domain responses reuse `core.schemas` / `lifecycle.RevalidationResult` directly.
 - [`main.py`](main.py) — FastAPI endpoints + CORS.
@@ -19,6 +21,7 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 | POST | `/brief` | `DecisionBrief` | WS-B→C→D | Brief / Decision Packet ([brief.ts](../frontend/src/data/brief.ts)) |
 | POST | `/context` | `ContextBundle` | WS-B | (debug) |
 | POST | `/verify` | `DeterministicDecision` | WS-C | (debug) |
+| POST | `/chat` | `ChatResponse` | WS-B→C (+ injectable LLM) | InputBar / "Ask about this packet" |
 | POST | `/actions/compose` | `ActionPlan` | WS-E (+B,C,D) | Action Diff Drawer ([actions.ts](../frontend/src/data/actions.ts)) |
 | POST | `/actions/execute` | `list[AuditEvent]` | WS-E | Action Diff Drawer |
 | POST | `/revalidate` | `RevalidationResult` | WS-F (+B,C,D) | Stale-decision alert |
@@ -30,6 +33,29 @@ Workspace note: the brief assembles over the canonical `fixtures.acme` workspace
 missing covenant tracker, discount conflict, restricted legal-memo exclusion); action validation
 runs against the richer WS-A `corpus.load("finance")` workspace, which carries both
 information-barrier sides so the mosaic gate is exercised.
+
+## Governed chat (`POST /chat`)
+Answers questions about the meeting/decision using **only** the permission-filtered
+`ContextBundle`. An LLM may draft prose, but `api.chat.answer` never returns the draft directly —
+it rebuilds the `ChatResponse` through deterministic post-processing so the model can't move a gate:
+
+- **Permission fail-closed** — a question about an excluded object (e.g. the legal memo) gets a
+  deterministic restricted-source refusal; restricted content is never revealed/summarized/inferred.
+  `permission_boundary_hit` is derived from `bundle.permission_boundary` + the request, not the model.
+- **No gate override** — an approve/mark-ready/bypass request (or a model claiming approval) is
+  neutralized to the authoritative gate-hold while `approval_ready` is False; `gate_held` is set
+  deterministically and the reply offers the safe path (route to the missing approver).
+- **Grounded citations only** — every citation is validated against `bundle.sources`; hallucinated,
+  excluded, or history-introduced ids are dropped. Returned as `list[SourceRef]`.
+- **Missing-evidence honesty** — `missing_evidence` mirrors `bundle.missing_evidence`; when asked,
+  the reply states the item is missing/unavailable and was not reviewed.
+- **Injection-resistant** — the message and history are untrusted; the prompt tells the model to
+  ignore embedded instructions, and the wrapper enforces every gate regardless. History is
+  conversational context only — never evidence.
+
+The LLM client is injectable (`ChatLLMClient` protocol). The default `DeterministicChatClient` is
+**offline** (no key), so the suite is reproducible; `LLMChatClient` is opt-in and used only when
+both `CHAT_MODEL` and `ANTHROPIC_API_KEY` are set (model name comes from env, never hardcoded).
 
 ## Run
 ```bash

@@ -22,10 +22,13 @@ deterministic engine remains authoritative — a model/LLM never owns a pass/fai
 """
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 
 from actions.composer import SafeActionComposer
 from actions.engine import ActionValidationEngine, WorkspaceExecutor
+from actions.loop import ControlledWorkLoop, LoopState
+from actions.personas import LLMPersonaClient, PersonaClient, StubPersonaClient
 from brief.synthesizer import GroundedBriefSynthesizer
 from context.assembler import PermissionAwareContextAssembler
 from core.schemas import (
@@ -212,6 +215,51 @@ def compose_and_execute(
     plan = _composer(workspace).compose(brief, bundle)
     executor = WorkspaceExecutor(workspace=workspace)
     return executor.execute(plan, approved_indices)
+
+
+# --------------------------------------------------------------------------- #
+# Controlled work loop: WS-E (distribute → collect → escalate → schedule → close)
+# --------------------------------------------------------------------------- #
+def _persona_client() -> PersonaClient:
+    """Offline `StubPersonaClient` by default (deterministic, no key). Promote to
+    `LLMPersonaClient` ONLY when both `PERSONA_MODEL` and the provider key (`ANTHROPIC_API_KEY`)
+    are present in the environment — so tests/CI stay offline and reproducible."""
+    if os.environ.get("PERSONA_MODEL") and os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            return LLMPersonaClient()
+        except RuntimeError:
+            return StubPersonaClient()
+    return StubPersonaClient()
+
+
+def run_loop(
+    user_id: str,
+    intent: str,
+    approved_indices: list[int] | None = None,
+) -> LoopState:
+    """Run the existing `actions.loop.ControlledWorkLoop` and return its dossier.
+
+    The loop's five-node logic (distribute → collect → escalate → schedule → close) is NOT
+    duplicated here — this only wires the orchestrator's brief and the API's gated composer
+    (corpus workspace + `AcmeFollowupProposer`, the same plan as `/actions/compose`) into the
+    loop, with the shared executor workspace so re-validation and execution agree.
+
+    Deterministic + offline by default (stub personas). `approved_indices=None` uses the loop's
+    default human-approval policy (`approve_nonblocked`); a provided list approves exactly those
+    indices — but the engine still refuses to execute any blocked action, so a blocked index
+    submitted as approved is skipped, never run.
+    """
+    brief, bundle = assemble_brief(user_id, intent)
+    executor = WorkspaceExecutor(workspace=_action_workspace())
+    composer = SafeActionComposer(engine=executor.engine, proposer=AcmeFollowupProposer())
+    approver = (lambda _plan: list(approved_indices)) if approved_indices is not None else None
+    loop = ControlledWorkLoop(
+        executor=executor,
+        composer=composer,
+        persona_client=_persona_client(),
+        approver=approver,  # None → loop default (approve_nonblocked)
+    )
+    return loop.run(brief, bundle)
 
 
 # --------------------------------------------------------------------------- #

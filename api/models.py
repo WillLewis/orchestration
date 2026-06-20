@@ -12,9 +12,11 @@ the same snake_case the mock mirrors, with no remapping.
 """
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
-from core.schemas import AgentRecipe, TelemetryEvent
+from core.schemas import AgentRecipe, SourceRef, TelemetryEvent
 from recipes.catalog import EvalRow, VerticalScore
 
 
@@ -46,6 +48,56 @@ class RevalidateRequest(BaseModel):
     intent: str = "prepare_decision_brief"
     changed_object_id: str = "wf_approval"
     event: str = "legal_needs_review"
+
+
+class LoopRequest(BaseModel):
+    """Body for `/actions/loop`. `approved_indices=None` uses the loop's default approval policy
+    (`approve_nonblocked`); a provided list approves exactly those indices (blocked actions are
+    still never executed)."""
+
+    user_id: str = "u_rm"
+    intent: str
+    approved_indices: list[int] | None = None
+
+
+# --------------------------------------------------------------------------- #
+# Governed chat (POST /chat) — answers over the permission-filtered ContextBundle
+# --------------------------------------------------------------------------- #
+class ChatMessage(BaseModel):
+    """One turn of prior conversation. UNTRUSTED: history is conversational context only and is
+    never treated as evidence — it cannot introduce sources, claims, or override a gate."""
+
+    role: Literal["user", "assistant", "system"] = "user"
+    content: str = ""
+
+
+class ChatRequest(BaseModel):
+    """Body for `/chat`. `message` is the current (untrusted) question; `history` is prior turns
+    (also untrusted). All factual grounding comes from the freshly-assembled ContextBundle."""
+
+    user_id: str = "u_rm"
+    intent: str
+    message: str
+    history: list[ChatMessage] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    """The governed answer. Prose may be model-drafted, but every field below is set by the API
+    wrapper's deterministic post-processing — never by the model:
+
+    * ``citations`` are validated against ``bundle.sources`` (hallucinated/excluded ids dropped);
+    * ``permission_boundary_hit`` is derived from ``bundle.permission_boundary`` + the request;
+    * ``gate_held`` reflects the deterministic decision (the model can't grant approval);
+    * ``missing_evidence`` mirrors ``bundle.missing_evidence``.
+
+    Keep this set MINIMAL — adding a field changes the wire contract the frontend consumes.
+    """
+
+    reply: str
+    citations: list[SourceRef] = Field(default_factory=list)
+    permission_boundary_hit: bool = False
+    gate_held: bool = False
+    missing_evidence: bool = False
 
 
 # --------------------------------------------------------------------------- #
