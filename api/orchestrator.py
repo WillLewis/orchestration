@@ -55,9 +55,17 @@ from lifecycle.revalidation import (
 )
 from recipes.catalog import EvalRow, run_three_vertical
 from verification.engine import DeterministicVerifier
+from verification.rulepacks import get_rulepack
 
 RULEPACK_ID = "finance_credit_v1"
 FINANCE_VERTICAL = "finance"
+
+
+def rulepack_meta() -> tuple[str, int]:
+    """The active rulepack id + version, so a brief/record can be stamped "decided by <rulepack>"
+    — the deterministic authority, never the model."""
+    rulepack = get_rulepack(RULEPACK_ID)
+    return rulepack.id, rulepack.version
 
 
 # --------------------------------------------------------------------------- #

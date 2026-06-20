@@ -14,6 +14,22 @@ from recipes import (
 )
 
 
+def test_eval_rows_carry_content_free_trace_signals():
+    """Each row exposes typed input-class + expected/observed signals for the failed-row trace —
+    ids, codes, booleans, scores only; never prompt/response/document text."""
+    rows = {row.case_id: row for row in run_three_vertical().eval_rows}
+
+    ambiguous = rows["fin_ambig_01"]
+    assert ambiguous.passed is False
+    assert ambiguous.input_class == "clarify_ambiguous_followup"
+    assert ambiguous.expected_signal and "min_claim_support" in ambiguous.expected_signal
+    assert ambiguous.observed_signal and ambiguous.observed_signal.startswith("passed=False")
+
+    thresh = rows["fin_thresh_01"]
+    assert thresh.input_class == "check_approval_readiness"
+    assert "failing_rule_ids" in (thresh.expected_signal or "")
+
+
 def test_all_three_recipes_load_and_resolve_rulepacks_and_evalpacks():
     for recipe_id in OPS_RECIPE_IDS:
         recipe = get_recipe(recipe_id)

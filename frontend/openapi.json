@@ -299,6 +299,31 @@
             "title": "Expected",
             "type": "number"
           },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputs"
+          },
           "matches": {
             "title": "Matches",
             "type": "boolean"
@@ -306,6 +331,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
           }
         },
         "required": [
@@ -753,7 +789,7 @@
         "type": "object"
       },
       "EvalRow": {
-        "description": "Presentational EvalCase \u22c8 EvalResult row for Agent Ops.",
+        "description": "Presentational EvalCase \u22c8 EvalResult row for Agent Ops.\n\n`input_class`/`expected_signal`/`observed_signal` are content-free typed signals (intent class,\nrule ids, booleans, scores) for the failed-row trace drill-in \u2014 never prompt/response text.",
         "properties": {
           "case_id": {
             "title": "Case Id",
@@ -766,6 +802,28 @@
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "expected_signal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Signal"
+          },
+          "input_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Class"
           },
           "kind": {
             "enum": [
@@ -787,6 +845,17 @@
               }
             ],
             "title": "Note"
+          },
+          "observed_signal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Signal"
           },
           "passed": {
             "title": "Passed",
@@ -1561,6 +1630,20 @@
           "rule_id": {
             "title": "Rule Id",
             "type": "string"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
           }
         },
         "required": [

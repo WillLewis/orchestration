@@ -20,6 +20,23 @@ def _firing(decision: DeterministicDecision, rule_id: str) -> RuleFiring:
     return next(firing for firing in decision.firings if firing.rule_id == rule_id)
 
 
+def test_acme_calculation_and_threshold_carry_provenance():
+    """The DSCR check and the approval-threshold firing surface their typed numbers, so the UI can
+    show inputs → formula → computed vs threshold instead of an unexplained assertion."""
+    decision = verify(acme_bundle(), "finance_credit_v1")
+
+    dscr = next(check for check in decision.calculations if check.name == "dscr")
+    assert dscr.inputs == {"cash_flow": 9_200_000, "debt_service": 7_187_500}
+    assert dscr.formula == "cash_flow / debt_service"
+    assert dscr.tolerance == 0.005
+    assert dscr.matches is True
+
+    assert _firing(decision, "approval_threshold").threshold == {
+        "requested_discount": 0.22,
+        "delegated_authority": 0.15,
+    }
+
+
 def test_verify_acme_finance_credit_v1_reproduces_expected_decision():
     decision = verify(acme_bundle(), "finance_credit_v1")
 

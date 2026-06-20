@@ -161,9 +161,14 @@ class LLMChatClient:
             system=system_prompt,
             messages=[{"role": "user", "content": user}],
         )
-        data = json.loads(resp.content[0].text)
+        text = resp.content[0].text if resp.content else ""
+        # Claude often wraps JSON in markdown fences or adds a short preamble; parse defensively and,
+        # if no JSON object is recoverable, fall back to the raw prose as the reply. The wrapper still
+        # enforces every governance rule, so a non-JSON answer is degraded, never fatal.
+        data = _extract_json_object(text)
+        reply = str(data.get("reply") or "").strip() or _strip_fences(text)
         return ChatDraft(
-            reply=str(data.get("reply") or ""),
+            reply=reply,
             citation_ids=[str(cid) for cid in (data.get("citation_ids") or [])],
         )
 
@@ -178,6 +183,40 @@ def _default_client() -> ChatLLMClient:
         except RuntimeError:
             return DeterministicChatClient()
     return DeterministicChatClient()
+
+
+# --------------------------------------------------------------------------- #
+# Robust draft-JSON parsing (probabilistic output is never trusted to be clean)
+# --------------------------------------------------------------------------- #
+def _strip_fences(text: str) -> str:
+    """Strip a surrounding markdown code fence (``` or ```json) from a model reply."""
+    import re
+
+    s = (text or "").strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", s)
+        s = re.sub(r"\s*```$", "", s)
+    return s.strip()
+
+
+def _extract_json_object(text: str) -> dict:
+    """Best-effort recovery of the model's JSON object: strip fences, then fall back to the first
+    balanced ``{...}`` block. Returns ``{}`` if nothing parses (caller uses the raw prose)."""
+    import json
+
+    s = _strip_fences(text)
+    candidates = [s]
+    start, end = s.find("{"), s.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(s[start : end + 1])
+    for candidate in candidates:
+        try:
+            obj = json.loads(candidate)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(obj, dict):
+            return obj
+    return {}
 
 
 # --------------------------------------------------------------------------- #
@@ -200,7 +239,13 @@ def answer(
     #    only — never returned directly).
     view = _build_view(bundle, decision, message, history)
     chat_client = client or _default_client()
-    draft = chat_client.draft(_build_system_prompt(view), view)
+    try:
+        draft = chat_client.draft(_build_system_prompt(view), view)
+    except Exception as exc:  # noqa: BLE001 — a model/network error must never 500 the endpoint
+        # Degrade to the offline client; governance is unchanged (the wrapper owns it). Logged so a
+        # misconfigured live model is visible in the gateway log rather than silently masked.
+        print(f"[chat] live draft failed ({type(exc).__name__}: {exc}); using deterministic client")
+        draft = DeterministicChatClient().draft(_build_system_prompt(view), view)
 
     # 3. Deterministic governance — derived from the bundle/decision + the CURRENT request only.
     #    History is never inspected here, so it can't introduce evidence or move a gate.

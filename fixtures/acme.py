@@ -11,6 +11,7 @@ from core.schemas import (
     ACL,
     ApprovalMatrix,
     ApprovalRequirement,
+    CalculationCheck,
     Claim,
     ClaimMap,
     ConflictState,
@@ -112,11 +113,28 @@ def acme_expected_decision() -> DeterministicDecision:
         approval_ready=False,
         firings=[
             RuleFiring(rule_id="missing_approver", passed=False, detail="Credit Officer approval missing."),
-            RuleFiring(rule_id="approval_threshold", passed=False, detail="Discount exceeds delegated authority."),
+            RuleFiring(
+                rule_id="approval_threshold",
+                passed=False,
+                detail="Discount exceeds delegated authority.",
+                threshold={"requested_discount": 0.22, "delegated_authority": 0.15},
+            ),
+            RuleFiring(rule_id="calculation_validation", passed=True, detail="All calculations matched."),
         ],
         approvals=ApprovalMatrix(requirements=[
             ApprovalRequirement(role="relationship_manager", present=True),
             ApprovalRequirement(role="credit_officer", present=False),
             ApprovalRequirement(role="legal", present=False),
         ]),
+        calculations=[
+            CalculationCheck(
+                name="dscr",
+                expected=1.28,
+                computed=1.28,
+                matches=True,
+                inputs={"cash_flow": 9_200_000, "debt_service": 7_187_500},
+                formula="cash_flow / debt_service",
+                tolerance=0.005,
+            ),
+        ],
     )

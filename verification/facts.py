@@ -45,7 +45,15 @@ def _acme_fixture_facts() -> VerificationFacts:
         "required_roles": ["relationship_manager", "credit_officer", "legal"],
         "blocking_required_roles": ["credit_officer"],
         "approval_threshold": {
-            "requested_discount": 0.175,
-            "delegated_authority": 0.10,
+            "requested_discount": 0.22,
+            "delegated_authority": 0.15,
         },
+        "calculations": [
+            {
+                "name": "dscr",
+                "expected": 1.28,
+                "inputs": {"cash_flow": 9_200_000, "debt_service": 7_187_500},
+                "tolerance": 0.005,
+            },
+        ],
     }

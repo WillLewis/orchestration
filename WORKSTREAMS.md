@@ -92,3 +92,22 @@ with their typed **result** in `core.schemas`:
   CI added; test suite expanded (`make test` = 76 tests: round-trip every model + inventory
   guard, privacy guards, pipeline-protocol satisfaction, schema export).
 - No breaking changes to existing field names/types; `fixtures/acme.py` unchanged.
+
+---
+
+## WS-0 contract addendum — demo-fidelity fields (additive, backward-compatible)
+
+Adds optional/defaulted fields so the prototype UI can show *computed* values instead of assertions.
+No field renamed or removed; existing payloads still validate; JSON Schema re-exported.
+
+- **`CalculationCheck`** `+inputs` `+formula` `+tolerance` — recomputation provenance.
+- **`RuleFiring`** `+threshold` — typed numbers behind a threshold rule (e.g. the approval-threshold
+  firing's requested vs delegated discount).
+
+**Codex hand-off (lanes touched outside `core/`):**
+- `verification/` populates the fields (`calculations.py` formula/inputs/tolerance; `engine.py`
+  approval-threshold `threshold`). `_acme_fixture_facts()` now also emits a DSCR `calculations` spec,
+  and `approval_threshold` is the canonical **22% requested vs 15% delegated authority**.
+- `recipes/catalog.py` `EvalRow` gains content-free `input_class`/`expected_signal`/`observed_signal`
+  for the Agent Ops failed-row trace (typed signals only — no raw content).
+- Golden `fixtures/acme.py::acme_expected_decision()` updated to reproduce the richer decision.

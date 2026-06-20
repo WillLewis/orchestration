@@ -57,6 +57,7 @@ from api.orchestrator import (
     compose_and_execute,
     default_action_plan,
     ops_report,
+    rulepack_meta,
     run_loop,
     run_revalidation,
     verify_context,
@@ -214,9 +215,12 @@ def get_ops_evals() -> OpsReport:
 @app.get("/api/brief")
 def api_brief(user_id: str = "u_rm", intent: str = "prepare_decision_brief") -> dict:
     brief, bundle = assemble_brief(user_id, intent)
+    rulepack_id, rulepack_version = rulepack_meta()
     return {
         "decision_brief": brief.model_dump(mode="json"),
         "source_count": len(bundle.sources),
+        "rulepack_id": rulepack_id,
+        "rulepack_version": rulepack_version,
     }
 
 

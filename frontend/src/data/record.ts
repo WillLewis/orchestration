@@ -123,11 +123,31 @@ export const governance_certificate = {
 
 export type GovernanceCertificate = typeof governance_certificate;
 
-// POST /workproducts/{id}/verify   body: { "event": "legal_needs_review" }
-export const verify_result_stale = {
+// POST /workproducts/{id}/verify   body: { "event": "legal_needs_review" | "financials_v2" }
+// Explicit type (not `typeof … as const`) so both event mocks below conform to one shape and the
+// live RecordVerification deserializes cleanly.
+export interface VerifyResult {
+  record_id: string;
+  integrity_valid: boolean;
+  freshness: "current" | "stale";
+  approval_ready: boolean;
+  verified_at: string;
+  changed_sources: Array<{
+    object_id: string;
+    title: string;
+    field: string;
+    before: string | number;
+    after: string | number;
+  }>;
+  stale_sections: Array<{ section: string; stale: boolean; reason: string }>;
+  reapproval_routes: Array<{ section: string; approver_role: string; reason: string }>;
+}
+
+// Event A — Legal workflow moves back to Needs Review: approval sections go stale + route to Legal.
+export const verify_result_stale: VerifyResult = {
   record_id: "gwp_acme_001",
   integrity_valid: true,
-  freshness: "stale" as "current" | "stale",
+  freshness: "stale",
   approval_ready: false,
   verified_at: "2026-06-20T10:55:00Z",
   changed_sources: [
@@ -163,6 +183,43 @@ export const verify_result_stale = {
       reason: "Legal workflow changed to Needs Review; approval section must be re-approved.",
     },
   ],
-} as const;
+};
 
-export type VerifyResult = typeof verify_result_stale;
+// Event B — Financial model revised (revenue ↓, DSCR ↓): factual sections go stale, NO reapproval
+// route (a data change, not an approval change). Mirrors corpus `financials_v2`.
+export const verify_result_financials: VerifyResult = {
+  record_id: "gwp_acme_001",
+  integrity_valid: true,
+  freshness: "stale",
+  approval_ready: false,
+  verified_at: "2026-06-20T10:58:00Z",
+  changed_sources: [
+    {
+      object_id: "doc_financials",
+      title: "Acme financial model (updated)",
+      field: "revenue_forecast",
+      before: "$38M",
+      after: "$36.5M",
+    },
+    {
+      object_id: "doc_financials",
+      title: "Acme financial model (updated)",
+      field: "dscr",
+      before: "1.28",
+      after: "1.18",
+    },
+  ],
+  stale_sections: [
+    {
+      section: "key_facts",
+      stale: true,
+      reason: "Financial model revised (revenue ↓, DSCR ↓); key facts must be revalidated.",
+    },
+    {
+      section: "what_changed",
+      stale: true,
+      reason: "Financial model revised; the what-changed summary is out of date.",
+    },
+  ],
+  reapproval_routes: [],
+};

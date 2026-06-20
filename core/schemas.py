@@ -159,6 +159,9 @@ class RuleFiring(BaseModel):
     rule_id: str
     passed: bool
     detail: str = ""
+    # Optional typed numbers behind a threshold rule (e.g. the approval-threshold firing carries
+    # {"requested_discount": 0.22, "delegated_authority": 0.15}). Defaulted → backward-compatible.
+    threshold: Optional[dict[str, float]] = None
 
 
 class ApprovalRequirement(BaseModel):
@@ -175,6 +178,11 @@ class CalculationCheck(BaseModel):
     expected: float
     computed: float
     matches: bool
+    # Optional provenance for the recomputation, so the UI can show inputs → formula → computed vs
+    # expected (within tolerance) instead of just an assertion. All defaulted → backward-compatible.
+    inputs: Optional[dict[str, float]] = None
+    formula: Optional[str] = None
+    tolerance: Optional[float] = None
 
 
 class PolicyNode(BaseModel):

@@ -35,6 +35,7 @@ export const decision_brief = {
         rule_id: "approval_threshold",
         passed: false,
         detail: "22% discount exceeds the relationship manager's delegated authority.",
+        threshold: { requested_discount: 0.22, delegated_authority: 0.15 },
       },
     ],
     calculations: [
@@ -43,6 +44,9 @@ export const decision_brief = {
         expected: 1.28,
         computed: 1.28,
         matches: true,
+        inputs: { cash_flow: 9_200_000, debt_service: 7_187_500 },
+        formula: "cash_flow / debt_service",
+        tolerance: 0.005,
       },
     ],
   },
@@ -159,6 +163,11 @@ export const sources: Array<{
 ];
 
 export const source_count = sources.length;
+
+// The deterministic authority behind the gates — stamped on the brief/packet so the UI can show
+// "decided by RulePack finance_credit_v1, not the model". Live mode overlays the same from /api/brief.
+export const rulepack_id = "finance_credit_v1";
+export const rulepack_version = 1;
 
 export const approval_role_labels: Record<string, string> = {
   relationship_manager: "Relationship Mgr",

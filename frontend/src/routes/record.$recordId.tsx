@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -86,14 +86,18 @@ function RecordPage() {
   const { data: cert } = useRecordQuery(recordId);
   const { data: verification } = useVerification(recordId);
   const verify = useVerifyWorkProductMutation(recordId);
+  const [event, setEvent] = useState<"legal_needs_review" | "financials_v2">("legal_needs_review");
 
   const v: VerifyResult | null = verification ?? null;
   const staleSectionSet = useMemo(
-    () => new Set(v?.stale_sections.map((s) => s.section) ?? []),
+    () => new Set((v?.stale_sections ?? []).filter((s) => s.stale).map((s) => s.section)),
     [v],
   );
   const changedSourceMap = useMemo(() => {
-    const map = new Map<string, { field: string; before: string; after: string }>();
+    const map = new Map<
+      string,
+      { field: string; before: string | number; after: string | number }
+    >();
     v?.changed_sources.forEach((c) =>
       map.set(c.object_id, { field: c.field, before: c.before, after: c.after }),
     );
@@ -113,19 +117,20 @@ function RecordPage() {
   const isStale = v?.freshness === "stale";
   const integrityValid = v ? v.integrity_valid : true;
 
-  function staleMark(section: "policy_gates" | "required_approvals") {
+  function staleMark(section: string) {
     if (!staleSectionSet.has(section)) return null;
+    const needsReapproval = v?.reapproval_routes.some((r) => r.section === section) ?? false;
     return (
       <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--warning-bg)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--warning)]">
         <AlertTriangle className="h-3 w-3" />
-        Stale — reapproval required
+        {needsReapproval ? "Stale — reapproval required" : "Stale — revalidate"}
       </span>
     );
   }
 
   function handleVerify() {
     verify.mutate(
-      { event: "legal_needs_review" },
+      { event },
       {
         onSuccess: () =>
           toast("Record verified", {
@@ -297,8 +302,17 @@ function RecordPage() {
               </p>
             </section>
 
-            <section>
-              <SectionLabel>What changed since last review</SectionLabel>
+            <section
+              className={
+                staleSectionSet.has("what_changed")
+                  ? "rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)]/40 p-4"
+                  : ""
+              }
+            >
+              <div className="flex items-center">
+                <SectionLabel>What changed since last review</SectionLabel>
+                {staleMark("what_changed")}
+              </div>
               <ul className="mt-2 space-y-2">
                 {b.what_changed.map((c, i) => (
                   <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-foreground">
@@ -326,12 +340,14 @@ function RecordPage() {
                     Failing rules
                   </div>
                   <ul className="divide-y divide-border">
-                    {b.policy_gates.firings.map((f) => (
-                      <li key={f.rule_id} className="flex items-start gap-3 px-4 py-2.5">
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
-                        <div className="flex-1 text-[13.5px] text-foreground">{f.detail}</div>
-                      </li>
-                    ))}
+                    {b.policy_gates.firings
+                      .filter((f) => !f.passed)
+                      .map((f) => (
+                        <li key={f.rule_id} className="flex items-start gap-3 px-4 py-2.5">
+                          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+                          <div className="flex-1 text-[13.5px] text-foreground">{f.detail}</div>
+                        </li>
+                      ))}
                   </ul>
                 </div>
                 <div className="bg-background">
@@ -460,8 +476,17 @@ function RecordPage() {
               </div>
             </section>
 
-            <section>
-              <SectionLabel>Key financial facts</SectionLabel>
+            <section
+              className={
+                staleSectionSet.has("key_facts")
+                  ? "rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)]/40 p-4"
+                  : ""
+              }
+            >
+              <div className="flex items-center">
+                <SectionLabel>Key financial facts</SectionLabel>
+                {staleMark("key_facts")}
+              </div>
               <ul className="mt-2 grid gap-1.5">
                 {b.key_facts.map((k, i) => (
                   <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-foreground">
@@ -662,6 +687,31 @@ function RecordPage() {
 
         {/* Actions bar */}
         <section className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background p-5 shadow-card print:hidden">
+          <div className="inline-flex items-center gap-2">
+            <span className="text-[11.5px] text-[var(--muted-fg)]">Simulate source change:</span>
+            <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-[11.5px] font-medium">
+              {(
+                [
+                  ["legal_needs_review", "Legal → Needs Review"],
+                  ["financials_v2", "Financials revised"],
+                ] as const
+              ).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setEvent(val)}
+                  className={[
+                    "rounded-[5px] px-2 py-1 transition-colors",
+                    event === val
+                      ? "bg-primary text-white"
+                      : "text-[var(--secondary-text)] hover:bg-[var(--canvas)]",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             onClick={handleVerify}

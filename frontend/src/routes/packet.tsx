@@ -4,14 +4,17 @@ import { z } from "zod";
 import {
   AlertTriangle,
   ArrowRight,
+  Calculator,
   CheckCircle2,
   Circle,
   FileText,
   GitCompareArrows,
+  Info,
   Lock,
   MessageSquare,
   Pin,
   Plus,
+  Scale,
   ShieldCheck,
   Sparkles,
   Users,
@@ -21,6 +24,7 @@ import {
   CheckSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TopBar } from "@/components/meeting/TopBar";
 import { type SourceStatus, type SourceType } from "@/data/brief";
 import { pinPacket, usePacketPinned } from "@/lib/packet-store";
@@ -133,6 +137,166 @@ function SourceChip({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Deterministic explainers — show the computed numbers behind a gate, so a    */
+/* skeptic sees "computed, not asserted". Live reads the new CalculationCheck / */
+/* RuleFiring fields; mock carries the same canonical values (both-mode).       */
+/* -------------------------------------------------------------------------- */
+
+type CalcCheck = {
+  name: string;
+  expected: number;
+  computed: number;
+  matches: boolean;
+  inputs?: Record<string, number>;
+  formula?: string;
+  tolerance?: number;
+};
+
+const CALC_LABELS: Record<string, string> = {
+  dscr: "Debt service coverage ratio",
+};
+
+function calcLabel(name: string) {
+  return CALC_LABELS[name] ?? name;
+}
+
+const EXPLAIN_TRIGGER_CLS =
+  "ml-1 mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+const POPOVER_CLS = "w-80 border-border bg-background text-foreground shadow-panel";
+
+function fmtMoney(n: number) {
+  return n >= 1000 ? `$${n.toLocaleString()}` : String(n);
+}
+
+function pct(n: number) {
+  return `${Math.round(n * 100)}%`;
+}
+
+function RulepackFooter({ id, version }: { id: string; version: number }) {
+  return (
+    <div className="mt-3 flex items-center gap-1.5 border-t border-border pt-2 text-[10.5px] leading-snug text-[var(--muted-fg)]">
+      <ShieldCheck className="h-3 w-3 shrink-0 text-primary" />
+      <span>
+        Decided by RulePack <span className="font-mono text-foreground">{id}</span> · v{version} —
+        not the model
+      </span>
+    </div>
+  );
+}
+
+function CalcExplainer({
+  calc,
+  rulepackId,
+  rulepackVersion,
+}: {
+  calc: CalcCheck;
+  rulepackId: string;
+  rulepackVersion: number;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger className={EXPLAIN_TRIGGER_CLS}>
+        <Info className="h-3 w-3" />
+        Explain
+      </PopoverTrigger>
+      <PopoverContent align="end" className={POPOVER_CLS}>
+        <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+          <Calculator className="h-3.5 w-3.5 text-primary" />
+          {calcLabel(calc.name)}
+        </div>
+        {calc.inputs && (
+          <dl className="mt-2.5 space-y-1 text-[12px]">
+            {Object.entries(calc.inputs).map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between gap-3">
+                <dt className="capitalize text-[var(--muted-fg)]">{k.replace(/_/g, " ")}</dt>
+                <dd className="font-mono text-foreground">{fmtMoney(v)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {calc.formula && (
+          <div className="mt-2.5 rounded-md border border-border bg-[var(--canvas)] px-2.5 py-1.5 font-mono text-[11.5px] text-foreground">
+            {calc.formula} = {calc.computed.toFixed(2)}
+          </div>
+        )}
+        <div className="mt-2.5 flex items-center justify-between gap-2 text-[12px]">
+          <span className="text-[var(--muted-fg)]">
+            computed {calc.computed.toFixed(2)} vs model {calc.expected.toFixed(2)}
+            {typeof calc.tolerance === "number" ? ` (±${calc.tolerance})` : ""}
+          </span>
+          <span
+            className={[
+              "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold",
+              calc.matches
+                ? "bg-[var(--success-bg)] text-[var(--success)]"
+                : "bg-[var(--danger-bg)] text-[var(--danger)]",
+            ].join(" ")}
+          >
+            <CheckCircle2 className="h-3 w-3" />
+            {calc.matches ? "Match" : "Mismatch"}
+          </span>
+        </div>
+        <RulepackFooter id={rulepackId} version={rulepackVersion} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ThresholdExplainer({
+  threshold,
+  rulepackId,
+  rulepackVersion,
+}: {
+  threshold: { requested_discount: number; delegated_authority: number };
+  rulepackId: string;
+  rulepackVersion: number;
+}) {
+  const exceeds = threshold.requested_discount > threshold.delegated_authority;
+  return (
+    <Popover>
+      <PopoverTrigger className={EXPLAIN_TRIGGER_CLS}>
+        <Info className="h-3 w-3" />
+        Explain
+      </PopoverTrigger>
+      <PopoverContent align="end" className={POPOVER_CLS}>
+        <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+          <Scale className="h-3.5 w-3.5 text-primary" />
+          Delegated-authority threshold
+        </div>
+        <dl className="mt-2.5 space-y-1 text-[12px]">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-[var(--muted-fg)]">requested discount</dt>
+            <dd className="font-mono text-foreground">{pct(threshold.requested_discount)}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-[var(--muted-fg)]">delegated authority</dt>
+            <dd className="font-mono text-foreground">{pct(threshold.delegated_authority)}</dd>
+          </div>
+        </dl>
+        <div className="mt-2.5 rounded-md border border-border bg-[var(--canvas)] px-2.5 py-1.5 font-mono text-[11.5px] text-foreground">
+          {pct(threshold.requested_discount)} {exceeds ? ">" : "≤"}{" "}
+          {pct(threshold.delegated_authority)} → {exceeds ? "exceeds" : "within"}
+        </div>
+        <div className="mt-2.5 flex justify-end">
+          <span
+            className={[
+              "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold",
+              exceeds
+                ? "bg-[var(--danger-bg)] text-[var(--danger)]"
+                : "bg-[var(--success-bg)] text-[var(--success)]",
+            ].join(" ")}
+          >
+            {exceeds ? <XCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+            {exceeds ? "Fail" : "Pass"}
+          </span>
+        </div>
+        <RulepackFooter id={rulepackId} version={rulepackVersion} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Component                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -143,7 +307,14 @@ function PacketWorkspace() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const nextStepsRef = useRef<HTMLElement | null>(null);
 
-  const { decision_brief, sources, source_count, approval_role_labels } = useBriefQuery().data;
+  const {
+    decision_brief,
+    sources,
+    source_count,
+    approval_role_labels,
+    rulepack_id,
+    rulepack_version,
+  } = useBriefQuery().data;
   const { actions: planActions } = useActionPlanQuery().data;
   const mint = useMintWorkProductMutation();
   const b = decision_brief;
@@ -271,6 +442,10 @@ function PacketWorkspace() {
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
                   <FileText className="h-3 w-3" />
                   {source_count} sources
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
+                  <ShieldCheck className="h-3 w-3 text-primary" />
+                  Rulepack <span className="font-mono">{rulepack_id}</span> · v{rulepack_version}
                 </span>
                 {pinned && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--success)]">
@@ -407,23 +582,32 @@ function PacketWorkspace() {
                       Failing rules
                     </div>
                     <ul className="divide-y divide-border">
-                      {b.policy_gates.firings.map((f) => (
-                        <li key={f.rule_id} className="flex items-start gap-3 px-4 py-2.5">
-                          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
-                          <div className="flex-1 text-[13.5px] text-foreground">
-                            {f.detail}
-                            <SourceChip
-                              ids={
-                                f.rule_id === "missing_approver"
-                                  ? ["wf_approval"]
-                                  : ["doc_pricing_exception"]
-                              }
-                              hoveredId={hoveredId}
-                              setHoveredId={setHoveredId}
-                            />
-                          </div>
-                        </li>
-                      ))}
+                      {b.policy_gates.firings
+                        .filter((f) => !f.passed)
+                        .map((f) => (
+                          <li key={f.rule_id} className="flex items-start gap-3 px-4 py-2.5">
+                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+                            <div className="flex-1 text-[13.5px] text-foreground">
+                              {f.detail}
+                              <SourceChip
+                                ids={
+                                  f.rule_id === "missing_approver"
+                                    ? ["wf_approval"]
+                                    : ["doc_pricing_exception"]
+                                }
+                                hoveredId={hoveredId}
+                                setHoveredId={setHoveredId}
+                              />
+                            </div>
+                            {"threshold" in f && f.threshold && (
+                              <ThresholdExplainer
+                                threshold={f.threshold}
+                                rulepackId={rulepack_id}
+                                rulepackVersion={rulepack_version}
+                              />
+                            )}
+                          </li>
+                        ))}
                     </ul>
                   </div>
                   {/* Required approvals */}
@@ -482,14 +666,20 @@ function PacketWorkspace() {
                       {b.policy_gates.calculations.map((c) => (
                         <li key={c.name} className="flex items-start gap-3 px-4 py-2.5">
                           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
-                          <div className="text-[13.5px] text-foreground">
-                            {c.name} recalculated · matches model ({c.computed.toFixed(2)})
+                          <div className="flex-1 text-[13.5px] text-foreground">
+                            {calcLabel(c.name)} recalculated · matches model (
+                            {c.computed.toFixed(2)})
                             <SourceChip
                               ids={["doc_financials"]}
                               hoveredId={hoveredId}
                               setHoveredId={setHoveredId}
                             />
                           </div>
+                          <CalcExplainer
+                            calc={c}
+                            rulepackId={rulepack_id}
+                            rulepackVersion={rulepack_version}
+                          />
                         </li>
                       ))}
                     </ul>

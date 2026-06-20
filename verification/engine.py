@@ -148,7 +148,14 @@ def _evaluate_approval_threshold(facts: Mapping[str, Any]) -> list[RuleFiring]:
         if passed
         else "Discount exceeds delegated authority."
     )
-    return [RuleFiring(rule_id="approval_threshold", passed=passed, detail=detail)]
+    return [
+        RuleFiring(
+            rule_id="approval_threshold",
+            passed=passed,
+            detail=detail,
+            threshold={"requested_discount": requested, "delegated_authority": authority},
+        )
+    ]
 
 
 def _calculation_specs(facts: Mapping[str, Any]) -> list[Mapping[str, Any]]:

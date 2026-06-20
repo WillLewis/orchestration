@@ -7,6 +7,22 @@ from core.schemas import CalculationCheck, RuleFiring
 
 DEFAULT_TOLERANCE = 0.005
 
+# Human-readable formula per calculation name, surfaced on the result so the UI can show the
+# recomputation (inputs → formula → computed) instead of an unexplained assertion.
+_FORMULAS = {
+    "dscr": "cash_flow / debt_service",
+    "leverage_ratio": "debt / ebitda",
+    "current_ratio": "current_assets / current_liabilities",
+}
+
+
+def _formula(name: str, inputs: Mapping[str, float] | None) -> str | None:
+    if name in _FORMULAS:
+        return _FORMULAS[name]
+    if inputs and {"numerator", "denominator"}.issubset(inputs):
+        return "numerator / denominator"
+    return None
+
 
 class CalculationChecker:
     def check_many(self, specs: Sequence[Mapping[str, Any]]) -> list[CalculationCheck]:
@@ -17,11 +33,20 @@ class CalculationChecker:
         expected = float(spec["expected"])
         tolerance = float(spec.get("tolerance", DEFAULT_TOLERANCE))
         computed = self._compute(name, spec)
+        raw_inputs = spec.get("inputs")
+        inputs = (
+            {str(key): float(value) for key, value in raw_inputs.items()}
+            if isinstance(raw_inputs, Mapping)
+            else None
+        )
         return CalculationCheck(
             name=name,
             expected=expected,
             computed=computed,
             matches=abs(computed - expected) <= tolerance,
+            inputs=inputs,
+            formula=_formula(name, inputs),
+            tolerance=tolerance,
         )
 
     def _compute(self, name: str, spec: Mapping[str, Any]) -> float:

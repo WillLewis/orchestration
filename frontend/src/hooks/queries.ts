@@ -11,6 +11,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approval_role_labels,
   decision_brief as mockBrief,
+  rulepack_id as mockRulepackId,
+  rulepack_version as mockRulepackVersion,
   source_count as mockSourceCount,
   sources as mockSources,
   type ApprovalStatus,
@@ -25,6 +27,7 @@ import {
 import { loop_state as mockLoop, type LoopState } from "@/data/loop";
 import {
   governance_certificate,
+  verify_result_financials,
   verify_result_stale,
   type GovernanceCertificate,
   type VerifyResult,
@@ -50,6 +53,8 @@ const briefData = {
   sources: mockSources,
   source_count: mockSourceCount,
   approval_role_labels,
+  rulepack_id: mockRulepackId,
+  rulepack_version: mockRulepackVersion,
 };
 export type BriefData = typeof briefData;
 
@@ -58,6 +63,8 @@ interface LiveBriefResponse {
     required_approvals?: { requirements: Array<{ role: string; present: boolean }> };
   };
   source_count?: number;
+  rulepack_id?: string;
+  rulepack_version?: number;
 }
 
 // The contract has no UI-only `status`; derive it client-side from present + role.
@@ -89,6 +96,8 @@ export function useBriefQuery() {
           },
         },
         source_count: live.source_count ?? briefData.source_count,
+        rulepack_id: live.rulepack_id ?? briefData.rulepack_id,
+        rulepack_version: live.rulepack_version ?? briefData.rulepack_version,
       };
     },
   });
@@ -272,7 +281,8 @@ export function useVerifyWorkProductMutation(recordId: string) {
     mutationFn: async (
       input: { event?: string } = { event: "legal_needs_review" },
     ): Promise<VerifyResult> => {
-      if (!LIVE) return verify_result_stale;
+      if (!LIVE)
+        return input.event === "financials_v2" ? verify_result_financials : verify_result_stale;
       const res = await fetch(`${API_BASE}/workproducts/${recordId}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

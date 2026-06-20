@@ -1,4 +1,65 @@
-import { ShieldCheck, FileText, Maximize2 } from "lucide-react";
+import { useState } from "react";
+import { ShieldCheck, FileText, Maximize2, Sparkles } from "lucide-react";
+import { sources, type SourceStatus } from "@/data/brief";
+
+/* -------------------------------------------------------------------------- */
+/* Provenance span — a governed figure in the memo, linked to its source.     */
+/* Hover reveals which source the agent linked + its status (the harvest made */
+/* visible). On the meeting surface there's no source rail, so the linkage is */
+/* surfaced inline; the Decision Packet carries the full bidirectional rail.  */
+/* -------------------------------------------------------------------------- */
+
+const SPAN_STYLE: Record<SourceStatus, string> = {
+  used: "bg-[var(--primary-tint)] text-primary decoration-primary/40",
+  conflicting: "bg-[var(--warning-bg)] text-[var(--warning)] decoration-[var(--warning)]/40",
+  missing: "bg-[var(--warning-bg)] text-[var(--warning)] decoration-[var(--warning)]/40",
+  restricted: "bg-[var(--danger-bg)] text-[var(--danger)] decoration-[var(--danger)]/40",
+};
+
+const STATUS_LABEL: Record<SourceStatus, string> = {
+  used: "linked source",
+  conflicting: "conflicting source",
+  missing: "missing — not in packet",
+  restricted: "restricted — not used",
+};
+
+function MemoSpan({ sourceId, children }: { sourceId: string; children: React.ReactNode }) {
+  const src = sources.find((s) => s.object_id === sourceId);
+  const status: SourceStatus = src?.status ?? "used";
+  const [hover, setHover] = useState(false);
+  return (
+    <span
+      className="relative inline-block"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <mark
+        tabIndex={0}
+        onFocus={() => setHover(true)}
+        onBlur={() => setHover(false)}
+        className={[
+          "cursor-help rounded-[3px] px-0.5 underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          SPAN_STYLE[status],
+        ].join(" ")}
+      >
+        {children}
+      </mark>
+      {hover && src && (
+        <span className="absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground shadow-panel">
+          <span className="inline-flex items-center gap-1">
+            <Sparkles className="h-2.5 w-2.5 text-primary" />
+            {src.title}
+          </span>
+          <span className="ml-1 text-[var(--muted-fg)]">· {STATUS_LABEL[status]}</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shared doc viewer — the Acme credit memo (v3), screen-shared in-meeting.    */
+/* -------------------------------------------------------------------------- */
 
 export function SharedDocViewer() {
   return (
@@ -30,32 +91,64 @@ export function SharedDocViewer() {
           </button>
         </div>
 
-        {/* Doc body — placeholder lines */}
-        <div className="flex-1 overflow-hidden bg-[var(--canvas)] p-8">
-          <div className="mx-auto max-w-2xl rounded-md bg-white p-10 shadow-card">
-            <div className="space-y-3">
-              <div className="h-3 w-2/5 rounded bg-[var(--border)]" />
-              <div className="h-2 w-full rounded bg-[var(--border)]/60" />
-              <div className="h-2 w-11/12 rounded bg-[var(--border)]/60" />
-              <div className="h-2 w-10/12 rounded bg-[var(--border)]/60" />
-            </div>
-            <div className="mt-7 space-y-3">
-              <div className="h-3 w-1/3 rounded bg-[var(--border)]" />
-              <div className="h-2 w-full rounded bg-[var(--border)]/60" />
-              <div className="h-2 w-9/12 rounded bg-[var(--border)]/60" />
-              <div className="h-2 w-11/12 rounded bg-[var(--border)]/60" />
-              <div className="h-2 w-7/12 rounded bg-[var(--border)]/60" />
-            </div>
-            <div className="mt-7 grid grid-cols-3 gap-3">
-              <div className="h-16 rounded-md bg-[var(--border)]/50" />
-              <div className="h-16 rounded-md bg-[var(--border)]/50" />
-              <div className="h-16 rounded-md bg-[var(--border)]/50" />
-            </div>
-            <div className="mt-7 space-y-3">
-              <div className="h-2 w-full rounded bg-[var(--border)]/60" />
-              <div className="h-2 w-10/12 rounded bg-[var(--border)]/60" />
-            </div>
-          </div>
+        {/* Doc body — the memo */}
+        <div className="flex-1 overflow-y-auto bg-[var(--canvas)] p-8">
+          <article className="mx-auto max-w-2xl rounded-md bg-white p-10 text-[13.5px] leading-relaxed text-foreground shadow-card">
+            <header className="border-b border-border pb-4">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-fg)]">
+                Credit committee · confidential
+              </div>
+              <h2 className="mt-1 text-[18px] font-semibold tracking-tight text-foreground">
+                Credit recommendation — Acme Corp renewal facility
+              </h2>
+              <div className="mt-1 text-[11.5px] text-[var(--muted-fg)]">
+                Prepared by Dana R. (Relationship Mgr) · Memo v3
+              </div>
+            </header>
+
+            <section className="mt-5 space-y-3.5">
+              <p>
+                <span className="font-semibold">Request. </span>
+                Acme requests a{" "}
+                <MemoSpan sourceId="doc_pricing_exception">22% pricing exception</MemoSpan> and a{" "}
+                <MemoSpan sourceId="wf_approval">covenant modification</MemoSpan> on its commercial
+                renewal facility.
+              </p>
+              <p>
+                <span className="font-semibold">Financials. </span>
+                The updated model revises the FY revenue forecast{" "}
+                <MemoSpan sourceId="doc_financials">from $42M to $38M</MemoSpan>. Debt service
+                coverage recomputes to <MemoSpan sourceId="doc_credit_memo">1.28x</MemoSpan> from
+                net operating income over debt service.
+              </p>
+              <p>
+                <span className="font-semibold">Approvals &amp; risk. </span>
+                Relationship Manager approval is recorded, but{" "}
+                <MemoSpan sourceId="wf_approval">Credit Officer approval is outstanding</MemoSpan>:
+                the 22% discount exceeds delegated authority (standard threshold 15%).{" "}
+                <MemoSpan sourceId="wf_approval">Legal approval is pending</MemoSpan>, and the{" "}
+                <MemoSpan sourceId="doc_covenant_tracker">
+                  final covenant tracker has not been uploaded
+                </MemoSpan>
+                .
+              </p>
+              <p>
+                <span className="font-semibold">Note. </span>
+                The <MemoSpan sourceId="doc_cs_plan">customer success plan</MemoSpan> references an
+                18% discount — conflicting with the 22% in the pricing exception. A restricted{" "}
+                <MemoSpan sourceId="doc_legal_memo">legal memo</MemoSpan> exists but is outside the
+                preparer&apos;s access.
+              </p>
+              <p className="rounded-md border border-[var(--danger)]/20 bg-[var(--danger-bg)] px-3 py-2 font-medium text-[var(--danger)]">
+                Recommendation: review — not approval-ready.
+              </p>
+            </section>
+
+            <footer className="mt-6 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-[var(--muted-fg)]">
+              <Sparkles className="h-3 w-3 text-primary" />
+              Highlighted figures are governed — hover to see the source the agent linked.
+            </footer>
+          </article>
         </div>
       </div>
     </div>

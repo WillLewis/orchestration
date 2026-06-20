@@ -7,7 +7,7 @@ the Agent Ops surface (`vertical_scores` + `eval_rows`).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -103,7 +103,10 @@ class VerticalScore(BaseModel):
 
 
 class EvalRow(BaseModel):
-    """Presentational EvalCase ⋈ EvalResult row for Agent Ops."""
+    """Presentational EvalCase ⋈ EvalResult row for Agent Ops.
+
+    `input_class`/`expected_signal`/`observed_signal` are content-free typed signals (intent class,
+    rule ids, booleans, scores) for the failed-row trace drill-in — never prompt/response text."""
 
     case_id: str
     vertical: Vertical
@@ -112,6 +115,9 @@ class EvalRow(BaseModel):
     kind: EvalKind
     passed: bool
     note: str | None = None
+    input_class: str | None = None
+    expected_signal: str | None = None
+    observed_signal: str | None = None
 
 
 class RecipeScorecard(BaseModel):
@@ -414,7 +420,7 @@ def run_three_vertical(runner: EvalHarnessRunner | None = None) -> RecipeScoreca
         for case in pack.cases:
             _, _, scored = runner.evaluate(case)
             scored_by_vertical[pack.vertical].append(scored)
-            rows.append(_eval_row(case, scored.passed))
+            rows.append(_eval_row(case, scored))
 
     core_rows = [
         vertical_score("finance", scored_by_vertical["finance"]),
@@ -487,15 +493,49 @@ def _overall_passed(vertical_scores: Mapping[str, VerticalScore]) -> bool:
     return all(score.passed / score.total >= 0.8 for score in vertical_scores.values())
 
 
-def _eval_row(case: EvalCase, passed: bool) -> EvalRow:
+# Typed governance keys in an EvalCase's `expected` that summarize the expected signal — ids,
+# booleans, codes, thresholds. NEVER prompt/response/document text.
+_SIGNAL_KEYS = (
+    "approval_ready",
+    "failing_rule_ids",
+    "excluded_object_ids",
+    "missing_evidence_codes",
+    "conflict_min",
+    "min_claim_support",
+)
+
+
+def _input_class(expected: Mapping[str, Any]) -> str | None:
+    value = expected.get("intent_class")
+    return str(value) if value is not None else None
+
+
+def _expected_signal(expected: Mapping[str, Any]) -> str | None:
+    parts = [f"{key}={expected[key]}" for key in _SIGNAL_KEYS if key in expected]
+    return "; ".join(parts) if parts else None
+
+
+def _observed_signal(scored: ScoredCase) -> str | None:
+    parts = [f"passed={scored.passed}"]
+    if scored.scores:
+        parts.append(
+            ", ".join(f"{name}={round(score, 3)}" for name, score in sorted(scored.scores.items()))
+        )
+    return "; ".join(parts)
+
+
+def _eval_row(case: EvalCase, scored: ScoredCase) -> EvalRow:
     return EvalRow(
         case_id=case.id,
         vertical=case.vertical,
         description=str(case.expected["description"]),
         check=str(case.expected["check"]),
         kind=case.kind,
-        passed=passed,
+        passed=scored.passed,
         note=case.expected.get("note"),
+        input_class=_input_class(case.expected),
+        expected_signal=_expected_signal(case.expected),
+        observed_signal=_observed_signal(scored),
     )
 
 
