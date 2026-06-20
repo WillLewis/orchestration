@@ -13,8 +13,10 @@ Codex's lane in `telemetry/`; this package defines the emitter interface they si
 """
 from __future__ import annotations
 
+from .action_adversarial import ActionAdversarialRun, ActionAdversarialRunner
 from .models import CaseRun, ReplayRecord, ScoredCase, ScoringView
 from .packs import (
+    ACTION_ADVERSARIAL_PACK_ID,
     FINANCE_PACK_ID,
     HEALTH_PACK_ID,
     LEGAL_PACK_ID,
@@ -36,6 +38,8 @@ from .telemetry_emit import (
 )
 
 __all__ = [
+    "ActionAdversarialRunner",
+    "ActionAdversarialRun",
     "EvalHarnessRunner",
     "build_scorecard",
     "render_scorecard",
@@ -63,5 +67,6 @@ __all__ = [
     "FINANCE_PACK_ID",
     "LEGAL_PACK_ID",
     "HEALTH_PACK_ID",
+    "ACTION_ADVERSARIAL_PACK_ID",
     "THREE_VERTICAL",
 ]

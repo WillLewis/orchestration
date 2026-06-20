@@ -19,7 +19,7 @@ from typing import Optional
 from core.schemas import EvalResult
 
 from .integrations import build_exporters
-from .packs import THREE_VERTICAL, VERTICAL_PACK_IDS, get_pack
+from .packs import PACK_BUILDERS, THREE_VERTICAL, get_pack
 from .replay import ReplayRecorder
 from .runner import EvalHarnessRunner
 from .scorecard import build_scorecard, render_scorecard
@@ -41,7 +41,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pack",
         default=THREE_VERTICAL,
-        help=f"pack id, or 'three_vertical' (default). Known: {', '.join(VERTICAL_PACK_IDS)}",
+        help=(
+            "pack id, or 'three_vertical' (default). Known: "
+            f"{', '.join([THREE_VERTICAL, *PACK_BUILDERS])}"
+        ),
     )
     parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
     parser.add_argument(

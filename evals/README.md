@@ -26,6 +26,7 @@ Two hard lines, by construction:
 make eval                                   # three-vertical RecipeScorecard (finance/legal/health)
 python -m evals.run --pack three_vertical   # same, directly
 python -m evals.run --pack finance_hero_v1  # one pack's per-case results
+python -m evals.run --pack actions_adversarial_v1 # WS-E action red-team pack
 python -m evals.run --pack finance_hero_v1 --emit-telemetry --record runs/finance.json
 python -m evals.run --pack three_vertical --json
 make test                                   # offline test suite (no keys)
@@ -46,8 +47,9 @@ health          1.00      1.00       1.00       1.00    4/4
 
 | File | Role |
 |---|---|
-| `packs/` | EvalPacks as data: `finance_hero_v1` (5 cases over `fixtures.acme`), thin `legal_thin_v1` + `health_thin_v1` (synthetic, embedded scenarios). |
+| `packs/` | EvalPacks as data: `finance_hero_v1` (5 cases over `fixtures.acme`), thin `legal_thin_v1` + `health_thin_v1` (synthetic, embedded scenarios), plus `actions_adversarial_v1` for WS-E red-team regression material. |
 | `harness.py` | **Instrumentation seam.** `StubHarness` runs cases through the `core.demo` stubs over `fixtures.acme`, or over a per-case embedded scenario. The seam IS the `core.pipeline` Protocols — swap in real WS-B/C/D/E stages later with no scorer changes. |
+| `action_adversarial.py` | Action-safety EvalRunner for WS-E: hostile model output, mosaic gate, injection strip, missing-evidence block, executor skip, and rollback integrity. |
 | `models.py` | `ScoringView` (the single, content-free projection every scorer reads), `CaseRun`, `ScoredCase`, `ReplayRecord`. |
 | `scorers.py` | 7 deterministic/heuristic scorers: `citation_correctness`, `claim_support`, `missing_evidence_honesty`, `conflict_detection`, `permission_denial_pass`, `deterministic_rule_pass`, `schema_validity`. `score_view()` is shared by live + replay. |
 | `taxonomy.py` | Maps failing scorers → typed `FeedbackReasonCode` (feeds the `RegressionSuite`). |
@@ -78,6 +80,19 @@ When the real upstream stages land, inject them and delete the embedded scenario
 Live and replayed runs both score through `scorers.score_view(view, case)`, and `ScoringView`
 is content-free, so persisted records reproduce live scores exactly. This is the substrate for
 the §5 F2/F5 `RegressionSuite` (accept/edit/reject + scorer failures → reason codes → cases).
+
+## Action adversarial pack
+
+`actions_adversarial_v1` is reusable WS-G eval material for the WS-E contract. It is separate from
+the three-vertical scorecard because it measures action safety outcomes rather than brief quality.
+The pack uses `EvalCase`/`EvalPack` data and `ActionAdversarialRunner` satisfies `EvalRunner`, but
+the runner scores WS-E directly through `SafeActionComposer` and `WorkspaceExecutor`.
+
+It covers: mosaic/information-barrier block, injection detection plus `safe_content` stripping,
+missing-evidence block on status advancement, rollback restoration from audit, and the red-team
+property that hostile model output can never clear a hard gate. `EvalHarnessRunner.run()` delegates
+this pack to `ActionAdversarialRunner`; `run_scored()` intentionally remains reserved for the
+brief-quality scorer path.
 
 ## Boundary with `telemetry/` (Codex)
 

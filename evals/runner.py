@@ -21,7 +21,7 @@ from core.schemas import EvalResult
 from .harness import PipelineHarness, StubHarness
 from .integrations import TraceExporter
 from .models import CaseRun, ScoredCase, ScoringView
-from .packs import get_pack
+from .packs import ACTION_ADVERSARIAL_PACK_ID, get_pack
 from .scorers import score_view
 from .telemetry_emit import (
     NullSink,
@@ -86,11 +86,20 @@ class EvalHarnessRunner:
 
     def run_scored(self, pack_id: str) -> list[ScoredCase]:
         """Richer result used by the scorecard (keeps per-scorer scores + thresholds)."""
+        if pack_id == ACTION_ADVERSARIAL_PACK_ID:
+            raise ValueError(
+                f"{ACTION_ADVERSARIAL_PACK_ID} is an action-safety pack; "
+                "use ActionAdversarialRunner.run() for EvalResult output."
+            )
         pack = get_pack(pack_id)
         return [self.evaluate(case)[2] for case in pack.cases]
 
     def run(self, pack_id: str) -> list[EvalResult]:
         """`core.pipeline.EvalRunner`: run a pack, return one `EvalResult` per case."""
+        if pack_id == ACTION_ADVERSARIAL_PACK_ID:
+            from .action_adversarial import ActionAdversarialRunner
+
+            return ActionAdversarialRunner().run(pack_id)
         pack = get_pack(pack_id)
         results: list[EvalResult] = []
         for case in pack.cases:

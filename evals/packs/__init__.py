@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from core.schemas import EvalPack
 
+from .action_adversarial import ACTION_ADVERSARIAL_PACK_ID, action_adversarial_pack
 from .finance import FINANCE_PACK_ID, finance_pack
 from .health import HEALTH_PACK_ID, health_pack
 from .legal import LEGAL_PACK_ID, legal_pack
@@ -23,6 +24,7 @@ PACK_BUILDERS: dict[str, Callable[[], EvalPack]] = {
     FINANCE_PACK_ID: finance_pack,
     LEGAL_PACK_ID: legal_pack,
     HEALTH_PACK_ID: health_pack,
+    ACTION_ADVERSARIAL_PACK_ID: action_adversarial_pack,
 }
 
 VERTICAL_PACK_IDS: list[str] = [FINANCE_PACK_ID, LEGAL_PACK_ID, HEALTH_PACK_ID]
@@ -46,6 +48,7 @@ __all__ = [
     "FINANCE_PACK_ID",
     "LEGAL_PACK_ID",
     "HEALTH_PACK_ID",
+    "ACTION_ADVERSARIAL_PACK_ID",
     "THREE_VERTICAL",
     "VERTICAL_PACK_IDS",
     "PACK_BUILDERS",
@@ -54,4 +57,5 @@ __all__ = [
     "finance_pack",
     "legal_pack",
     "health_pack",
+    "action_adversarial_pack",
 ]
