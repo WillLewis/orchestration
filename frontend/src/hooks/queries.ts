@@ -22,6 +22,7 @@ import {
   type Vertical,
   type VerticalScore,
 } from "@/data/ops";
+import { loop_state as mockLoop, type LoopState } from "@/data/loop";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
 // Mocks on by default → Lovable parity. Live only when explicitly disabled + a base URL.
@@ -172,6 +173,27 @@ export function useOpsQuery() {
         };
       }
       return next;
+    },
+  });
+}
+
+/* --------------------------------- Work Loop (surface 5) --------------------------------- */
+
+// The canonical loop dossier. Default serves the bundled mock; live mode reads the gateway's
+// read-only convenience endpoint (`GET /api/loop`) and merges canonical fields over the mock
+// scaffold so a missing/nested field falls back. (To RUN the loop server-side instead, the
+// gateway also exposes `POST /actions/loop` with the same shape.)
+export function useLoopQuery() {
+  return useQuery({
+    queryKey: ["loop"],
+    initialData: mockLoop,
+    staleTime: STALE,
+    queryFn: async (): Promise<LoopState> => {
+      if (!LIVE) return mockLoop;
+      const live = await getJSON<Partial<LoopState>>(
+        "/api/loop?user_id=u_rm&intent=prepare_decision_brief",
+      );
+      return { ...mockLoop, ...live };
     },
   });
 }

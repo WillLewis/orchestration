@@ -1,4 +1,4 @@
-import { Share2, LogOut, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Share2, LogOut, ArrowLeft, ShieldCheck, Workflow } from "lucide-react";
 import { meeting } from "@/lib/meeting-data";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -51,6 +51,14 @@ export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: 
           >
             <ShieldCheck className="h-3 w-3" />
             Agent Ops
+          </Link>
+          <Link
+            to="/loop"
+            className="ml-1 inline-flex h-6 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-medium text-[var(--secondary-text)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary-tint)] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            aria-label="Open Work Loop orchestration"
+          >
+            <Workflow className="h-3 w-3" />
+            Work Loop
           </Link>
         </div>
 

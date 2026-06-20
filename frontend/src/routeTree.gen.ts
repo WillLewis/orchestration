@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PacketRouteImport } from './routes/packet'
 import { Route as OpsRouteImport } from './routes/ops'
+import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
 
 const PacketRoute = PacketRouteImport.update({
@@ -23,6 +24,11 @@ const OpsRoute = OpsRouteImport.update({
   path: '/ops',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoopRoute = LoopRouteImport.update({
+  id: '/loop',
+  path: '/loop',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ops' | '/packet'
+  fullPaths: '/' | '/loop' | '/ops' | '/packet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ops' | '/packet'
-  id: '__root__' | '/' | '/ops' | '/packet'
+  to: '/' | '/loop' | '/ops' | '/packet'
+  id: '__root__' | '/' | '/loop' | '/ops' | '/packet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoopRoute: typeof LoopRoute
   OpsRoute: typeof OpsRoute
   PacketRoute: typeof PacketRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/loop': {
+      id: '/loop'
+      path: '/loop'
+      fullPath: '/loop'
+      preLoaderRoute: typeof LoopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoopRoute: LoopRoute,
   OpsRoute: OpsRoute,
   PacketRoute: PacketRoute,
 }
