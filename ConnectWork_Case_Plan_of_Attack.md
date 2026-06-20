@@ -1,6 +1,6 @@
-# ConnectWork Case — Plan of Attack (FINAL)
+# ConnectWork Case — Plan of Attack
 ### Round 1: Case Study Virtual Panel — Senior PM, AI Agent Orchestration
-*Final merge. **Product features, roadmap, edge cases, primitives, and success metrics** follow the ChatGPT (Revised Case Plan v3) version; **strategy, backstory, positioning, platform-fix, hero loop, interview callbacks, and build plan** keep the Claude version. Q&A merged. ✅ locked · ⬜ open · 🟡 stated assumption.*
+*Working merge. **Product features, roadmap, edge cases, primitives, and success metrics** follow the ChatGPT (Revised Case Plan v3) version; **strategy, backstory, positioning, platform-fix, hero loop, interview callbacks, and build plan** keep the Claude version. Q&A merged. ✅ locked · ⬜ open · 🟡 stated assumption.*
 
 ---
 
@@ -108,7 +108,9 @@ ConnectWork leads all three surfaces (document management; chat & video; project
 **Why it matters:** the move from "AI generated an answer" to "AI manages the trust state of a work product."
 **Primitives:** `WorkProductContract · SourceDependencyGraph · StaleSectionState · RevalidationRule · EventTrigger · ReapprovalRoute · ChangeImpactMap`
 
-### Feature 5 — Privacy-Preserving Eval Loop
+### Feature 5 — Privacy-Preserving Eval Loop *(DEMOTED to a supporting subpoint)*
+> **Presentation note:** this came from Matt's interview comment, not the case materials, so a mixed panel lacks context for why it matters — a headline feature with no shared context reads as solving a problem the audience didn't know they had. Keep it built, but present it as a one-line subpoint *under* the three-vertical eval proof ("…and we close the feedback loop without ever seeing raw content — something Matt and I discussed"), not a featured pillar. The **highlighted** eval moment is the three-vertical scorecard (platform generalization), which *is* in the case spirit.
+
 **Problem.** ConnectWork can't freely inspect enterprise prompts, responses, transcripts, or documents, making live quality measurement hard.
 **Collect (no raw content):** intent_class · recipe_id · source_types_used · tool attempted · tool success/fail · permission_denial_count · missing_evidence_category · schema_pass/fail · deterministic_rule_pass/fail · citation_coverage_score · claim_support_score (tenant-side) · action approved/edited/rejected · latency_bucket · cost_bucket · error_code. **Not collected by default:** raw prompt/response/document/transcript text or sensitive customer content.
 **Optional customer-controlled modes:** (1) tenant-local evaluation (raw content stays in tenant) · (2) customer-approved redacted samples · (3) synthetic eval generation from metadata/schema/config · (4) AI Studio feedback capture · (5) differential privacy on aggregate analytics.
@@ -227,7 +229,7 @@ User intent (meeting / chat / project)
 
 ## 12. Talking points & panel pushbacks *(Claude callbacks + merged Q&A)*
 **Proactive callbacks (highest leverage with this HM):**
-- *Eval gap (your seed, his affirmation):* "You said you can't eval on live data and it all falls on PM-built dummy sets. Here's how we get real-environment signal without ever seeing a prompt — structured events, redaction, tenant-local, DP."
+- *Eval gap (subpoint — raise only if Matt is present or eval comes up; not a headline):* "You said you can't eval on live data and it all falls on PM-built dummy sets. Here's how we get real-environment signal without ever seeing a prompt — structured events, redaction, tenant-local, DP." *(Demoted: came from the interview, not the case packet, so the broader panel lacks context.)*
 - *Synthesis-permission (you raised it; he loved it):* "Permission is object-level, agents synthesize across objects — the mosaic problem. Here's the deterministic guard." *(Now Edge case 4.)*
 - *Content→context wedge (you agreed on):* "The loop is how we prove cold-storage content is valuable."
 - *"I built this" hooks:* offline-replay eval harness · neurosymbolic control · accept/edit/reject telemetry as the regression set · understander→planner→verifier with explicit contracts.

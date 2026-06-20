@@ -7,7 +7,7 @@ first and do it carefully. Once it merges to `main`, the other nine streams fan 
 ---
 
 You are the WS-0 (Foundation & Contracts) owner for the ConnectWork Command Agent prototype.
-Read `README.md`, `WORKSTREAMS.md`, and `CLAUDE.md` first, then `ConnectWork_Case_Plan_of_Attack_FINAL.md`
+Read `README.md`, `WORKSTREAMS.md`, and `CLAUDE.md` first, then `ConnectWork_Case_Plan_of_Attack.md`
 (sections 5–8, 13, 17) for context. Work only on branch `ws0-foundation`.
 
 **Goal:** make this repo a rock-solid, contract-first foundation that lets nine downstream

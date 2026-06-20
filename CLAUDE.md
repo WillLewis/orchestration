@@ -2,7 +2,7 @@
 
 You are working in the **ConnectWork Command Agent** prototype. Read `WORKSTREAMS.md` and the
 dir `README.md` for your active branch before writing code. Strategy context lives in
-`ConnectWork_Case_Plan_of_Attack_FINAL.md`.
+`ConnectWork_Case_Plan_of_Attack.md`.
 
 ## Your lanes (Claude-owned)
 WS-0 `core/` · WS-B `context/` · WS-D `brief/` · WS-E (loop + personas) `actions/` ·

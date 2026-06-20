@@ -6,7 +6,7 @@ governed work products**, with **deterministic controls** where correctness is n
 Hero vertical: **Financial Services** (credit/risk committee). Platform proof: the same
 substrate runs **finance + legal + health** recipes through one eval scorecard.
 
-> Full strategy is in `ConnectWork_Case_Plan_of_Attack_FINAL.md`. This repo is the build.
+> Full strategy is in `ConnectWork_Case_Plan_of_Attack.md`. This repo is the build.
 
 ## Quickstart
 ```bash
