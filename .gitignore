@@ -10,3 +10,4 @@ venv/
 frontend/schemas.json
 wandb/
 .braintrust/
+.gstack/

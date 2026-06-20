@@ -14,8 +14,16 @@ make install        # pip install -e ".[dev]"
 make test           # pytest — green from the start (WS-0 baseline)
 make lint           # ruff check .
 make run            # end-to-end demo pipeline over fixtures.acme (stubs)
-make schemas-json   # export JSON Schema for the Lovable frontend -> frontend/schemas.json
+make eval           # three-vertical eval proof (finance + legal + health scorecard)
+make schemas-json   # export JSON Schema for the frontend -> frontend/schemas.json
+make serve          # FastAPI gateway for the frontend (api/main.py, port 8000)
 cp .env.example .env # then add your API keys
+```
+**Frontend** lives in `frontend/` (vendored from Lovable — TanStack Start + React). It defaults
+to bundled mocks (identical to the Lovable demo) and can fetch live from the gateway:
+```bash
+cd frontend && bun install && bun run dev    # mock data by default
+# live: set VITE_USE_MOCKS=false + VITE_API_URL=http://localhost:8000 (see frontend/README.md)
 ```
 New here? Read `CONTRIBUTING.md` for the contract-first rules every workstream follows.
 

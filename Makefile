@@ -1,4 +1,4 @@
-.PHONY: install test lint run eval schemas-json fmt
+.PHONY: install test lint run eval schemas-json fmt serve
 
 install:    ## install runtime + dev deps
 	pip install -e ".[dev]" --break-system-packages
@@ -20,3 +20,6 @@ eval:       ## run the three-vertical eval proof (WS-G/WS-I)
 
 run:        ## run the demo pipeline end-to-end (integration)
 	python -m core.demo
+
+serve:      ## run the FastAPI gateway for the frontend (WS-H)
+	uvicorn api.main:app --reload --port 8000

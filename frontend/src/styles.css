@@ -1,0 +1,200 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ConnectWork — Box-faithful enterprise design system.
+ * Light only. Values use hex per spec.
+ */
+
+:root {
+  --radius: 0.75rem; /* 12px cards */
+
+  /* Brand */
+  --primary: #0061d5;
+  --primary-hover: #004bb5;
+  --primary-tint: #e8f0fe;
+  --primary-foreground: #ffffff;
+
+  /* Neutrals */
+  --background: #ffffff;
+  --canvas: #f5f7fa;
+  --card: #ffffff;
+  --card-foreground: #1a2433;
+  --popover: #ffffff;
+  --popover-foreground: #1a2433;
+  --foreground: #1a2433;
+  --secondary-text: #5b6b7f;
+  --muted-fg: #8a97a8;
+
+  --secondary: #f5f7fa;
+  --secondary-foreground: #1a2433;
+  --muted: #f5f7fa;
+  --muted-foreground: #5b6b7f;
+  --accent: #e8f0fe;
+  --accent-foreground: #0061d5;
+
+  --border: #e3e8ee;
+  --input: #e3e8ee;
+  --ring: #0061d5;
+
+  /* Status */
+  --success: #1e8e3e;
+  --success-bg: #e6f4ea;
+  --warning: #c77700;
+  --warning-bg: #fef3e0;
+  --danger: #d93025;
+  --danger-bg: #fce8e6;
+  --destructive: #d93025;
+  --destructive-foreground: #ffffff;
+  --info: #0061d5;
+  --info-bg: #e8f0fe;
+
+  /* AI gradient */
+  --gradient-ai: linear-gradient(135deg, #0061d5 0%, #6c4ce0 100%);
+
+  /* Shadows */
+  --shadow-panel: 0 1px 2px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.08);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06);
+
+  /* Sidebar (shadcn compat — unused but kept to satisfy components) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a2433;
+  --sidebar-primary: #0061d5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f0fe;
+  --sidebar-accent-foreground: #0061d5;
+  --sidebar-border: #e3e8ee;
+  --sidebar-ring: #0061d5;
+}
+
+@theme inline {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 6px); /* 6 */
+  --radius-md: calc(var(--radius) - 4px); /* 8 — chips/buttons */
+  --radius-lg: var(--radius); /* 12 — cards */
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-tint: var(--primary-tint);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-text: var(--secondary-text);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-fg: var(--muted-fg);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-panel: var(--shadow-panel);
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@utility bg-gradient-ai {
+  background-image: var(--gradient-ai);
+}
+@utility text-gradient-ai {
+  background-image: var(--gradient-ai);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility shadow-panel {
+  box-shadow: var(--shadow-panel);
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@keyframes plan-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@utility animate-plan-in {
+  animation: plan-in 220ms ease-out both;
+}
+
+@keyframes gradient-slide {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+@utility animate-gradient-slide {
+  background-size: 200% 100%;
+  animation: gradient-slide 1.6s linear infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+}
+@utility animate-pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
