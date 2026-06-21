@@ -301,7 +301,7 @@ function AgentOpsPage() {
           <div className="flex items-center gap-3">
             <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 text-[11.5px] font-medium text-[var(--secondary-text)]">
               <Cpu className="h-3 w-3" />
-              <Mono>model: gpt-eval-1 · temp 0</Mono>
+              <Mono>model: claude-sonnet-4-6 · temp 0</Mono>
             </span>
             <span className="text-[11.5px] text-[var(--muted-fg)] tabular-nums">
               {lastRunLabel}

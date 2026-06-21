@@ -240,8 +240,20 @@ export function ActionDiffDrawer() {
     [planActions],
   );
 
+  // Pending = actionable (not yet rejected or sent). Drives the footer count + "Send all" so the
+  // number stays truthful as the user rejects/sends; rejected cards remain visible (with Restore).
+  const nextPending = useMemo(
+    () =>
+      nextActions.filter((a) => {
+        const u = user_status[action_key(a)];
+        return u !== "rejected" && u !== "committed";
+      }),
+    [nextActions, user_status],
+  );
+
   const changesCount = isAfterSourceChange ? 1 : 0;
   const nextCount = nextActions.length;
+  const pendingCount = nextPending.length;
   const notesCount = noteActions.length;
 
   function switchScenario(mode: "plan" | "revalidation_edit") {
@@ -262,10 +274,10 @@ export function ActionDiffDrawer() {
   }
 
   function onSendAll() {
-    if (nextCount === 0) return;
+    if (pendingCount === 0) return;
     if (LIVE) {
       execute.mutate(
-        { approved_indices: approvedIndices(nextActions) },
+        { approved_indices: approvedIndices(nextPending) },
         {
           onSuccess: (events) => {
             setServerResult(events);
@@ -283,7 +295,7 @@ export function ActionDiffDrawer() {
       );
       return;
     }
-    nextActions.forEach((a) => approveAction(action_key(a)));
+    nextPending.forEach((a) => approveAction(action_key(a)));
     const n = executeApproved();
     if (n > 0) {
       toast.success(`${n} action${n === 1 ? "" : "s"} sent · audit recorded`);
@@ -472,7 +484,7 @@ export function ActionDiffDrawer() {
           <div className="shrink-0 border-t border-border bg-background px-5 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="text-[11.5px] leading-snug text-[var(--secondary-text)]">
-                <span className="font-semibold text-foreground">{nextCount} pending</span>
+                <span className="font-semibold text-foreground">{pendingCount} pending</span>
                 <span className="text-[var(--muted-fg)]">
                   {" "}
                   · blocked items stay in the packet readiness table
@@ -482,11 +494,11 @@ export function ActionDiffDrawer() {
                 <button
                   type="button"
                   onClick={onSendAll}
-                  disabled={execute.isPending || nextCount === 0}
+                  disabled={execute.isPending || pendingCount === 0}
                   className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-3.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-95 disabled:opacity-60"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  {execute.isPending ? "Sending…" : `Send all (${nextCount})`}
+                  {execute.isPending ? "Sending…" : `Send all (${pendingCount})`}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
@@ -494,16 +506,16 @@ export function ActionDiffDrawer() {
                   <button
                     type="button"
                     onClick={onSendAll}
-                    disabled={nextCount === 0}
+                    disabled={pendingCount === 0}
                     className={[
                       "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold text-white transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      nextCount === 0
+                      pendingCount === 0
                         ? "cursor-not-allowed bg-[var(--muted-fg)] opacity-60"
                         : "bg-gradient-ai hover:opacity-95",
                     ].join(" ")}
                   >
                     <Send className="h-3.5 w-3.5" />
-                    Send all ({nextCount})
+                    Send all ({pendingCount})
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -746,13 +758,6 @@ function CascadeChangeCard({ accepted, onAccept }: { accepted: boolean; onAccept
             </button>
             <button
               type="button"
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)]"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </button>
-            <button
-              type="button"
               onClick={onAccept}
               className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
             >
@@ -802,7 +807,51 @@ function NextActionCard({
   const targetLabel = labelFor(action.diff.target_object_id);
   const destination = destinationFor(action);
   const primary = primaryLabelFor(action);
-  const staged = user === "approved" || user === "edited" || user === "committed";
+
+  const isRejected = user === "rejected";
+  const isCommitted = user === "committed";
+  const isEdited = user === "edited";
+  const isStaged = user === "approved" || isEdited;
+  // Inline edit only where a field is meaningfully adjustable before sending (the task's
+  // title/assignee/due). A route's internal fields aren't user-editable, so those cards omit Edit.
+  const editable = action.tool === "create_task";
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, string>>(() =>
+    Object.fromEntries(Object.entries(action.diff.after).map(([key, v]) => [key, formatVal(v)])),
+  );
+
+  function startEdit() {
+    // Re-seed from the current effective values each time, so prior edits show in the editor.
+    setDraft(Object.fromEntries(Object.entries(after).map(([key, v]) => [key, formatVal(v)])));
+    setEditing(true);
+  }
+
+  function saveDraft() {
+    const next: Record<string, unknown> = {};
+    Object.entries(action.diff.after).forEach(([key, origVal]) => {
+      const raw = draft[key] ?? "";
+      next[key] = Array.isArray(origVal)
+        ? raw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : raw;
+    });
+    saveEdit(k, next);
+    setEditing(false);
+    toast.success("Edit saved · staged", { description: targetLabel });
+  }
+
+  const statusChip = isRejected
+    ? { label: "Rejected", cls: "bg-[var(--canvas)] text-[var(--muted-fg)] border border-border" }
+    : isCommitted
+      ? { label: "Sent", cls: "bg-[var(--success)] text-white" }
+      : isEdited
+        ? { label: "Edited · staged", cls: "bg-[var(--primary-tint)] text-primary" }
+        : isStaged
+          ? { label: "Staged", cls: "bg-[var(--primary-tint)] text-primary" }
+          : { label: "Ready", cls: "bg-[var(--success-bg)] text-[var(--success)]" };
 
   return (
     <li>
@@ -814,6 +863,7 @@ function NextActionCard({
           focused
             ? "border-primary ring-2 ring-primary/30"
             : "border-border focus-visible:ring-2 focus-visible:ring-primary",
+          isRejected ? "opacity-70" : "",
         ].join(" ")}
       >
         <div className="px-4 pt-3">
@@ -835,19 +885,15 @@ function NextActionCard({
               <Chip className={RISK_CLS[action.risk]}>
                 {action.risk === "low" ? "Low risk" : `${action.risk} risk`}
               </Chip>
-              <Chip
-                className={
-                  staged
-                    ? "bg-[var(--success-bg)] text-[var(--success)]"
-                    : "bg-[var(--success-bg)] text-[var(--success)]"
-                }
-              >
-                {staged ? "Staged" : "Ready"}
-              </Chip>
+              <Chip className={statusChip.cls}>{statusChip.label}</Chip>
             </div>
           </div>
 
-          {action.tool === "create_task" ? (
+          {editing ? (
+            <div className="mt-3 overflow-hidden rounded-md border border-border bg-background">
+              <DiffEditor origAfter={action.diff.after} draft={draft} setDraft={setDraft} />
+            </div>
+          ) : action.tool === "create_task" ? (
             <PreviewTable
               rows={[
                 ["Title", formatVal(after.title)],
@@ -874,35 +920,80 @@ function NextActionCard({
         </div>
 
         <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-border bg-[var(--canvas)]/50 px-4 py-2">
-          <button
-            type="button"
-            onClick={() => rejectAction(k)}
-            className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              toast("Edit action", {
-                description: `${tool_labels[action.tool]} can be adjusted before sending.`,
-              })
-            }
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)]"
-          >
-            <Pencil className="h-3 w-3" />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              approveAction(k);
-              toast.success(`${primary} staged`, { description: targetLabel });
-            }}
-            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
-          >
-            {primary}
-          </button>
+          {isRejected ? (
+            <button
+              type="button"
+              onClick={() => resetAction(k)}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2.5 text-[11.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)]"
+            >
+              <Undo2 className="h-3 w-3" />
+              Restore
+            </button>
+          ) : isCommitted ? (
+            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--success)]">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Sent · recorded in audit log
+            </span>
+          ) : editing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveDraft}
+                className="h-7 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white hover:bg-[var(--primary-hover)]"
+              >
+                Save edits
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => rejectAction(k)}
+                className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+              >
+                Reject
+              </button>
+              {editable && (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)]"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  approveAction(k);
+                  toast.success(`${primary} staged`, { description: targetLabel });
+                }}
+                className={[
+                  "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-semibold transition-colors",
+                  isStaged
+                    ? "bg-[var(--success-bg)] text-[var(--success)]"
+                    : "bg-primary text-white hover:bg-[var(--primary-hover)]",
+                ].join(" ")}
+              >
+                {isStaged ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3" />
+                    Staged
+                  </>
+                ) : (
+                  primary
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </li>
@@ -1031,8 +1122,16 @@ function routeDescription(action: Action) {
   return `Creates an approval task for the ${destination}; sets the workflow to 'routed'.`;
 }
 
+// Title-case a snake_case field, with overrides for acronyms the generic rule mangles ("dscr").
+const FIELD_LABELS: Record<string, string> = {
+  dscr: "DSCR",
+};
+
 function labelForField(field: string) {
-  return field.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  return (
+    FIELD_LABELS[field.toLowerCase()] ??
+    field.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
+  );
 }
 
 function formatDate(value: string) {

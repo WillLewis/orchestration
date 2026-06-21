@@ -348,7 +348,7 @@ function RecordPage() {
                           ].join(" ")}
                         >
                           <FileText className="h-3 w-3" />
-                          {sv?.title ?? id}
+                          {sv?.title ?? packet_sources.find((s) => s.object_id === id)?.title ?? id}
                           {changed && <span className="font-semibold">· changed</span>}
                         </span>
                       );
