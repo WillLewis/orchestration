@@ -160,6 +160,16 @@ export function revertCommit(eventId: string, actor = "Dana R.") {
   emit();
 }
 
+// Full reset for the batch/loop demo replay: every action back to proposed, edits + audit cleared.
+export function resetActions() {
+  state.user_status = Object.fromEntries(
+    action_plan.actions.map((a) => [action_key(a), "proposed"] as const),
+  );
+  state.edited_after = {};
+  state.audit = [];
+  emit();
+}
+
 /* -------- selectors -------- */
 
 export function getEffectiveAfter(a: Action): Record<string, unknown> {

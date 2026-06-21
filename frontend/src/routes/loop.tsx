@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   Calendar,
@@ -28,13 +29,28 @@ import {
   type Assignment,
   type Decision,
   type Escalation,
-  type LoopAuditEvent,
   type LoopState,
   type PersonaRole,
   type Reply,
   type Scheduled,
 } from "@/data/loop";
-import { useLoopQuery } from "@/hooks/queries";
+import {
+  action_key,
+  approver_labels,
+  derive_status,
+  object_labels,
+  tool_labels,
+  type Action,
+  type DerivedStatus,
+} from "@/data/actions";
+import { approveAction, executeApproved, resetActions, useActionsStore } from "@/lib/actions-store";
+import {
+  LIVE,
+  useActionPlanQuery,
+  useExecuteActionsMutation,
+  useLoopQuery,
+  type ServerAuditEvent,
+} from "@/hooks/queries";
 
 export const Route = createFileRoute("/loop")({
   head: () => ({
@@ -43,7 +59,7 @@ export const Route = createFileRoute("/loop")({
       {
         name: "description",
         content:
-          "Watch the Command Agent batch-orchestrate multi-party follow-up work: distribute, collect, escalate, schedule, and close with a human-approved audit trail.",
+          "Every follow-up the agent recommends for this meeting, on one page — approve and run the whole batch, then watch it orchestrate across owners with a human-approved audit trail.",
       },
     ],
   }),
@@ -103,8 +119,6 @@ function buildEvents(state: LoopState): TimelineEvent[] {
   return e;
 }
 
-const STAGE_STEP_MS = 2000;
-
 const TOOL_LABEL: Record<string, string> = {
   route_approval: "route approval",
   create_task: "create task",
@@ -113,27 +127,13 @@ const TOOL_LABEL: Record<string, string> = {
   update_project_status: "update project status",
 };
 
-/* -------------------------------------------------------------------------- */
-/* Component                                                                  */
-/* -------------------------------------------------------------------------- */
-
-type Status = "proposed" | "running" | "closing" | "closed";
-
-const PLAN_ITEMS: {
-  icon: React.ComponentType<{ className?: string }>;
-  text: string;
-  conditional?: boolean;
-}[] = [
-  { icon: Send, text: "Send pricing-exception review to Credit Officer" },
-  { icon: Send, text: "Send covenant-approval request to Legal" },
-  { icon: ListChecks, text: "Create task for the covenant tracker" },
-  {
-    icon: ArrowUpRight,
-    text: "Escalate to Compliance if Legal's authority is exceeded",
-    conditional: true,
-  },
-  { icon: Calendar, text: "Schedule the committee decision once blockers clear" },
-];
+const TOOL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  create_task: ListChecks,
+  route_approval: Send,
+  update_project_status: Workflow,
+  draft_internal_note: FileCheck2,
+  schedule_meeting: Calendar,
+};
 
 const ROLE_TITLE: Partial<Record<PersonaRole, string>> = {
   relationship_manager: "Relationship Manager",
@@ -145,114 +145,148 @@ const ROLE_TITLE: Partial<Record<PersonaRole, string>> = {
 type MatrixStatus = "pending" | "approved" | "signed" | "escalated" | "in_review";
 type MatrixRow = { role: PersonaRole; title: string; status: MatrixStatus };
 
+// Normalized audit row so the page renders one shape whether the run was mock (client store) or
+// live (gateway-executed). The store and gateway emit different event shapes; we flatten both.
+type DisplayAudit = { actor: string; action: string; time: string };
+
+/* -------- batch helpers — turn an Action into one human-readable batch row -------- */
+
+const BATCH_GROUPS: { key: DerivedStatus; label: string; hint: string }[] = [
+  { key: "ready", label: "Ready to run", hint: "Executes on approval" },
+  { key: "needs_approval", label: "Approval routing", hint: "Routes to an approver" },
+  { key: "blocked", label: "Blocked — won't run until cleared", hint: "Prerequisite missing" },
+];
+
+const STATUS_CHIP: Record<DerivedStatus, { label: string; cls: string }> = {
+  ready: { label: "Ready", cls: "bg-[var(--success-bg)] text-[var(--success)]" },
+  needs_approval: { label: "Routes for approval", cls: "bg-[var(--warning-bg)] text-[var(--warning)]" },
+  blocked: { label: "Blocked", cls: "bg-[var(--danger-bg)] text-[var(--danger)]" },
+};
+
+function batchTitle(a: Action): string {
+  const after = a.diff.after as Record<string, unknown>;
+  if (a.tool === "create_task") return String(after.title ?? "New task");
+  if (a.tool === "draft_internal_note") return String(after.title ?? "Internal note");
+  if (a.tool === "schedule_meeting") return String(after.title ?? "Meeting");
+  if (a.tool === "update_project_status") {
+    return `${object_labels[a.diff.target_object_id] ?? a.diff.target_object_id} → ${String(after.status ?? "")}`;
+  }
+  return object_labels[a.diff.target_object_id] ?? a.diff.target_object_id;
+}
+
+function batchDestination(a: Action): string | null {
+  if (a.tool === "create_task") {
+    const assignee = (a.diff.after as Record<string, unknown>).assignee;
+    return assignee ? String(assignee) : null;
+  }
+  if (a.required_approver) return approver_labels[a.required_approver] ?? a.required_approver;
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Component                                                                  */
+/* -------------------------------------------------------------------------- */
+
 function WorkLoop() {
-  // Canonical dossier from the data layer (bundled mock by default; live `GET /api/loop` when
-  // VITE_USE_MOCKS=false + VITE_API_URL). The staged reveal below is a local UI animation over it.
+  // The batch IS the agent's recommended action plan — the same source the chat and brief act on
+  // (bundled mock by default; live `GET /api/actions`, genuinely composed from the meeting). Running
+  // it here goes through the SAME shared store as the Agent Actions drawer, so the two surfaces are
+  // one batch: run it all here, or piecemeal in chat — committed state + audit stay in sync.
+  const { data: actionData } = useActionPlanQuery();
+  const actions = actionData.actions;
+  const { user_status, audit: storeAudit } = useActionsStore();
+  // The multi-party orchestration dossier (who the work fans out to + their replies/escalations).
+  // Live mode composes this from the plan server-side; mock is the bundled scripted outcome.
   const { data: loop_state } = useLoopQuery();
   const events = useMemo(() => buildEvents(loop_state), [loop_state]);
-  // Derived from escalations (NOT from `closed`) — see contract note in data/loop.ts.
   const inFlight = escalationsInFlightLabel(loop_state);
+  const execute = useExecuteActionsMutation();
 
-  const [status, setStatus] = useState<Status>("proposed");
-  const [revealed, setRevealed] = useState(0); // count of EVENTS shown
-  const [approved, setApproved] = useState(false);
-  const [closed, setClosed] = useState(false);
+  const [serverResult, setServerResult] = useState<ServerAuditEvent[] | null>(null);
+  const [exported, setExported] = useState(false);
   const [hoverRole, setHoverRole] = useState<PersonaRole | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clear = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-  }, []);
-
-  useEffect(() => () => clear(), [clear]);
-
-  const reset = useCallback(() => {
-    clear();
-    setRevealed(0);
-    setApproved(false);
-    setClosed(false);
-    setStatus("proposed");
-  }, [clear]);
-
-  const approveAndStart = useCallback(() => {
-    clear();
-    setRevealed(0);
-    setApproved(true);
-    setClosed(false);
-    setStatus("running");
-
-    let i = 0;
-    const tick = () => {
-      i += 1;
-      setRevealed(i);
-      if (i < events.length) {
-        timer.current = setTimeout(tick, STAGE_STEP_MS);
-      } else {
-        timer.current = setTimeout(() => setStatus("closing"), 500);
-      }
-    };
-    timer.current = setTimeout(tick, 250);
-  }, [clear, events]);
-
-  const closeAndExport = useCallback(() => {
-    setClosed(true);
-    setStatus("closed");
-    toast.success("Dossier exported", {
-      description: "Audit-ready record of this loop saved.",
-    });
-  }, []);
-
-  // Active stage tracking
-  const activeStage = useMemo<StageKey>(() => {
-    if (status === "proposed") return "plan";
-    if (status === "closing" || status === "closed") return "close";
-    if (revealed === 0) return "distribute";
-    const last = events[Math.min(revealed, events.length) - 1];
-    return last.stage;
-  }, [revealed, status, events]);
-
-  const doneStages = useMemo<Set<StageKey>>(() => {
-    const done = new Set<StageKey>();
-    // Plan is done as soon as the user approves and we leave the proposed state.
-    if (status !== "proposed") done.add("plan");
-    if (revealed >= events.length && (status === "closing" || status === "closed")) {
-      (["distribute", "collect", "escalate", "schedule"] as StageKey[]).forEach((k) => done.add(k));
-    } else if (status === "running") {
-      for (const s of ["distribute", "collect", "escalate", "schedule"] as StageKey[]) {
-        let lastIdx = -1;
-        events.forEach((ev, i) => {
-          if (ev.stage === s) lastIdx = i;
-        });
-        if (revealed > lastIdx + 1) done.add(s);
-      }
-    }
-    if (status === "closed") done.add("close");
-    return done;
-  }, [revealed, status, events]);
-
-  const statusPill = (() => {
-    if (status === "proposed")
-      return {
-        label: "Proposed — awaiting approval",
-        cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
-      };
-    if (status === "running")
-      return { label: "Running", cls: "bg-[var(--primary-tint)] text-primary" };
-    if (status === "closed")
-      return {
-        label: `Closed · ${inFlight}`,
-        cls: "bg-[var(--success-bg)] text-[var(--success)]",
-      };
-    // closing
-    return {
-      label: "Open — 1 item",
-      cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
-    };
-  })();
-
-  const visibleEvents = events.slice(0, revealed);
   const grouped = useMemo(() => {
+    const g: Record<DerivedStatus, Action[]> = { ready: [], needs_approval: [], blocked: [] };
+    actions.forEach((a) => g[derive_status(a)].push(a));
+    return g;
+  }, [actions]);
+  const runnable = useMemo(() => actions.filter((a) => !a.blocked_reason), [actions]);
+
+  const committedCount = useMemo(
+    () => actions.filter((a) => user_status[action_key(a)] === "committed").length,
+    [actions, user_status],
+  );
+  const executedCount =
+    committedCount || (serverResult?.filter((e) => e.action === "executed").length ?? 0);
+  // The batch has been run once any action committed (mock) or the gateway returned a result (live).
+  const ran = committedCount > 0 || (serverResult?.length ?? 0) > 0;
+
+  function runBatch() {
+    if (ran) return;
+    if (LIVE) {
+      // Submit every index; the gateway recomposes + re-gates, so blocked actions come back skipped.
+      execute.mutate(
+        { approved_indices: actions.map((_, i) => i) },
+        {
+          onSuccess: (ev) => {
+            setServerResult(ev);
+            const skipped = ev.filter((e) => e.action === "skipped").length;
+            toast.success(`Ran ${ev.length - skipped} action${ev.length - skipped === 1 ? "" : "s"}`, {
+              description: skipped ? `${skipped} blocked action${skipped === 1 ? "" : "s"} re-gated server-side` : undefined,
+            });
+          },
+          onError: () =>
+            toast.error("Gateway didn't respond", {
+              description: "Start it with `make api`, or use mock mode.",
+            }),
+        },
+      );
+      return;
+    }
+    runnable.forEach((a) => approveAction(action_key(a)));
+    const n = executeApproved();
+    toast.success(`Ran ${n} action${n === 1 ? "" : "s"} · audit recorded`, {
+      description: grouped.blocked.length
+        ? `${grouped.blocked.length} blocked action${grouped.blocked.length === 1 ? "" : "s"} skipped`
+        : undefined,
+    });
+  }
+
+  function reset() {
+    resetActions();
+    setServerResult(null);
+    setExported(false);
+  }
+
+  function exportDossier() {
+    setExported(true);
+    toast.success("Dossier exported", { description: "Audit-ready record of this batch saved." });
+  }
+
+  // Stage strip is a static status indicator (no timed reveal): Plan done once proposed; the
+  // distribute→schedule stages light up after the batch runs; Close after export.
+  const doneStages = useMemo<Set<StageKey>>(() => {
+    const d = new Set<StageKey>();
+    if (ran) (["plan", "distribute", "collect", "escalate", "schedule"] as StageKey[]).forEach((k) => d.add(k));
+    if (exported) d.add("close");
+    return d;
+  }, [ran, exported]);
+  const activeStage: StageKey = !ran ? "plan" : "close";
+
+  const statusPill = !ran
+    ? {
+        label: `Proposed — ${runnable.length} to run · ${grouped.blocked.length} blocked`,
+        cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
+      }
+    : exported
+      ? { label: `Closed · ${inFlight}`, cls: "bg-[var(--success-bg)] text-[var(--success)]" }
+      : {
+          label: `Ran ${executedCount} · ${grouped.blocked.length} blocked`,
+          cls: "bg-[var(--primary-tint)] text-primary",
+        };
+
+  const groupedEvents = useMemo(() => {
     const g: Record<StageKey, TimelineEvent[]> = {
       plan: [],
       distribute: [],
@@ -261,45 +295,44 @@ function WorkLoop() {
       schedule: [],
       close: [],
     };
-    visibleEvents.forEach((e) => g[e.stage].push(e));
+    events.forEach((e) => g[e.stage].push(e));
     return g;
-  }, [visibleEvents]);
+  }, [events]);
 
-  const auditVisible: LoopAuditEvent[] = closed ? loop_state.audit : [];
+  // One audit shape from either run path.
+  const displayAudit = useMemo<DisplayAudit[]>(() => {
+    if (serverResult) {
+      return serverResult
+        .filter((e) => e.action === "executed")
+        .map((e) => ({
+          actor: e.actor || "Dana R.",
+          action: `${tool_labels[e.detail.tool as keyof typeof tool_labels] ?? e.detail.tool ?? "action"} · ${
+            e.detail.target ? object_labels[String(e.detail.target)] ?? String(e.detail.target) : ""
+          }`,
+          time: "just now",
+        }));
+    }
+    return storeAudit.map((e) => ({
+      actor: e.actor,
+      action: `${tool_labels[e.detail.tool as keyof typeof tool_labels] ?? e.detail.tool} · ${
+        object_labels[e.detail.target_object_id] ?? e.detail.target_object_id
+      }`,
+      time: new Date(e.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    }));
+  }, [serverResult, storeAudit]);
 
-  const creditReplied = visibleEvents.some(
-    (e) => e.kind === "reply" && e.actor === "credit_officer",
-  );
-  const legalReplied = visibleEvents.some((e) => e.kind === "reply" && e.actor === "legal");
-  const escalationFired = visibleEvents.some((e) => e.kind === "escalation");
-
-  const matrixRows: MatrixRow[] = [
-    {
-      role: "relationship_manager",
-      title: ROLE_TITLE.relationship_manager!,
-      status: approved ? "approved" : "pending",
-    },
-    {
-      role: "credit_officer",
-      title: ROLE_TITLE.credit_officer!,
-      status: creditReplied ? "signed" : "pending",
-    },
-    {
-      role: "legal",
-      title: ROLE_TITLE.legal!,
-      status: legalReplied ? "escalated" : "pending",
-    },
-  ];
-  if (escalationFired) {
-    matrixRows.push({
-      role: "compliance",
-      title: ROLE_TITLE.compliance!,
-      status: "in_review",
-    });
-  }
-  const approvedCount = matrixRows.filter(
-    (r) => r.status === "approved" || r.status === "signed",
-  ).length;
+  const matrixRows = useMemo<MatrixRow[]>(() => {
+    const rows: MatrixRow[] = [
+      { role: "relationship_manager", title: ROLE_TITLE.relationship_manager!, status: ran ? "approved" : "pending" },
+      { role: "credit_officer", title: ROLE_TITLE.credit_officer!, status: ran ? "signed" : "pending" },
+      { role: "legal", title: ROLE_TITLE.legal!, status: ran ? "escalated" : "pending" },
+    ];
+    if (ran && loop_state.escalations.length) {
+      rows.push({ role: "compliance", title: ROLE_TITLE.compliance!, status: "in_review" });
+    }
+    return rows;
+  }, [ran, loop_state.escalations.length]);
+  const approvedCount = matrixRows.filter((r) => r.status === "approved" || r.status === "signed").length;
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--canvas)] text-foreground">
@@ -331,14 +364,12 @@ function WorkLoop() {
                     statusPill.cls,
                   ].join(" ")}
                 >
-                  {status === "running" ? (
-                    <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-current" />
-                  ) : status === "closing" ? (
-                    <CircleDot className="h-3 w-3" />
-                  ) : status === "closed" ? (
+                  {!ran ? (
+                    <Circle className="h-3 w-3" />
+                  ) : exported ? (
                     <CheckCircle2 className="h-3 w-3" />
                   ) : (
-                    <Circle className="h-3 w-3" />
+                    <CircleDot className="h-3 w-3" />
                   )}
                   {statusPill.label}
                 </span>
@@ -354,32 +385,26 @@ function WorkLoop() {
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset
               </button>
-              {status === "proposed" && (
+              {!ran ? (
                 <button
                   type="button"
-                  onClick={approveAndStart}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-3.5 text-[13px] font-semibold text-white shadow-card transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  onClick={runBatch}
+                  disabled={execute.isPending || runnable.length === 0}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-3.5 text-[13px] font-semibold text-white shadow-card transition-opacity hover:opacity-95 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Approve plan &amp; start
+                  {execute.isPending ? "Running…" : `Approve & run batch (${runnable.length})`}
                 </button>
-              )}
-              {status === "running" && (
-                <span className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--primary-tint)] px-3.5 text-[13px] font-semibold text-primary">
-                  <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-current" />
-                  Running…
-                </span>
-              )}
-              {status === "closed" && (
+              ) : (
                 <span className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--success-bg)] px-3.5 text-[13px] font-semibold text-[var(--success)]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Loop closed
+                  Batch executed
                 </span>
               )}
             </div>
           </div>
 
-          {/* Stage spine */}
+          {/* Stage strip (status) */}
           <div className="mt-6">
             <ol className="flex items-stretch gap-2">
               {STAGES.map((s, i) => {
@@ -410,9 +435,6 @@ function WorkLoop() {
                         {isDone ? <CheckCircle2 className="h-3 w-3" /> : i + 1}
                       </span>
                       <span className="truncate text-[12.5px] font-semibold">{s.label}</span>
-                      {isActive && (
-                        <span className="ml-auto h-1.5 w-1.5 animate-pulse-dot rounded-full bg-white/80" />
-                      )}
                     </div>
                     {i < STAGES.length - 1 && (
                       <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--muted-fg)]" />
@@ -428,52 +450,49 @@ function WorkLoop() {
       {/* Body */}
       <div className="mx-auto w-full max-w-[1320px] px-6 py-7 xl:px-10">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-          {/* Timeline */}
-          <main className="min-w-0">
-            {status === "proposed" ? (
-              <ProposedPlan onApprove={approveAndStart} />
-            ) : (
-              <div className="space-y-7">
+          <main className="min-w-0 space-y-7">
+            <BatchPlan
+              grouped={grouped}
+              userStatus={user_status}
+              ran={ran}
+              pending={execute.isPending}
+              runnableCount={runnable.length}
+              blockedCount={grouped.blocked.length}
+              onRun={runBatch}
+            />
+
+            {ran && (
+              <>
                 {(["distribute", "collect", "escalate", "schedule"] as StageKey[]).map(
                   (sk) =>
-                    grouped[sk].length > 0 && (
+                    groupedEvents[sk].length > 0 && (
                       <StageBlock
                         key={sk}
                         stage={sk}
-                        events={grouped[sk]}
-                        active={activeStage === sk && !doneStages.has(sk)}
+                        events={groupedEvents[sk]}
                         hoverRole={hoverRole}
                         setHoverRole={setHoverRole}
                       />
                     ),
                 )}
-
-                {(status === "closing" || status === "closed") && (
-                  <CloseStage
-                    closed={closed}
-                    onClose={closeAndExport}
-                    audit={auditVisible}
-                    hoverRole={hoverRole}
-                    setHoverRole={setHoverRole}
-                  />
-                )}
-              </div>
+                <CloseSection audit={displayAudit} exported={exported} onExport={exportDossier} />
+              </>
             )}
           </main>
 
           {/* Dossier rail */}
           <Dossier
-            revealed={revealed}
-            approved={approved}
-            closed={closed}
-            status={status}
+            ran={ran}
+            exported={exported}
             hoverRole={hoverRole}
             setHoverRole={setHoverRole}
             matrixRows={matrixRows}
             approvedCount={approvedCount}
             events={events}
-            audit={loop_state.audit}
+            audit={displayAudit}
+            executedCount={executedCount}
             inFlightLabel={inFlight}
+            onExport={exportDossier}
           />
         </div>
       </div>
@@ -482,10 +501,27 @@ function WorkLoop() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Empty state                                                                */
+/* Batch plan — the agent's recommended actions for this meeting               */
 /* -------------------------------------------------------------------------- */
 
-function ProposedPlan({ onApprove }: { onApprove: () => void }) {
+function BatchPlan({
+  grouped,
+  userStatus,
+  ran,
+  pending,
+  runnableCount,
+  blockedCount,
+  onRun,
+}: {
+  grouped: Record<DerivedStatus, Action[]>;
+  userStatus: Record<string, string>;
+  ran: boolean;
+  pending: boolean;
+  runnableCount: number;
+  blockedCount: number;
+  onRun: () => void;
+}) {
+  const total = grouped.ready.length + grouped.needs_approval.length + grouped.blocked.length;
   return (
     <section className="animate-loop-in">
       <div className="mb-2 flex items-center gap-2">
@@ -494,23 +530,23 @@ function ProposedPlan({ onApprove }: { onApprove: () => void }) {
         </span>
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-            Plan
+            The batch
           </div>
           <div className="text-[11.5px] text-[var(--secondary-text)]">
-            Agent's proposed batch · nothing executes until you approve
+            Every follow-up the agent recommends for this meeting
           </div>
         </div>
       </div>
 
       <div className="rounded-xl border border-border bg-background p-5 shadow-card">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
-              Proposed plan
+              {total} recommended action{total === 1 ? "" : "s"}
             </h2>
             <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-              The Command Agent will batch these {PLAN_ITEMS.length} steps in sequence. No messages
-              are sent and no tasks are created until you approve.
+              The same plan the chat and brief act on — run the whole batch here, or one-at-a-time in
+              chat. Nothing is sent until you approve.
             </p>
             <p className="mt-1 text-[11.5px] leading-snug text-[var(--muted-fg)]">
               Derived from the{" "}
@@ -520,80 +556,130 @@ function ProposedPlan({ onApprove }: { onApprove: () => void }) {
               recommended next-steps — generated from the meeting transcript and linked content.
             </p>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--warning-bg)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--warning)]">
+          <span
+            className={[
+              "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
+              ran
+                ? "bg-[var(--success-bg)] text-[var(--success)]"
+                : "bg-[var(--warning-bg)] text-[var(--warning)]",
+            ].join(" ")}
+          >
             <ShieldCheck className="h-3 w-3" />
-            Awaiting approval
+            {ran ? "Executed" : "Awaiting approval"}
           </span>
         </div>
 
-        <ol className="mt-4 space-y-2">
-          {PLAN_ITEMS.map((it, i) => {
-            const Icon = it.icon;
-            const isConditional = it.conditional;
+        <div className="mt-4 space-y-4">
+          {BATCH_GROUPS.map((grp) => {
+            const items = grouped[grp.key];
+            if (items.length === 0) return null;
             return (
-              <li
-                key={i}
-                className={[
-                  "flex items-start gap-3 rounded-lg border px-3 py-2.5",
-                  isConditional
-                    ? "border-dashed border-border/70 bg-card/60"
-                    : "border-border bg-card",
-                ].join(" ")}
-              >
-                <span
-                  className={[
-                    "grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold",
-                    isConditional
-                      ? "bg-[var(--canvas)] text-[var(--muted-fg)]"
-                      : "bg-[var(--primary-tint)] text-primary",
-                  ].join(" ")}
-                >
-                  {i + 1}
-                </span>
-                <Icon
-                  className={[
-                    "mt-0.5 h-4 w-4 shrink-0",
-                    isConditional ? "text-[var(--muted-fg)]/70" : "text-[var(--muted-fg)]",
-                  ].join(" ")}
-                />
-                <span
-                  className={[
-                    "flex-1 text-[13px] leading-snug",
-                    isConditional ? "text-[var(--secondary-text)]" : "text-foreground",
-                  ].join(" ")}
-                >
-                  {it.text}
-                </span>
-                {isConditional && (
-                  <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-[var(--warning)]/40 bg-[var(--warning-bg)]/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--warning)]">
-                    Conditional
+              <div key={grp.key}>
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
+                    {grp.label}
                   </span>
-                )}
-              </li>
+                  <span className="rounded-full bg-[var(--canvas)] px-1.5 text-[10px] font-semibold text-[var(--secondary-text)]">
+                    {items.length}
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {items.map((a) => (
+                    <BatchRow key={action_key(a)} action={a} status={userStatus[action_key(a)] ?? "proposed"} />
+                  ))}
+                </ul>
+              </div>
             );
           })}
-        </ol>
+        </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
           <p className="text-[11.5px] leading-snug text-[var(--muted-fg)]">
-            Approving will commit only the listed steps; blockers remain blocked.
+            {ran
+              ? "Batch executed — the orchestration and audit trail are below."
+              : `Approving runs the ${runnableCount} non-blocked action${runnableCount === 1 ? "" : "s"}; ${blockedCount} blocked stay${blockedCount === 1 ? "s" : ""} blocked.`}
           </p>
-          <button
-            type="button"
-            onClick={onApprove}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-4 text-[13px] font-semibold text-white shadow-card transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Approve plan &amp; start
-          </button>
+          {!ran && (
+            <button
+              type="button"
+              onClick={onRun}
+              disabled={pending || runnableCount === 0}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-4 text-[13px] font-semibold text-white shadow-card transition-opacity hover:opacity-95 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {pending ? "Running…" : `Approve & run batch (${runnableCount})`}
+            </button>
+          )}
         </div>
       </div>
     </section>
   );
 }
 
+function BatchRow({ action, status }: { action: Action; status: string }) {
+  const Icon = TOOL_ICON[action.tool] ?? Sparkles;
+  const d = derive_status(action);
+  const committed = status === "committed";
+  const destination = batchDestination(action);
+  const chip = committed
+    ? { label: "Sent", cls: "bg-[var(--success)] text-white" }
+    : STATUS_CHIP[d];
+
+  return (
+    <li
+      className={[
+        "flex items-start gap-3 rounded-lg border px-3 py-2.5",
+        d === "blocked" ? "border-dashed border-border/70 bg-card/60" : "border-border bg-card",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md",
+          committed
+            ? "bg-[var(--success-bg)] text-[var(--success)]"
+            : "bg-[var(--canvas)] text-[var(--secondary-text)]",
+        ].join(" ")}
+      >
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+            {tool_labels[action.tool]}
+          </span>
+          {destination && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold text-[var(--secondary-text)]">
+              <ArrowRight className="h-2.5 w-2.5" />
+              {destination}
+            </span>
+          )}
+        </div>
+        <div className="mt-0.5 text-[13px] font-semibold leading-snug text-foreground">
+          {batchTitle(action)}
+        </div>
+        <p className="mt-0.5 text-[12px] leading-snug text-[var(--secondary-text)]">{action.reason}</p>
+        {action.blocked_reason && (
+          <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-[var(--danger)]/25 bg-[var(--danger-bg)] px-2 py-1 text-[11.5px] leading-snug text-[var(--danger)]">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+            <span>{action.blocked_reason}</span>
+          </div>
+        )}
+      </div>
+      <span
+        className={[
+          "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold",
+          chip.cls,
+        ].join(" ")}
+      >
+        {committed && <CheckCircle2 className="h-2.5 w-2.5" />}
+        {chip.label}
+      </span>
+    </li>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
-/* Stage block                                                                */
+/* Stage block (orchestration outcome)                                        */
 /* -------------------------------------------------------------------------- */
 
 const STAGE_META: Record<
@@ -635,13 +721,11 @@ const STAGE_META: Record<
 function StageBlock({
   stage,
   events,
-  active,
   hoverRole,
   setHoverRole,
 }: {
   stage: StageKey;
   events: TimelineEvent[];
-  active: boolean;
   hoverRole: PersonaRole | null;
   setHoverRole: (r: PersonaRole | null) => void;
 }) {
@@ -650,14 +734,7 @@ function StageBlock({
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <span
-          className={[
-            "grid h-6 w-6 place-items-center rounded-md",
-            active
-              ? "bg-gradient-ai text-white"
-              : "bg-[var(--canvas)] text-[var(--secondary-text)]",
-          ].join(" ")}
-        >
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-[var(--canvas)] text-[var(--secondary-text)]">
           <Icon className="h-3.5 w-3.5" />
         </span>
         <div>
@@ -770,7 +847,7 @@ function TimelineRow({
       />
       <div
         className={[
-          "flex items-start gap-3 rounded-lg border bg-card px-3.5 py-2.5 shadow-card transition-colors animate-sparkle-border",
+          "flex items-start gap-3 rounded-lg border bg-card px-3.5 py-2.5 shadow-card transition-colors",
           highlight ? "border-primary/40" : "border-border",
         ].join(" ")}
       >
@@ -904,32 +981,27 @@ function ScheduledBody({ ev }: { ev: Extract<TimelineEvent, { kind: "scheduled" 
 }
 
 /* -------------------------------------------------------------------------- */
-/* Close stage                                                                */
+/* Close section — the audit-ready outcome of running the batch                */
 /* -------------------------------------------------------------------------- */
 
-function CloseStage({
-  closed,
-  onClose,
+function CloseSection({
   audit,
-  hoverRole,
-  setHoverRole,
+  exported,
+  onExport,
 }: {
-  closed: boolean;
-  onClose: () => void;
-  audit: LoopAuditEvent[];
-  hoverRole: PersonaRole | null;
-  setHoverRole: (r: PersonaRole | null) => void;
+  audit: DisplayAudit[];
+  exported: boolean;
+  onExport: () => void;
 }) {
   const meta = STAGE_META.close;
   const Icon = meta.icon;
-
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
         <span
           className={[
             "grid h-6 w-6 place-items-center rounded-md",
-            closed ? "bg-[var(--success)] text-white" : "bg-gradient-ai text-white",
+            exported ? "bg-[var(--success)] text-white" : "bg-gradient-ai text-white",
           ].join(" ")}
         >
           <Icon className="h-3.5 w-3.5" />
@@ -939,79 +1011,59 @@ function CloseStage({
             {meta.label}
           </div>
           <div className="text-[11.5px] text-[var(--secondary-text)]">
-            {closed ? "Audit-ready record below" : "Finalize the approved batch"}
+            Human-approved · audit-ready
           </div>
         </div>
       </div>
 
-      {!closed ? (
-        <div className="animate-loop-in rounded-xl border border-border bg-background p-4 shadow-card">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[13.5px] font-semibold text-foreground">Ready to close</div>
-              <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-                3 assignments completed · 1 issue escalated to Compliance · final committee
-                scheduled · covenant tracker still pending.
-              </p>
-              <p className="mt-1 text-[11.5px] leading-snug text-[var(--muted-fg)]">
-                Finalize and export the dossier. Every write here was already part of the approved
-                plan — no new permissions requested.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--success)] px-3.5 text-[13px] font-semibold text-white shadow-card transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--success)] focus-visible:ring-offset-2"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Close batch &amp; export dossier
-            </button>
+      <div className="rounded-xl border border-border bg-background p-4 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-[13.5px] font-semibold text-foreground">
+            {audit.length} action{audit.length === 1 ? "" : "s"} committed
           </div>
+          <button
+            type="button"
+            onClick={onExport}
+            disabled={exported}
+            className={[
+              "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              exported
+                ? "cursor-default bg-[var(--success-bg)] text-[var(--success)]"
+                : "bg-[var(--success)] text-white shadow-card hover:opacity-95",
+            ].join(" ")}
+          >
+            {exported ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+            {exported ? "Dossier exported" : "Close & export dossier"}
+          </button>
         </div>
-      ) : (
-        <ol className="relative space-y-2.5 border-l border-dashed border-border pl-5">
+
+        <ol className="mt-3 space-y-1.5">
           {audit.map((a, i) => (
             <li
               key={i}
-              className="relative animate-loop-in"
-              onMouseEnter={() => setHoverRole("relationship_manager")}
-              onMouseLeave={() => setHoverRole(null)}
+              className="flex items-start gap-3 rounded-lg border border-[var(--success)]/25 bg-[var(--success-bg)]/50 px-3 py-2"
             >
-              <span
-                className={[
-                  "absolute -left-[26px] top-3 h-2 w-2 rounded-full",
-                  hoverRole === "relationship_manager" ? "bg-primary" : "bg-[var(--success)]",
-                ].join(" ")}
-                aria-hidden
-              />
-              <div className="flex items-start gap-3 rounded-lg border border-[var(--success)]/25 bg-[var(--success-bg)]/60 px-3.5 py-2.5">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--success)] text-white">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
-                    <span className="font-semibold text-foreground">{a.actor}</span>
-                    <span>executed</span>
-                    <span className="ml-auto shrink-0 font-mono text-[10.5px] tabular-nums text-[var(--muted-fg)]">
-                      {a.timestamp}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[13px] leading-snug text-foreground">{a.action}</p>
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--success)] text-white">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
+                  <span className="font-semibold text-foreground">{a.actor}</span>
+                  <span>committed</span>
+                  <span className="ml-auto shrink-0 font-mono text-[10.5px] tabular-nums text-[var(--muted-fg)]">
+                    {a.time}
+                  </span>
                 </div>
+                <p className="mt-0.5 text-[13px] leading-snug text-foreground">{a.action}</p>
               </div>
             </li>
           ))}
-          <li className="relative animate-loop-in">
-            <span
-              className="absolute -left-[26px] top-3 h-2 w-2 rounded-full bg-[var(--warning)]"
-              aria-hidden
-            />
-            <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-3.5 py-2.5 text-[12.5px] leading-snug text-foreground">
-              <span className="font-semibold">Batch status:</span> {loop_ui.open_summary}
-            </div>
-          </li>
         </ol>
-      )}
+
+        <div className="mt-2.5 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-3 py-2 text-[12.5px] leading-snug text-foreground">
+          <span className="font-semibold">Batch status:</span> {loop_ui.open_summary}
+        </div>
+      </div>
     </section>
   );
 }
@@ -1021,39 +1073,38 @@ function CloseStage({
 /* -------------------------------------------------------------------------- */
 
 function Dossier({
-  revealed,
-  approved,
-  closed,
-  status,
+  ran,
+  exported,
   hoverRole,
   setHoverRole,
   matrixRows,
   approvedCount,
   events,
   audit,
+  executedCount,
   inFlightLabel,
+  onExport,
 }: {
-  revealed: number;
-  approved: boolean;
-  closed: boolean;
-  status: Status;
+  ran: boolean;
+  exported: boolean;
   hoverRole: PersonaRole | null;
   setHoverRole: (r: PersonaRole | null) => void;
   matrixRows: MatrixRow[];
   approvedCount: number;
   events: TimelineEvent[];
-  audit: LoopAuditEvent[];
+  audit: DisplayAudit[];
+  executedCount: number;
   inFlightLabel: string;
+  onExport: () => void;
 }) {
-  // Counts mirror what's been revealed.
-  const seen = events.slice(0, revealed);
   const counts = {
-    assignments: seen.filter((e) => e.kind === "assignment").length,
-    replies: seen.filter((e) => e.kind === "reply").length,
-    escalations: seen.filter((e) => e.kind === "escalation").length,
-    scheduled: seen.filter((e) => e.kind === "scheduled").length,
-    approved: approvedCount,
+    assignments: ran ? events.filter((e) => e.kind === "assignment").length : 0,
+    replies: ran ? events.filter((e) => e.kind === "reply").length : 0,
+    escalations: ran ? events.filter((e) => e.kind === "escalation").length : 0,
+    scheduled: ran ? events.filter((e) => e.kind === "scheduled").length : 0,
+    sent: ran ? executedCount : 0,
   };
+  void approvedCount;
 
   return (
     <aside className="lg:sticky lg:top-6 lg:self-start">
@@ -1075,7 +1126,7 @@ function Dossier({
             { k: "Replies", v: counts.replies },
             { k: "Escal.", v: counts.escalations },
             { k: "Sched.", v: counts.scheduled },
-            { k: "Apprv.", v: counts.approved },
+            { k: "Sent", v: counts.sent },
           ].map((c) => (
             <div key={c.k} className="bg-background px-2 py-2.5 text-center">
               <dt className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
@@ -1134,7 +1185,7 @@ function Dossier({
                   onMouseEnter={() => setHoverRole(r.role)}
                   onMouseLeave={() => setHoverRole(null)}
                   className={[
-                    "flex items-center justify-between gap-2 rounded-md px-1.5 py-1 transition-colors animate-loop-in",
+                    "flex items-center justify-between gap-2 rounded-md px-1.5 py-1 transition-colors",
                     highlight ? "bg-[var(--primary-tint)]" : "",
                   ].join(" ")}
                 >
@@ -1167,10 +1218,10 @@ function Dossier({
               Audit trail
             </div>
             <span className="text-[10.5px] tabular-nums text-[var(--muted-fg)]">
-              {closed ? audit.length : 0} events
+              {audit.length} events
             </span>
           </div>
-          {closed ? (
+          {audit.length > 0 ? (
             <ol className="mt-2 space-y-1.5">
               {audit.map((a, i) => (
                 <li key={i} className="flex items-start gap-2 text-[12px]">
@@ -1178,7 +1229,7 @@ function Dossier({
                   <div className="min-w-0">
                     <div className="text-foreground">{a.action}</div>
                     <div className="text-[10.5px] text-[var(--muted-fg)]">
-                      {a.actor} · {a.timestamp}
+                      {a.actor} · {a.time}
                     </div>
                   </div>
                 </li>
@@ -1186,9 +1237,7 @@ function Dossier({
             </ol>
           ) : (
             <p className="mt-2 text-[12px] leading-snug text-[var(--muted-fg)]">
-              {status === "proposed"
-                ? "Not started — runs after approval."
-                : "Commits appear at Close."}
+              Not started — runs when you approve the batch.
             </p>
           )}
         </div>
@@ -1196,41 +1245,38 @@ function Dossier({
         {/* Status */}
         <div className="border-t border-border bg-[var(--canvas)] px-4 py-3">
           <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-            Closed
+            Status
           </div>
           <div className="mt-1 flex items-start gap-1.5 text-[12.5px] leading-snug text-foreground">
-            {closed ? (
+            {exported ? (
               <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
-            ) : status === "proposed" ? (
+            ) : !ran ? (
               <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted-fg)]" />
             ) : (
               <CircleDot className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--warning)]" />
             )}
             <span>
               <span className="font-semibold">
-                {closed
-                  ? `Closed · ${inFlightLabel}`
-                  : status === "proposed"
-                    ? "Not started"
-                    : "Open — 1 item"}
+                {!ran ? "Not started" : exported ? `Closed · ${inFlightLabel}` : "Ran — open items"}
               </span>
               <span className="text-[var(--secondary-text)]">
-                {status === "proposed" ? "" : ` · ${loop_ui.open_summary}`}
+                {ran ? ` · ${loop_ui.open_summary}` : ""}
               </span>
             </span>
           </div>
           <button
             type="button"
-            disabled={!closed}
+            disabled={!ran || exported}
+            onClick={onExport}
             className={[
               "mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border text-[12.5px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              closed
+              ran && !exported
                 ? "border-border bg-background text-foreground hover:bg-[var(--primary-tint)] hover:text-primary"
                 : "cursor-not-allowed border-border bg-background text-[var(--muted-fg)]",
             ].join(" ")}
-            title={closed ? "Batch dossier exported" : "Exports when batch is closed"}
+            title={ran ? "Export the batch dossier" : "Exports after the batch runs"}
           >
-            {closed ? (
+            {exported ? (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Dossier exported
