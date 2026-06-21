@@ -619,12 +619,6 @@ function PacketWorkspace() {
                   <ShieldCheck className="h-3 w-3 text-primary" />
                   Rulepack <span className="font-mono">{rulepack_id}</span> · v{rulepack_version}
                 </span>
-                {pinned && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--success)]">
-                    <Pin className="h-3 w-3" />
-                    Pinned · by {by} · {pinnedAgo}
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -847,12 +841,6 @@ function PacketWorkspace() {
                   ))}
                 </div>
               </section>
-
-              {pinned && (
-                <p className="text-[12px] text-[var(--secondary-text)]">
-                  This packet will be revalidated if its sources change.
-                </p>
-              )}
             </div>
           </article>
 
