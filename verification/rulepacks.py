@@ -6,6 +6,7 @@ FINANCE_CREDIT_RULE_IDS = (
     "missing_approver",
     "approval_threshold",
     "calculation_validation",
+    "covenant_floor",
     "required_document_checklist",
     "permission_gate",
     "output_schema_validation",
@@ -31,6 +32,11 @@ _RULEPACKS: dict[str, RulePack] = {
             Rule(
                 id="calculation_validation",
                 description="Structured financial calculations must match recomputed values.",
+                severity=RuleSeverity.block,
+            ),
+            Rule(
+                id="covenant_floor",
+                description="Recomputed DSCR must clear the covenant minimum.",
                 severity=RuleSeverity.block,
             ),
             Rule(

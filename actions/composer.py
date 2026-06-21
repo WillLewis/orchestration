@@ -226,20 +226,23 @@ class PlanSummary(BaseModel):
 
 
 def summarize_plan(plan: ActionPlan) -> PlanSummary:
+    """Split by what the user does with each action: send a route for sign-off (`needs_routing`),
+    apply/draft it now (`draftable`), or nothing because a gate blocked it (`blocked`). A route is
+    a READY outbound action — it requests an approval, it is not itself approval-held — so it is
+    bucketed by kind, not by a blocked_reason."""
     draftable: list[int] = []
     needs_routing: list[int] = []
     blocked: list[int] = []
     for i, action in enumerate(plan.actions):
-        reason = action.blocked_reason
-        if reason is None:
-            draftable.append(i)
-        elif reason.startswith("approval:"):
-            needs_routing.append(i)
-        else:
+        if action.blocked_reason is not None:
             blocked.append(i)
+        elif action.tool == "route_approval":
+            needs_routing.append(i)  # ready to route for sign-off — not blocked
+        else:
+            draftable.append(i)
     headline = (
-        f"{len(plan.actions)} follow-ups — {len(draftable)} draftable now, "
-        f"{len(needs_routing)} need approval routing, {len(blocked)} blocked"
+        f"{len(plan.actions)} follow-ups — {len(draftable)} ready now, "
+        f"{len(needs_routing)} to route, {len(blocked)} blocked"
     )
     return PlanSummary(
         draftable=draftable, needs_routing=needs_routing, blocked=blocked, headline=headline

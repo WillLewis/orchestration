@@ -952,6 +952,35 @@
         "title": "FailureTaxonomyEntry",
         "type": "object"
       },
+      "GateChange": {
+        "description": "A deterministic gate whose verdict FLIPPED when the record was re-verified against a changed\nsource \u2014 e.g. the covenant gate goes pass\u2192fail after a revenue revision drops the DSCR. The\nrecompute made visible: the source changed, so the gate re-decided.",
+        "properties": {
+          "after_passed": {
+            "title": "After Passed",
+            "type": "boolean"
+          },
+          "before_passed": {
+            "title": "Before Passed",
+            "type": "boolean"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "before_passed",
+          "after_passed"
+        ],
+        "title": "GateChange",
+        "type": "object"
+      },
       "GovernanceEnvelope": {
         "description": "The governance metadata wrapped around the decision \u2014 what makes the record *governed*\nrather than a static export. The `seal` is attached AFTER canonicalization (so it is never\npart of its own preimage).",
         "properties": {
@@ -1513,7 +1542,7 @@
         "type": "object"
       },
       "RecordVerification": {
-        "description": "Result of re-checking a sealed record against current sources. THREE INDEPENDENT AXES:\n`integrity_valid` (HMAC seal matches), `freshness` (sealed sources changed?), and\n`approval_ready` (the deterministic gate \u2014 unchanged by verification).",
+        "description": "Result of re-checking a sealed record against current sources. THREE INDEPENDENT AXES:\n`integrity_valid` (HMAC seal matches), `freshness` (sealed sources changed?), and\n`approval_ready` (the deterministic gate, RE-EVALUATED against the changed sources). Any gate\nwhose verdict flipped on recompute (e.g. a revenue drop tripping the covenant floor) is listed\nin `gate_changes`.",
         "properties": {
           "approval_ready": {
             "title": "Approval Ready",
@@ -1533,6 +1562,13 @@
             ],
             "title": "Freshness",
             "type": "string"
+          },
+          "gate_changes": {
+            "items": {
+              "$ref": "#/components/schemas/GateChange"
+            },
+            "title": "Gate Changes",
+            "type": "array"
           },
           "integrity_valid": {
             "title": "Integrity Valid",

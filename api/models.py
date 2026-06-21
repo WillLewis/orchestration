@@ -202,10 +202,23 @@ class ChangedSource(BaseModel):
     after: Any = None
 
 
+class GateChange(BaseModel):
+    """A deterministic gate whose verdict FLIPPED when the record was re-verified against a changed
+    source — e.g. the covenant gate goes pass→fail after a revenue revision drops the DSCR. The
+    recompute made visible: the source changed, so the gate re-decided."""
+
+    rule_id: str
+    before_passed: bool
+    after_passed: bool
+    detail: str = ""
+
+
 class RecordVerification(BaseModel):
     """Result of re-checking a sealed record against current sources. THREE INDEPENDENT AXES:
     `integrity_valid` (HMAC seal matches), `freshness` (sealed sources changed?), and
-    `approval_ready` (the deterministic gate — unchanged by verification)."""
+    `approval_ready` (the deterministic gate, RE-EVALUATED against the changed sources). Any gate
+    whose verdict flipped on recompute (e.g. a revenue drop tripping the covenant floor) is listed
+    in `gate_changes`."""
 
     record_id: str
     integrity_valid: bool
@@ -213,6 +226,7 @@ class RecordVerification(BaseModel):
     approval_ready: bool
     verified_at: datetime
     changed_sources: list[ChangedSource] = Field(default_factory=list)
+    gate_changes: list[GateChange] = Field(default_factory=list)
     stale_sections: list[StaleSectionState] = Field(default_factory=list)
     reapproval_routes: list[ReapprovalRoute] = Field(default_factory=list)
 

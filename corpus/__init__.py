@@ -106,11 +106,16 @@ def apply_change(objects: list[WorkspaceObject], event_name: str) -> list[Worksp
         _require_ids(positions, ["doc_financials"], event_name)
         financials = copied[positions["doc_financials"]]
         financials_metadata = dict(financials.metadata)
+        structured = dict(financials.metadata.get("structured_values", {}))
+        # Lower cash flow (EBITDA) so the recomputed DSCR (cash_flow / debt_service) lands at 1.18
+        # — below the 1.25 covenant floor. That drop is what trips the covenant gate downstream.
+        structured.update({"revenue": 36_500_000, "ebitda": 8_481_250})
         financials_metadata.update(
             {
                 "prior_revenue_forecast": financials.metadata["revenue_forecast"],
                 "revenue_forecast": 36_500_000,
                 "dscr": 1.18,
+                "structured_values": structured,
                 "change_reason": "Management case revised after updated bookings.",
             }
         )

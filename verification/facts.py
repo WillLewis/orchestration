@@ -56,4 +56,5 @@ def _acme_fixture_facts() -> VerificationFacts:
                 "tolerance": 0.005,
             },
         ],
+        "covenant_floor": 1.25,
     }

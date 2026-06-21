@@ -148,6 +148,12 @@ export interface VerifyResult {
     before: string | number;
     after: string | number;
   }>;
+  gate_changes: Array<{
+    rule_id: string;
+    before_passed: boolean;
+    after_passed: boolean;
+    detail: string;
+  }>;
   stale_sections: Array<{ section: string; stale: boolean; reason: string }>;
   reapproval_routes: Array<{ section: string; approver_role: string; reason: string }>;
 }
@@ -168,6 +174,7 @@ export const verify_result_stale: VerifyResult = {
       after: "Needs Review",
     },
   ],
+  gate_changes: [],
   stale_sections: [
     {
       section: "policy_gates",
@@ -216,6 +223,14 @@ export const verify_result_financials: VerifyResult = {
       field: "dscr",
       before: "1.28",
       after: "1.18",
+    },
+  ],
+  gate_changes: [
+    {
+      rule_id: "covenant_floor",
+      before_passed: true,
+      after_passed: false,
+      detail: "DSCR 1.18 breaches the covenant minimum 1.25.",
     },
   ],
   stale_sections: [

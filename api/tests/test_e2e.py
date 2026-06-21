@@ -70,10 +70,11 @@ def test_compose_surfaces_every_gate():
     assert any("mosaic" in (r or "") for r in blocked)
     # Missing-evidence-dependent action is blocked.
     assert any("missing_evidence" in (r or "") for r in blocked)
-    # Approval-routing actions require approval.
+    # Approval-routing actions are READY to send — routing obtains the sign-off, so a route is
+    # never blocked on the approver it routes to.
     routes = [a for a in actions if a["tool"] == "route_approval"]
     assert routes
-    assert all(a["blocked_reason"] and a["blocked_reason"].startswith("approval:") for a in routes)
+    assert all(a["blocked_reason"] is None for a in routes)
 
 
 # --------------------------------------------------------------------------- #

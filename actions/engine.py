@@ -226,7 +226,11 @@ class ActionValidationEngine:
         approver = action.required_approver
         if approver is None:
             return None
-        gated = action.tool == "route_approval" or action.side_effect == SideEffectClass.write
+        # Routing for sign-off is HOW an approval is obtained — never block a route on the very
+        # approver it routes to (that is circular). The gate applies only to a write that COMMITS a
+        # decision needing an approval that isn't present yet (e.g. marking a status "Approved"),
+        # never to the request that seeks it.
+        gated = action.side_effect == SideEffectClass.write and action.tool != "route_approval"
         if not gated:
             return None
         present = approvals is not None and any(

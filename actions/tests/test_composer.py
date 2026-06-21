@@ -45,26 +45,31 @@ def test_route_actions_carry_their_required_approver():
 def test_summary_split_is_consistent_with_engine_validation():
     plan = SafeActionComposer().compose(_acme_brief(), acme_bundle())
     summary = summarize_plan(plan)
-    # Every bucket entry must match the action's actual blocked_reason.
+    # Every bucket entry must match the action's actual kind + blocked_reason.
     for i in summary.draftable:
         assert plan.actions[i].blocked_reason is None
+        assert plan.actions[i].tool != "route_approval"
     for i in summary.needs_routing:
-        assert plan.actions[i].blocked_reason.startswith("approval:")
+        # Routes are READY (not approval-held): a route requests sign-off, it isn't blocked on it.
+        assert plan.actions[i].tool == "route_approval"
+        assert plan.actions[i].blocked_reason is None
     for i in summary.blocked:
         assert plan.actions[i].blocked_reason is not None
-        assert not plan.actions[i].blocked_reason.startswith("approval:")
     # Buckets partition the plan.
     assert sorted(summary.draftable + summary.needs_routing + summary.blocked) == list(
         range(len(plan.actions))
     )
 
 
-def test_acme_routes_need_approval_routing():
+def test_acme_routes_are_ready_to_route():
     plan = SafeActionComposer().compose(_acme_brief(), acme_bundle())
     summary = summarize_plan(plan)
-    # Credit-officer + legal sign-offs are absent → their routes are approval-held.
+    # The credit-officer + legal routes are READY for the user to send — routing is HOW sign-off is
+    # obtained, so a route is never blocked on the approver it routes to.
     assert len(summary.needs_routing) >= 2
-    assert "need approval routing" in summary.headline
+    for i in summary.needs_routing:
+        assert plan.actions[i].blocked_reason is None
+    assert "to route" in summary.headline
 
 
 def test_every_action_carries_a_diff_for_the_drawer():
@@ -92,9 +97,11 @@ def test_injected_proposer_is_validated_offline():
     composer = SafeActionComposer(proposer=_FixedProposer())
     plan = composer.compose(_acme_brief(), acme_bundle())
     assert len(plan.actions) == 2
-    # create_task is draftable; the route is approval-held (credit_officer absent in the matrix).
+    # create_task is draftable; the route is READY to send — routing obtains the sign-off, so it is
+    # not blocked on the credit_officer it routes to.
     assert plan.actions[0].blocked_reason is None
-    assert plan.actions[1].blocked_reason.startswith("approval:")
+    assert plan.actions[1].tool == "route_approval"
+    assert plan.actions[1].blocked_reason is None
 
 
 def test_heuristic_proposer_is_the_default():

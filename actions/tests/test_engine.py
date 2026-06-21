@@ -202,28 +202,29 @@ def test_missing_evidence_allows_non_committing_remediation():
 # --------------------------------------------------------------------------- #
 # Approval gate
 # --------------------------------------------------------------------------- #
-def test_approval_gate_holds_route_approval_until_approver_present():
-    action = Action(tool="route_approval", reason="route to credit officer",
-                    required_approver="credit_officer")
+def test_approval_gate_holds_a_commit_not_a_route():
     bundle = _open_bundle()  # no blocking evidence → isolates the approval gate
     engine = ActionValidationEngine()
-
-    held = engine.validate_action(
-        action, bundle,
-        approvals=ApprovalMatrix(
-            requirements=[ApprovalRequirement(role="credit_officer", present=False)]
-        ),
+    absent = ApprovalMatrix(
+        requirements=[ApprovalRequirement(role="credit_officer", present=False)]
     )
+    present = ApprovalMatrix(
+        requirements=[ApprovalRequirement(role="credit_officer", present=True)]
+    )
+
+    # A route is the REQUEST for sign-off — it is never held on the approver it routes to.
+    route = Action(tool="route_approval", reason="route to credit officer",
+                   required_approver="credit_officer", side_effect="propose")
+    assert engine.validate_action(route, bundle, approvals=absent).blocked_reason is None
+
+    # A write that COMMITS a decision needing that approver IS held until the sign-off is present.
+    commit = Action(tool="update_project_status", reason="mark the renewal Approved",
+                    required_approver="credit_officer", side_effect="write",
+                    diff=ActionDiff(target_object_id="wf_approval", after={"status": "Approved"}))
+    held = engine.validate_action(commit, bundle, approvals=absent)
     assert held.blocked_reason is not None
     assert "approval" in held.blocked_reason
-
-    cleared = engine.validate_action(
-        action, bundle,
-        approvals=ApprovalMatrix(
-            requirements=[ApprovalRequirement(role="credit_officer", present=True)]
-        ),
-    )
-    assert cleared.blocked_reason is None
+    assert engine.validate_action(commit, bundle, approvals=present).blocked_reason is None
 
 
 # --------------------------------------------------------------------------- #

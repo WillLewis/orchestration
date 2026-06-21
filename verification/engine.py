@@ -5,6 +5,7 @@ from typing import Any
 
 from core.schemas import (
     ApprovalMatrix,
+    CalculationCheck,
     ComplianceTrace,
     ContextBundle,
     DeterministicDecision,
@@ -39,6 +40,10 @@ class DeterministicVerifier:
         calculation_firing = evaluate_calculation_validation(calculations)
         if calculation_firing is not None:
             firings.append(calculation_firing)
+
+        covenant_firing = _evaluate_covenant_floor(facts, calculations)
+        if covenant_firing is not None:
+            firings.append(covenant_firing)
 
         required_document_firing = _evaluate_required_documents(bundle, facts)
         if required_document_firing is not None:
@@ -156,6 +161,33 @@ def _evaluate_approval_threshold(facts: Mapping[str, Any]) -> list[RuleFiring]:
             threshold={"requested_discount": requested, "delegated_authority": authority},
         )
     ]
+
+
+def _evaluate_covenant_floor(
+    facts: Mapping[str, Any], calculations: Sequence[CalculationCheck]
+) -> RuleFiring | None:
+    """Covenant gate: the recomputed DSCR must clear the covenant minimum. Reads the DSCR from the
+    computed calculations, so when a source change lowers cash flow the recomputed DSCR can trip
+    this gate even though the calculation still 'matches' the (revised) model."""
+    floor = facts.get("covenant_floor")
+    if floor is None:
+        return None
+    floor = float(floor)
+    dscr = next((check.computed for check in calculations if check.name == "dscr"), None)
+    if dscr is None:
+        return None
+    passed = dscr >= floor
+    detail = (
+        f"DSCR {dscr:g} clears the covenant minimum {floor:g}."
+        if passed
+        else f"DSCR {dscr:g} breaches the covenant minimum {floor:g}."
+    )
+    return RuleFiring(
+        rule_id="covenant_floor",
+        passed=passed,
+        detail=detail,
+        threshold={"dscr": dscr, "covenant_floor": floor},
+    )
 
 
 def _calculation_specs(facts: Mapping[str, Any]) -> list[Mapping[str, Any]]:

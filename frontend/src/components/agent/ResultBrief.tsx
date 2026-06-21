@@ -70,15 +70,17 @@ export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => 
           <section>
             <SectionLabel>Gates failing</SectionLabel>
             <ul className="mt-1.5 space-y-1.5">
-              {b.policy_gates.firings.map((f) => (
-                <li
-                  key={f.rule_id}
-                  className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground"
-                >
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--danger)]" />
-                  <span>{f.detail}</span>
-                </li>
-              ))}
+              {b.policy_gates.firings
+                .filter((f) => !f.passed)
+                .map((f) => (
+                  <li
+                    key={f.rule_id}
+                    className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground"
+                  >
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--danger)]" />
+                    <span>{f.detail}</span>
+                  </li>
+                ))}
             </ul>
           </section>
 

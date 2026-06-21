@@ -120,6 +120,12 @@ def acme_expected_decision() -> DeterministicDecision:
                 threshold={"requested_discount": 0.22, "delegated_authority": 0.15},
             ),
             RuleFiring(rule_id="calculation_validation", passed=True, detail="All calculations matched."),
+            RuleFiring(
+                rule_id="covenant_floor",
+                passed=True,
+                detail="DSCR 1.28 clears the covenant minimum 1.25.",
+                threshold={"dscr": 1.28, "covenant_floor": 1.25},
+            ),
         ],
         approvals=ApprovalMatrix(requirements=[
             ApprovalRequirement(role="relationship_manager", present=True),

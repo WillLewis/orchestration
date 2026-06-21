@@ -30,18 +30,26 @@ def test_loop_runs_all_five_nodes_end_to_end():
     assert len(state.scheduled) >= 1       # a follow-up review was scheduled
 
 
-def test_persona_signoff_clears_its_routing_but_legal_stays_held():
+def test_collect_records_signoff_and_escalation_without_blocking_routes():
     state = _run()
     by_tool_approver = {
         (a.tool, a.required_approver): a for a in state.plan.actions
     }
     credit_route = by_tool_approver[("route_approval", "credit_officer")]
     legal_route = by_tool_approver[("route_approval", "legal")]
-    # Credit Officer signed off in collect → its routing cleared and is approved for execution.
+    # A route is a READY request to send — never held on the approver it routes to.
     assert credit_route.blocked_reason is None
-    # Legal escalated (no sign-off) → still approval-held, not executed.
-    assert legal_route.blocked_reason is not None
-    assert legal_route.blocked_reason.startswith("approval:")
+    assert legal_route.blocked_reason is None
+    # Credit Officer signed off in collect → recorded present in the approval matrix.
+    present = {r.role for r in state.approvals.requirements if r.present}
+    assert "credit_officer" in present
+    # Legal escalated (no sign-off) → captured as an escalation, and NOT marked approved.
+    assert "legal" not in present
+    legal_idx = next(
+        i for i, a in enumerate(state.plan.actions)
+        if a.tool == "route_approval" and a.required_approver == "legal"
+    )
+    assert any(e.action_index == legal_idx for e in state.escalations)
 
 
 def test_execution_only_touches_approved_non_blocked_actions():
@@ -52,12 +60,12 @@ def test_execution_only_touches_approved_non_blocked_actions():
     assert executed_indices <= set(state.approved_indices)
     for i in executed_indices:
         assert state.plan.actions[i].blocked_reason is None
-    # The held legal route was NOT executed.
-    legal_idx = next(
-        i for i, a in enumerate(state.plan.actions)
-        if a.tool == "route_approval" and a.required_approver == "legal"
-    )
-    assert legal_idx not in executed_indices
+    # Genuinely gate-blocked actions are never executed, even though the rest were approved —
+    # the human-approval step never overrides a gate.
+    blocked_indices = {
+        i for i, a in enumerate(state.plan.actions) if a.blocked_reason is not None
+    }
+    assert not (executed_indices & blocked_indices)
 
 
 def test_human_approval_step_gates_execution():

@@ -89,6 +89,7 @@ def test_verify_detects_staleness_and_routes_to_legal():
     assert v["integrity_valid"] is True          # still authentic
     assert v["freshness"] == "stale"             # but no longer current
     assert v["approval_ready"] is False          # gate unchanged
+    assert v["gate_changes"] == []               # a legal review flips no gate verdict
 
     changed = {c["field"]: c for c in v["changed_sources"] if c["object_id"] == "wf_approval"}
     assert changed["legal_status"]["before"] == "pending"
@@ -115,11 +116,18 @@ def test_verify_tamper_breaks_integrity():
     assert _verify(record_id, None)["integrity_valid"] is False
 
 
-def test_verify_financials_event_changes_financials():
+def test_verify_financials_event_flips_covenant_gate():
     record_id = _mint()["record_id"]
     v = _verify(record_id, "financials_v2")
     fields = {c["field"] for c in v["changed_sources"] if c["object_id"] == "doc_financials"}
-    assert "revenue_forecast" in fields
+    assert {"revenue_forecast", "dscr"} <= fields
+    # The revenue drop recomputes the DSCR below the covenant floor → the covenant gate FLIPS,
+    # a new failure the sealed packet could not have known at mint time.
+    flips = {g["rule_id"]: g for g in v["gate_changes"]}
+    assert "covenant_floor" in flips
+    assert flips["covenant_floor"]["before_passed"] is True
+    assert flips["covenant_floor"]["after_passed"] is False
+    assert v["freshness"] == "stale"
 
 
 def test_verify_unknown_event_rejected():

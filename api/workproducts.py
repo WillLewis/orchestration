@@ -42,6 +42,7 @@ from lifecycle.revalidation import build_dependency_graph
 
 from api.models import (
     ChangedSource,
+    GateChange,
     GovernanceEnvelope,
     GovernedRecord,
     MintResponse,
@@ -57,6 +58,7 @@ from api.orchestrator import (
     _pin_contract,
     assemble_brief,
     revalidate,
+    verify_context,
 )
 
 # Which workspace object each deterministic change event mutates (no such map exists upstream).
@@ -90,6 +92,7 @@ class _StoredRecord:
     record: GovernedRecord
     brief: DecisionBrief
     contract: WorkProductContract
+    bundle: ContextBundle
     snapshot: dict[str, SourceVersionSnapshot]
     canonical_bytes: bytes
 
@@ -223,6 +226,7 @@ def mint(user_id: str, intent: str) -> MintResponse:
         record=record,
         brief=brief,
         contract=contract,
+        bundle=bundle,
         snapshot=snapshot,
         canonical_bytes=canonical,
     )
@@ -249,9 +253,11 @@ def verify(record_id: str, event: str | None) -> RecordVerification:
     integrity_valid = hmac.compare_digest(recomputed, stored.record.governance.seal.value)
 
     changed_sources: list[ChangedSource] = []
+    gate_changes: list[GateChange] = []
     stale_sections = []
     reapproval_routes = []
     freshness = "current"
+    approval_ready = stored.record.governance.approval_ready
 
     if event:
         if event not in _EVENT_CHANGED_OBJECT:
@@ -265,19 +271,87 @@ def verify(record_id: str, event: str | None) -> RecordVerification:
         stale_sections = result.stale_sections
         reapproval_routes = result.reapproval_routes
         freshness = "stale" if any(section.stale for section in stale_sections) else "current"
+        # Re-decide the gate against the changed sources: a revenue revision recomputes the DSCR,
+        # which can trip the covenant floor — a flip the sealed decision could not have known.
+        recomputed = _recompute_decision(stored.bundle, changed_objs, changed_object_id)
+        gate_changes = _gate_changes(stored.brief.policy_gates, recomputed)
+        approval_ready = recomputed.approval_ready
 
     verification = RecordVerification(
         record_id=record_id,
         integrity_valid=integrity_valid,
         freshness=freshness,
-        approval_ready=stored.record.governance.approval_ready,
+        approval_ready=approval_ready,
         verified_at=_now(),
         changed_sources=changed_sources,
+        gate_changes=gate_changes,
         stale_sections=stale_sections,
         reapproval_routes=reapproval_routes,
     )
     stored.record.verification = verification  # GET reflects the latest verification
     return verification
+
+
+def _recompute_decision(
+    bundle: ContextBundle,
+    changed_objs: list[WorkspaceObject],
+    changed_object_id: str,
+) -> DeterministicDecision:
+    """Re-run the deterministic gate against the changed sources. For the financial model, feed the
+    recomputed DSCR (from the changed structured values) into the bundle via the verification span,
+    so the covenant gate re-decides on the new number."""
+    sources = list(bundle.sources)
+    if changed_object_id == "doc_financials":
+        changed_fin = next((obj for obj in changed_objs if obj.id == "doc_financials"), None)
+        structured = changed_fin.metadata.get("structured_values", {}) if changed_fin else {}
+        cash_flow = structured.get("ebitda")
+        debt_service = structured.get("debt_service")
+        if cash_flow is not None and debt_service is not None:
+            dscr = round(float(cash_flow) / float(debt_service), 4)
+            span = json.dumps(
+                {
+                    "verification": {
+                        "calculations": [
+                            {
+                                "name": "dscr",
+                                "expected": dscr,
+                                "inputs": {
+                                    "cash_flow": float(cash_flow),
+                                    "debt_service": float(debt_service),
+                                },
+                                "tolerance": 0.005,
+                            }
+                        ]
+                    }
+                }
+            )
+            sources = [
+                ref.model_copy(update={"span": span})
+                if ref.object_id == "doc_financials"
+                else ref
+                for ref in bundle.sources
+            ]
+    return verify_context(bundle.model_copy(update={"sources": sources}))
+
+
+def _gate_changes(
+    before: DeterministicDecision, after: DeterministicDecision
+) -> list[GateChange]:
+    """List the gates whose verdict flipped between the sealed decision and the recompute."""
+    before_by_id = {firing.rule_id: firing for firing in before.firings}
+    changes: list[GateChange] = []
+    for firing in after.firings:
+        prior = before_by_id.get(firing.rule_id)
+        if prior is not None and prior.passed != firing.passed:
+            changes.append(
+                GateChange(
+                    rule_id=firing.rule_id,
+                    before_passed=prior.passed,
+                    after_passed=firing.passed,
+                    detail=firing.detail,
+                )
+            )
+    return changes
 
 
 def _diff_changed(
