@@ -62,6 +62,7 @@ from api.orchestrator import (
     run_revalidation,
     verify_context,
 )
+from api.presentation import build_decision_readiness, build_display_brief
 from api.workproducts import get as get_workproduct
 from api.workproducts import mint as mint_workproduct
 from api.workproducts import verify as verify_workproduct
@@ -215,9 +216,12 @@ def get_ops_evals() -> OpsReport:
 @app.get("/api/brief")
 def api_brief(user_id: str = "u_rm", intent: str = "prepare_decision_brief") -> dict:
     brief, bundle = assemble_brief(user_id, intent)
+    display_brief = build_display_brief(brief, bundle)
+    readiness = build_decision_readiness(brief, bundle)
     rulepack_id, rulepack_version = rulepack_meta()
     return {
-        "decision_brief": brief.model_dump(mode="json"),
+        "decision_brief": display_brief.model_dump(mode="json"),
+        "decision_readiness": readiness.model_dump(mode="json", exclude_none=True),
         "source_count": len(bundle.sources),
         "rulepack_id": rulepack_id,
         "rulepack_version": rulepack_version,

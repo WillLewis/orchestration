@@ -7,6 +7,33 @@
 export type ApprovalStatus = "approved" | "missing" | "pending";
 export type SourceStatus = "used" | "restricted" | "conflicting" | "missing";
 export type SourceType = "meeting" | "chat" | "document" | "workflow" | "task";
+export type ReadinessStatus = "blocking" | "pending" | "passed" | "approved";
+
+export type DecisionReadinessAction = {
+  label: string;
+  tool: string;
+  target_object_id: string;
+  required_approver?: string | null;
+};
+
+export type DecisionReadinessExplainer =
+  | { kind: "threshold"; rule_id: string }
+  | { kind: "calculation"; calculation_name: string };
+
+export type DecisionReadinessRow = {
+  id: string;
+  gate: string;
+  status: ReadinessStatus;
+  details: string;
+  source_ids: string[];
+  explainer?: DecisionReadinessExplainer | null;
+  action?: DecisionReadinessAction | null;
+};
+
+export type DecisionReadiness = {
+  summary: string;
+  rows: DecisionReadinessRow[];
+};
 
 export const decision_brief = {
   decision_needed:
@@ -90,6 +117,67 @@ export const decision_brief = {
   ],
   permission_limitations: ["Legal memo is restricted — its contents were not used."],
   confidence: "medium" as const,
+};
+
+export const decision_readiness: DecisionReadiness = {
+  summary:
+    "Committee packet is not ready. Two blockers remain: Credit Officer approval and final covenant tracker.",
+  rows: [
+    {
+      id: "covenant_tracker",
+      gate: "Covenant tracker",
+      status: "blocking",
+      details: "Final tracker is required before the committee can decide.",
+      source_ids: ["doc_covenant_tracker"],
+      action: {
+        label: "Request from analyst",
+        tool: "create_task",
+        target_object_id: "task_new_1",
+      },
+    },
+    {
+      id: "credit_officer_approval",
+      gate: "Credit Officer approval",
+      status: "blocking",
+      details: "Requested discount is 22%, above the RM approval threshold of 15%.",
+      source_ids: ["doc_pricing_exception", "wf_approval"],
+      explainer: { kind: "threshold", rule_id: "approval_threshold" },
+      action: {
+        label: "Route to Credit Officer",
+        tool: "route_approval",
+        target_object_id: "doc_pricing_exception",
+        required_approver: "credit_officer",
+      },
+    },
+    {
+      id: "legal_approval",
+      gate: "Legal approval",
+      status: "pending",
+      details: "Legal review has not completed.",
+      source_ids: ["wf_approval"],
+      action: {
+        label: "View in workflow",
+        tool: "route_approval",
+        target_object_id: "wf_approval",
+        required_approver: "legal",
+      },
+    },
+    {
+      id: "dscr_calculation",
+      gate: "DSCR calculation",
+      status: "passed",
+      details: "Recalculated at 1.28x and matches the updated financial model.",
+      source_ids: ["doc_financials"],
+      explainer: { kind: "calculation", calculation_name: "dscr" },
+    },
+    {
+      id: "relationship_manager_approval",
+      gate: "Relationship Manager approval",
+      status: "approved",
+      details: "RM has signed off on the renewal package.",
+      source_ids: ["wf_approval"],
+    },
+  ],
 };
 
 export const sources: Array<{

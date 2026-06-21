@@ -59,6 +59,55 @@ def test_brief_is_not_approval_ready_and_grounded():
     assert "discount" in conflict_text or "pricing" in conflict_text
 
 
+def test_api_brief_returns_display_readiness_view():
+    payload = client.get("/api/brief").json()
+    brief = payload["decision_brief"]
+    readiness = payload["decision_readiness"]
+
+    assert brief["decision_needed"] == (
+        "Approve or reject the pricing exception and covenant modification for Acme Corp."
+    )
+    assert brief["key_facts"] == [
+        "Requested discount: 22% (standard threshold 15%).",
+        "Debt service coverage ratio: 1.28x.",
+        "Facility: commercial renewal with covenant modification.",
+    ]
+    assert brief["open_questions"] == [
+        "Will the covenant modification hold if revenue lands below $38M?",
+        "Does the 22% discount require committee sign-off beyond Credit?",
+    ]
+    assert brief["permission_limitations"] == [
+        "Legal memo is restricted — its contents were not used."
+    ]
+    assert brief["conflicts"][0]["description"] == (
+        "Pricing doc and customer success plan show different discount levels (22% vs 18%)."
+    )
+
+    rows = {row["id"]: row for row in readiness["rows"]}
+    assert list(rows) == [
+        "covenant_tracker",
+        "credit_officer_approval",
+        "legal_approval",
+        "dscr_calculation",
+        "relationship_manager_approval",
+    ]
+    assert rows["credit_officer_approval"]["status"] == "blocking"
+    assert "22%" in rows["credit_officer_approval"]["details"]
+    assert "15%" in rows["credit_officer_approval"]["details"]
+    assert rows["legal_approval"]["status"] == "pending"
+    assert rows["covenant_tracker"]["action"] == {
+        "label": "Request from analyst",
+        "tool": "create_task",
+        "target_object_id": "task_new_1",
+    }
+    assert rows["credit_officer_approval"]["action"] == {
+        "label": "Route to Credit Officer",
+        "tool": "route_approval",
+        "target_object_id": "doc_pricing_exception",
+        "required_approver": "credit_officer",
+    }
+
+
 # --------------------------------------------------------------------------- #
 # 2. /actions/compose — mosaic, missing-evidence, approval-routing gates
 # --------------------------------------------------------------------------- #

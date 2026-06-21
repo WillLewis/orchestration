@@ -11,13 +11,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approval_role_labels,
   decision_brief as mockBrief,
+  decision_readiness as mockDecisionReadiness,
   rulepack_id as mockRulepackId,
   rulepack_version as mockRulepackVersion,
   source_count as mockSourceCount,
   sources as mockSources,
   type ApprovalStatus,
+  type DecisionReadiness,
+  type DecisionReadinessAction,
 } from "@/data/brief";
-import { action_plan as mockActionPlan } from "@/data/actions";
+import { action_key, action_plan as mockActionPlan, type Action } from "@/data/actions";
 import { entry_actions, meeting as mockMeeting, plan_steps } from "@/lib/meeting-data";
 import {
   eval_rows as mockEvalRows,
@@ -55,6 +58,7 @@ async function getJSON<T>(path: string): Promise<T> {
 
 const briefData = {
   decision_brief: mockBrief,
+  decision_readiness: mockDecisionReadiness,
   sources: mockSources,
   source_count: mockSourceCount,
   approval_role_labels,
@@ -67,6 +71,7 @@ interface LiveBriefResponse {
   decision_brief: Partial<typeof mockBrief> & {
     required_approvals?: { requirements: Array<{ role: string; present: boolean }> };
   };
+  decision_readiness?: DecisionReadiness;
   source_count?: number;
   rulepack_id?: string;
   rulepack_version?: number;
@@ -76,6 +81,84 @@ interface LiveBriefResponse {
 function deriveApprovalStatus(role: string, present: boolean): ApprovalStatus {
   if (present) return "approved";
   return role === "legal" ? "pending" : "missing";
+}
+
+function pct(n: number | undefined, fallback: number) {
+  return typeof n === "number" ? Math.round(n * 100) : fallback;
+}
+
+function deriveDecisionReadiness(db: typeof mockBrief): DecisionReadiness {
+  const threshold = db.policy_gates.firings.find((f) => f.rule_id === "approval_threshold")
+    ?.threshold as { requested_discount?: number; delegated_authority?: number } | undefined;
+  const requested = pct(threshold?.requested_discount, 22);
+  const delegated = pct(threshold?.delegated_authority, 15);
+  const dscr =
+    db.policy_gates.calculations.find(
+      (c) => c.name.toLowerCase() === "dscr" || c.name.toLowerCase().includes("coverage"),
+    )?.computed ?? 1.28;
+  const has = (role: string) =>
+    db.required_approvals.requirements.some((r) => r.role === role && r.present);
+
+  return {
+    summary:
+      "Committee packet is not ready. Two blockers remain: Credit Officer approval and final covenant tracker.",
+    rows: [
+      {
+        id: "covenant_tracker",
+        gate: "Covenant tracker",
+        status: "blocking",
+        details: "Final tracker is required before the committee can decide.",
+        source_ids: ["doc_covenant_tracker"],
+        action: {
+          label: "Request from analyst",
+          tool: "create_task",
+          target_object_id: "task_new_1",
+        },
+      },
+      {
+        id: "credit_officer_approval",
+        gate: "Credit Officer approval",
+        status: has("credit_officer") ? "approved" : "blocking",
+        details: `Requested discount is ${requested}%, above the RM approval threshold of ${delegated}%.`,
+        source_ids: ["doc_pricing_exception", "wf_approval"],
+        explainer: { kind: "threshold", rule_id: "approval_threshold" },
+        action: {
+          label: "Route to Credit Officer",
+          tool: "route_approval",
+          target_object_id: "doc_pricing_exception",
+          required_approver: "credit_officer",
+        },
+      },
+      {
+        id: "legal_approval",
+        gate: "Legal approval",
+        status: has("legal") ? "approved" : "pending",
+        details: "Legal review has not completed.",
+        source_ids: ["wf_approval"],
+        action: {
+          label: "View in workflow",
+          tool: "route_approval",
+          target_object_id: "wf_approval",
+          required_approver: "legal",
+        },
+      },
+      {
+        id: "dscr_calculation",
+        gate: "DSCR calculation",
+        status: "passed",
+        details: `Recalculated at ${dscr.toFixed(2)}x and matches the updated financial model.`,
+        source_ids: ["doc_financials"],
+        explainer: { kind: "calculation", calculation_name: "dscr" },
+      },
+      {
+        id: "relationship_manager_approval",
+        gate: "Relationship Manager approval",
+        status: has("relationship_manager") ? "approved" : "blocking",
+        details: "RM has signed off on the renewal package.",
+        source_ids: ["wf_approval"],
+      },
+    ],
+  };
 }
 
 export function useBriefQuery() {
@@ -91,15 +174,17 @@ export function useBriefQuery() {
         ...r,
         status: deriveApprovalStatus(r.role, r.present),
       }));
+      const mergedBrief = {
+        ...mockBrief,
+        ...db,
+        required_approvals: {
+          requirements: reqs.length ? reqs : mockBrief.required_approvals.requirements,
+        },
+      };
       return {
         ...briefData,
-        decision_brief: {
-          ...mockBrief,
-          ...db,
-          required_approvals: {
-            requirements: reqs.length ? reqs : mockBrief.required_approvals.requirements,
-          },
-        },
+        decision_brief: mergedBrief,
+        decision_readiness: live.decision_readiness ?? deriveDecisionReadiness(mergedBrief),
         source_count: live.source_count ?? briefData.source_count,
         rulepack_id: live.rulepack_id ?? briefData.rulepack_id,
         rulepack_version: live.rulepack_version ?? briefData.rulepack_version,
@@ -137,6 +222,20 @@ export function useMeetingQuery() {
 
 const actionData = { actions: mockActionPlan.actions };
 export type ActionData = typeof actionData;
+
+export function resolveReadinessAction(
+  selector: DecisionReadinessAction | null | undefined,
+  planActions: Action[],
+): string | null {
+  if (!selector) return null;
+  const match = planActions.find((a) => {
+    if (a.tool !== selector.tool) return false;
+    if (a.diff.target_object_id !== selector.target_object_id) return false;
+    if (!selector.required_approver) return true;
+    return a.required_approver === selector.required_approver;
+  });
+  return match ? action_key(match) : null;
+}
 
 export function useActionPlanQuery() {
   // Live mode fetches the real composed ActionPlan (`GET /api/actions`, full typed diffs +

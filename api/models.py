@@ -103,6 +103,42 @@ class ChatResponse(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Decision Brief presentation view (GET /api/brief only)
+# --------------------------------------------------------------------------- #
+class DecisionReadinessActionSelector(BaseModel):
+    """Frontend action lookup selector. The UI resolves this against the current ActionPlan and
+    computes its own action key, so the API never depends on action ordering or frontend state."""
+
+    label: str
+    tool: str
+    target_object_id: str
+    required_approver: Optional[str] = None
+
+
+class DecisionReadinessExplainer(BaseModel):
+    """Small pointer to an existing deterministic explainer in the frontend."""
+
+    kind: Literal["threshold", "calculation"]
+    rule_id: Optional[str] = None
+    calculation_name: Optional[str] = None
+
+
+class DecisionReadinessRow(BaseModel):
+    id: str
+    gate: str
+    status: Literal["blocking", "pending", "passed", "approved"]
+    details: str
+    source_ids: list[str] = Field(default_factory=list)
+    explainer: Optional[DecisionReadinessExplainer] = None
+    action: Optional[DecisionReadinessActionSelector] = None
+
+
+class DecisionReadiness(BaseModel):
+    summary: str
+    rows: list[DecisionReadinessRow] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
 # Agent Ops aggregate (shape ↔ frontend/src/data/ops.ts)
 # --------------------------------------------------------------------------- #
 class EvalSourceMix(BaseModel):

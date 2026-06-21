@@ -13,7 +13,6 @@ import {
   Lock,
   MessageSquare,
   Pin,
-  Plus,
   Scale,
   ShieldCheck,
   Sparkles,
@@ -27,15 +26,22 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChatThread, type Turn } from "@/components/agent/ChatThread";
 import { TopBar } from "@/components/meeting/TopBar";
-import { type SourceStatus, type SourceType } from "@/data/brief";
+import {
+  decision_brief as briefTemplate,
+  type DecisionReadiness,
+  type DecisionReadinessRow,
+  type SourceStatus,
+  type SourceType,
+} from "@/data/brief";
 import { pinPacket, usePacketPinned } from "@/lib/packet-store";
 import { openDrawer, usePathReady } from "@/lib/actions-store";
-import { action_key } from "@/data/actions";
+import { type Action } from "@/data/actions";
 import {
   useActionPlanQuery,
   useBriefQuery,
   useChatMutation,
   useMintWorkProductMutation,
+  resolveReadinessAction,
 } from "@/hooks/queries";
 
 const searchSchema = z.object({
@@ -302,6 +308,173 @@ function ThresholdExplainer({
   );
 }
 
+const READINESS_STATUS: Record<
+  DecisionReadinessRow["status"],
+  { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  blocking: {
+    label: "Blocking",
+    cls: "bg-[var(--danger-bg)] text-[var(--danger)]",
+    icon: XCircle,
+  },
+  pending: {
+    label: "Pending",
+    cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
+    icon: AlertTriangle,
+  },
+  passed: {
+    label: "Passed",
+    cls: "bg-[var(--success-bg)] text-[var(--success)]",
+    icon: CheckCircle2,
+  },
+  approved: {
+    label: "Approved",
+    cls: "bg-[var(--success-bg)] text-[var(--success)]",
+    icon: CheckCircle2,
+  },
+};
+
+const READINESS_GRID =
+  "grid-cols-[minmax(170px,1fr)_128px_minmax(220px,1.5fr)_minmax(180px,0.9fr)]";
+
+function findThreshold(
+  brief: typeof briefTemplate,
+  ruleId: string,
+): { requested_discount: number; delegated_authority: number } | null {
+  const firing = brief.policy_gates.firings.find((f) => f.rule_id === ruleId);
+  if (!firing || !("threshold" in firing) || !firing.threshold) return null;
+  return firing.threshold as { requested_discount: number; delegated_authority: number };
+}
+
+function findCalculation(calcs: CalcCheck[], name: string): CalcCheck | null {
+  return (
+    calcs.find((c) => c.name === name || c.name.toLowerCase() === name.toLowerCase()) ??
+    calcs.find((c) => calcLabel(c.name).toLowerCase() === calcLabel(name).toLowerCase()) ??
+    null
+  );
+}
+
+function DecisionReadinessTable({
+  readiness,
+  brief,
+  planActions,
+  hoveredId,
+  setHoveredId,
+  rulepackId,
+  rulepackVersion,
+}: {
+  readiness: DecisionReadiness;
+  brief: typeof briefTemplate;
+  planActions: Action[];
+  hoveredId: string | null;
+  setHoveredId: (id: string | null) => void;
+  rulepackId: string;
+  rulepackVersion: number;
+}) {
+  return (
+    <section id="decision-readiness" className="scroll-mt-20">
+      <SectionLabel>Decision readiness</SectionLabel>
+      <p className="mt-2 text-[14px] leading-relaxed text-[var(--secondary-text)]">
+        {readiness.summary}
+      </p>
+      <div className="mt-3 overflow-hidden rounded-lg border border-border">
+        <div className="w-full">
+          <div
+            className={[
+              "grid gap-4 border-b border-border bg-[var(--canvas)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-fg)]",
+              READINESS_GRID,
+            ].join(" ")}
+          >
+            <div>Gate</div>
+            <div>Status</div>
+            <div>Details</div>
+            <div className="text-right">Action</div>
+          </div>
+          <div className="divide-y divide-border bg-background">
+            {readiness.rows.map((row) => {
+              const meta = READINESS_STATUS[row.status];
+              const StatusIcon = meta.icon;
+              const focusKey = resolveReadinessAction(row.action, planActions);
+              const threshold =
+                row.explainer?.kind === "threshold"
+                  ? findThreshold(brief, row.explainer.rule_id)
+                  : null;
+              const calc =
+                row.explainer?.kind === "calculation"
+                  ? findCalculation(brief.policy_gates.calculations, row.explainer.calculation_name)
+                  : null;
+              return (
+                <div
+                  key={row.id}
+                  className={["grid items-center gap-4 px-4 py-3", READINESS_GRID].join(" ")}
+                >
+                  <div className="text-[13.5px] font-semibold text-foreground">{row.gate}</div>
+                  <div>
+                    <span
+                      className={[
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
+                        meta.cls,
+                      ].join(" ")}
+                    >
+                      <StatusIcon className="h-3 w-3" />
+                      {meta.label}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13.5px] leading-snug text-[var(--secondary-text)]">
+                    <span className="min-w-0">
+                      {row.details}
+                      {row.source_ids.length > 0 && (
+                        <SourceChip
+                          ids={row.source_ids}
+                          hoveredId={hoveredId}
+                          setHoveredId={setHoveredId}
+                        />
+                      )}
+                    </span>
+                    {threshold && (
+                      <ThresholdExplainer
+                        threshold={threshold}
+                        rulepackId={rulepackId}
+                        rulepackVersion={rulepackVersion}
+                      />
+                    )}
+                    {calc && (
+                      <CalcExplainer
+                        calc={calc}
+                        rulepackId={rulepackId}
+                        rulepackVersion={rulepackVersion}
+                      />
+                    )}
+                  </div>
+                  <div className="flex min-w-0 justify-end">
+                    {row.action ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openDrawer({
+                            focus_key: focusKey,
+                            source: `Decision readiness — ${row.gate}`,
+                          })
+                        }
+                        className="inline-flex h-8 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <span className="truncate">{row.action.label}</span>
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                      </button>
+                    ) : (
+                      <span className="text-[12.5px] text-[var(--muted-fg)]">None</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* Component                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -311,13 +484,13 @@ function PacketWorkspace() {
   const { pinned, by, at } = usePacketPinned();
   const pathReady = usePathReady();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const nextStepsRef = useRef<HTMLElement | null>(null);
+  const readinessRef = useRef<HTMLElement | null>(null);
 
   const {
     decision_brief,
+    decision_readiness,
     sources,
     source_count,
-    approval_role_labels,
     rulepack_id,
     rulepack_version,
   } = useBriefQuery().data;
@@ -360,10 +533,10 @@ function PacketWorkspace() {
   }, [sources]);
 
   useEffect(() => {
-    if (focus === "next-steps" && nextStepsRef.current) {
+    if (focus === "next-steps" && readinessRef.current) {
       // Small delay so layout settles before scroll.
       const t = setTimeout(() => {
-        nextStepsRef.current?.scrollIntoView({
+        readinessRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
@@ -550,7 +723,7 @@ function PacketWorkspace() {
 
       {/* Body */}
       <div className="mx-auto w-full max-w-[1320px] px-6 py-8 xl:px-10">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* Main column */}
           <article className="min-w-0 rounded-xl border border-border bg-background p-7 shadow-card">
             <div className="space-y-9">
@@ -604,155 +777,17 @@ function PacketWorkspace() {
                 </ul>
               </section>
 
-              {/* Policy & approval gates */}
-              <section>
-                <SectionLabel>Policy &amp; approval gates</SectionLabel>
-                <div className="mt-3 overflow-hidden rounded-lg border border-border">
-                  {/* Firings */}
-                  <div className="bg-background">
-                    <div className="border-b border-border bg-[var(--canvas)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-fg)]">
-                      Failing rules
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {b.policy_gates.firings
-                        .filter((f) => !f.passed)
-                        .map((f) => (
-                          <li key={f.rule_id} className="flex items-start gap-3 px-4 py-2.5">
-                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
-                            <div className="flex-1 text-[13.5px] text-foreground">
-                              {f.detail}
-                              <SourceChip
-                                ids={
-                                  f.rule_id === "missing_approver"
-                                    ? ["wf_approval"]
-                                    : ["doc_pricing_exception"]
-                                }
-                                hoveredId={hoveredId}
-                                setHoveredId={setHoveredId}
-                              />
-                            </div>
-                            {"threshold" in f && f.threshold && (
-                              <ThresholdExplainer
-                                threshold={f.threshold}
-                                rulepackId={rulepack_id}
-                                rulepackVersion={rulepack_version}
-                              />
-                            )}
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                  {/* Required approvals */}
-                  <div className="bg-background">
-                    <div className="border-y border-border bg-[var(--canvas)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-fg)]">
-                      Required approvals
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {b.required_approvals.requirements.map((r) => {
-                        const label = approval_role_labels[r.role] ?? r.role;
-                        const chip =
-                          r.status === "approved"
-                            ? {
-                                cls: "bg-[var(--success-bg)] text-[var(--success)]",
-                                text: "Approved",
-                                icon: CheckCircle2,
-                              }
-                            : r.status === "missing"
-                              ? {
-                                  cls: "bg-[var(--danger-bg)] text-[var(--danger)]",
-                                  text: "Missing",
-                                  icon: XCircle,
-                                }
-                              : {
-                                  cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
-                                  text: "Pending",
-                                  icon: AlertTriangle,
-                                };
-                        const Icon = chip.icon;
-                        return (
-                          <li
-                            key={r.role}
-                            className="flex items-center justify-between gap-3 px-4 py-2.5"
-                          >
-                            <div className="text-[13.5px] text-foreground">{label}</div>
-                            <span
-                              className={[
-                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
-                                chip.cls,
-                              ].join(" ")}
-                            >
-                              <Icon className="h-3 w-3" />
-                              {chip.text}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                  {/* Calculations */}
-                  <div className="bg-background">
-                    <div className="border-y border-border bg-[var(--canvas)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-fg)]">
-                      Calculation checks
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {b.policy_gates.calculations.map((c) => (
-                        <li key={c.name} className="flex items-start gap-3 px-4 py-2.5">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
-                          <div className="flex-1 text-[13.5px] text-foreground">
-                            {calcLabel(c.name)} recalculated · matches model (
-                            {c.computed.toFixed(2)})
-                            <SourceChip
-                              ids={["doc_financials"]}
-                              hoveredId={hoveredId}
-                              setHoveredId={setHoveredId}
-                            />
-                          </div>
-                          <CalcExplainer
-                            calc={c}
-                            rulepackId={rulepack_id}
-                            rulepackVersion={rulepack_version}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              {/* Missing evidence */}
-              <section>
-                <SectionLabel>Missing evidence</SectionLabel>
-                <div className="mt-2.5 space-y-2">
-                  {b.missing_evidence.map((m) => (
-                    <div
-                      key={m.code}
-                      className="flex items-start gap-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-4 py-3"
-                    >
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13.5px] font-medium text-foreground">
-                            {m.description}
-                          </span>
-                          {m.blocking && (
-                            <span className="rounded-full bg-[var(--danger)]/15 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--danger)]">
-                              Blocking
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-0.5 text-[12.5px] text-[var(--secondary-text)]">
-                          Expected in <span className="font-medium">Final covenant tracker</span>.
-                          <SourceChip
-                            ids={["doc_covenant_tracker"]}
-                            hoveredId={hoveredId}
-                            setHoveredId={setHoveredId}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              <div ref={readinessRef}>
+                <DecisionReadinessTable
+                  readiness={decision_readiness}
+                  brief={b}
+                  planActions={planActions}
+                  hoveredId={hoveredId}
+                  setHoveredId={setHoveredId}
+                  rulepackId={rulepack_id}
+                  rulepackVersion={rulepack_version}
+                />
+              </div>
 
               {/* Conflicting evidence */}
               <section>
@@ -831,66 +866,6 @@ function PacketWorkspace() {
                       <span>{q}</span>
                     </li>
                   ))}
-                </ul>
-              </section>
-
-              {/* Next steps */}
-              <section
-                id="next-steps"
-                ref={(el) => {
-                  nextStepsRef.current = el;
-                }}
-                className="scroll-mt-20"
-              >
-                <div className="flex items-center justify-between">
-                  <SectionLabel>Recommended next steps</SectionLabel>
-                  {focus === "next-steps" && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-primary">
-                      Focused
-                    </span>
-                  )}
-                </div>
-                <ul className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border">
-                  {b.next_steps.map((s, i) => {
-                    const match =
-                      i === 0
-                        ? planActions.find(
-                            (a) =>
-                              a.tool === "route_approval" &&
-                              a.required_approver === "credit_officer",
-                          )
-                        : i === 1
-                          ? planActions.find((a) => a.tool === "create_task")
-                          : planActions.find(
-                              (a) => a.tool === "route_approval" && a.required_approver === "legal",
-                            );
-                    const focusKey = match ? action_key(match) : null;
-                    return (
-                      <li
-                        key={i}
-                        className="group flex items-center justify-between gap-3 bg-background px-4 py-2.5"
-                      >
-                        <div className="flex items-start gap-2.5 text-[14px] text-foreground">
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                          <span>{s}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openDrawer({
-                              focus_key: focusKey,
-                              source: "Decision Packet — Acme renewal",
-                            })
-                          }
-                          className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-[var(--secondary-text)] opacity-0 transition-all hover:bg-[var(--canvas)] hover:text-primary focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Create action
-                          <ArrowRight className="h-3 w-3" />
-                        </button>
-                      </li>
-                    );
-                  })}
                 </ul>
               </section>
 

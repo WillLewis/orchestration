@@ -5,9 +5,10 @@ import { usePacketPinned } from "@/lib/packet-store";
 import { openDrawer } from "@/lib/actions-store";
 
 export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => void }) {
-  const b = useBriefQuery().data.decision_brief;
+  const { decision_brief: b, decision_readiness } = useBriefQuery().data;
   const { meeting } = useMeetingQuery().data;
   const { pinned } = usePacketPinned();
+  const blockers = decision_readiness.rows.filter((row) => row.status === "blocking");
 
   return (
     <div className="px-5 pt-5 pb-2">
@@ -66,35 +67,20 @@ export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => 
             </ul>
           </section>
 
-          {/* Gates */}
+          {/* Readiness */}
           <section>
-            <SectionLabel>Gates failing</SectionLabel>
-            <ul className="mt-1.5 space-y-1.5">
-              {b.policy_gates.firings
-                .filter((f) => !f.passed)
-                .map((f) => (
-                  <li
-                    key={f.rule_id}
-                    className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground"
-                  >
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--danger)]" />
-                    <span>{f.detail}</span>
-                  </li>
-                ))}
-            </ul>
-          </section>
-
-          {/* Missing evidence */}
-          <section>
-            <SectionLabel>Missing evidence</SectionLabel>
+            <SectionLabel>Decision readiness</SectionLabel>
+            <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--secondary-text)]">
+              Not ready: {blockers.map((row) => row.gate).join(" + ")}.
+            </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {b.missing_evidence.map((m) => (
+              {blockers.map((row) => (
                 <span
-                  key={m.code}
-                  className="inline-flex items-center gap-1 rounded-md bg-[var(--warning-bg)] px-2 py-1 text-[11.5px] font-medium text-[var(--warning)]"
+                  key={row.id}
+                  className="inline-flex items-center gap-1 rounded-md bg-[var(--danger-bg)] px-2 py-1 text-[11.5px] font-medium text-[var(--danger)]"
                 >
                   <AlertTriangle className="h-3 w-3" />
-                  {m.description.replace(" not uploaded.", "")}
+                  {row.gate}
                 </span>
               ))}
             </div>
