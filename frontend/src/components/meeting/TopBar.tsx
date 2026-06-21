@@ -19,7 +19,7 @@ type TopBarProps = {
   onToggleAgent?: () => void;
   /** Show "← Back to meeting" before the wordmark (packet workspace). */
   showBackToMeeting?: boolean;
-  /** Replace the default Share / Leave actions (e.g. packet pin/export). */
+  /** Replace the default Share / Leave actions (e.g. packet seal/export). */
   rightSlot?: ReactNode;
 };
 
