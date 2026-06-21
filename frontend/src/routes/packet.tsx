@@ -480,7 +480,7 @@ function DecisionReadinessTable({
 function PacketWorkspace() {
   const { focus } = Route.useSearch();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const readinessRef = useRef<HTMLElement | null>(null);
+  const readinessRef = useRef<HTMLDivElement | null>(null);
 
   const {
     decision_brief,
