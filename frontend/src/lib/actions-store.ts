@@ -139,6 +139,47 @@ export function executeApproved(actor = "Dana R.") {
   return committed.length;
 }
 
+export type RefusedItem = { tool: string; target_object_id: string; reason: string };
+
+// Mock mirror of the server re-gate (POST /actions/execute): commit approved/edited NON-blocked
+// actions, and REFUSE approved/edited blocked ones (never commit). Proves the gate holds even when
+// a client approves a blocked index — the same executed-vs-skipped split the gateway returns live.
+export function executeRegated(actor = "Dana R."): {
+  executed: { tool: string; target_object_id: string }[];
+  refused: RefusedItem[];
+} {
+  const next = { ...state.user_status };
+  const audit = [...state.audit];
+  const executed: { tool: string; target_object_id: string }[] = [];
+  const refused: RefusedItem[] = [];
+  action_plan.actions.forEach((a) => {
+    const k = action_key(a);
+    const s = next[k];
+    if (s !== "approved" && s !== "edited") return;
+    if (a.blocked_reason) {
+      refused.push({
+        tool: a.tool,
+        target_object_id: a.diff.target_object_id,
+        reason: a.blocked_reason,
+      });
+      return;
+    }
+    next[k] = "committed";
+    executed.push({ tool: a.tool, target_object_id: a.diff.target_object_id });
+    audit.push({
+      id: `ae_${Date.now()}_${k}`,
+      actor,
+      action: `${a.tool} · ${a.diff.target_object_id}`,
+      timestamp: Date.now(),
+      detail: { target_object_id: a.diff.target_object_id, tool: a.tool },
+    });
+  });
+  state.user_status = next;
+  state.audit = audit;
+  emit();
+  return { executed, refused };
+}
+
 export function revertCommit(eventId: string, actor = "Dana R.") {
   const ev = state.audit.find((e) => e.id === eventId);
   if (!ev || ev.reverted) return;

@@ -41,6 +41,7 @@ import {
   approveAction,
   closeDrawer,
   executeApproved,
+  executeRegated,
   getEffectiveAfter,
   rejectAction,
   resetAction,
@@ -158,6 +159,23 @@ function renderedSideEffect(action: Action): SideEffect {
   return action.tool === "route_approval" ? "write" : action.side_effect;
 }
 
+// Normalized execution outcome so one panel renders both the live gateway result and the mock
+// deterministic-mirror result.
+type ExecRow = { tool: string; target: string; reason?: string };
+type ExecResult = { executed: ExecRow[]; refused: ExecRow[]; mode: "live" | "mock" };
+
+function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
+  const executed: ExecRow[] = [];
+  const refused: ExecRow[] = [];
+  events.forEach((e) => {
+    const tool = String(e.detail.tool ?? "");
+    const target = e.detail.target ? String(e.detail.target) : "";
+    if (e.action === "executed") executed.push({ tool, target });
+    else refused.push({ tool, target, reason: e.detail.reason });
+  });
+  return { executed, refused, mode: "live" };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Drawer                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -188,7 +206,7 @@ export function ActionDiffDrawer() {
   const [tab, setTab] = useState<"changes" | "next" | "notes" | "audit">("next");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const execute = useExecuteActionsMutation();
-  const [serverResult, setServerResult] = useState<ServerAuditEvent[] | null>(null);
+  const [execResult, setExecResult] = useState<ExecResult | null>(null);
   const isAfterSourceChange = drawer.mode === "revalidation_edit";
   const verification =
     verifyData?.record_id === recordId
@@ -197,7 +215,10 @@ export function ActionDiffDrawer() {
 
   // Open directly to the useful tab for each scenario.
   useEffect(() => {
-    if (drawer.open) setTab(drawer.mode === "revalidation_edit" ? "changes" : "next");
+    if (drawer.open) {
+      setTab(drawer.mode === "revalidation_edit" ? "changes" : "next");
+      setExecResult(null);
+    }
   }, [drawer.open, drawer.mode]);
 
   // Live mode verifies through the backend; mock mode returns the pinned financials_v2 result.
@@ -274,6 +295,24 @@ export function ActionDiffDrawer() {
   const pendingCount = nextPending.length;
   const notesCount = noteActions.length;
 
+  // Blocked actions the presenter can deliberately try to override (approve anyway) to prove the
+  // deterministic gate refuses them on send.
+  const blockedActions = useMemo(() => ordered.filter((a) => a.blocked_reason), [ordered]);
+  const overriddenBlocked = useMemo(
+    () =>
+      blockedActions.filter((a) => {
+        const u = user_status[action_key(a)];
+        return u === "approved" || u === "edited";
+      }),
+    [blockedActions, user_status],
+  );
+  const overrideCount = overriddenBlocked.length;
+  const canSend = pendingCount > 0 || overrideCount > 0;
+  const sendLabel =
+    overrideCount > 0
+      ? `Send all + ${overrideCount} override${overrideCount === 1 ? "" : "s"}`
+      : `Send all (${pendingCount})`;
+
   function switchScenario(mode: "plan" | "revalidation_edit") {
     openDrawer({
       mode,
@@ -292,17 +331,21 @@ export function ActionDiffDrawer() {
   }
 
   function onSendAll() {
-    if (pendingCount === 0) return;
+    if (!canSend) return;
     if (LIVE) {
+      // Submit ready + any overridden-blocked indices; the gateway recomposes + re-gates, so the
+      // blocked ones come back `skipped` even though we approved them.
       execute.mutate(
-        { approved_indices: approvedIndices(nextPending) },
+        { approved_indices: approvedIndices([...nextPending, ...overriddenBlocked]) },
         {
           onSuccess: (events) => {
-            setServerResult(events);
+            setExecResult(execResultFromServer(events));
             setTab("audit");
             const skipped = events.filter((e) => e.action === "skipped").length;
             toast.success(
-              `Sent ${events.length - skipped} action${events.length - skipped === 1 ? "" : "s"}`,
+              skipped > 0
+                ? `Sent ${events.length - skipped} · refused ${skipped} (re-gated)`
+                : `Sent ${events.length - skipped} action${events.length - skipped === 1 ? "" : "s"}`,
             );
           },
           onError: () =>
@@ -314,6 +357,22 @@ export function ActionDiffDrawer() {
       return;
     }
     nextPending.forEach((a) => approveAction(action_key(a)));
+    if (overrideCount > 0) {
+      // Mirror the server re-gate client-side: blocked overrides are refused, never committed.
+      const r = executeRegated();
+      setExecResult({
+        executed: r.executed.map((e) => ({ tool: e.tool, target: e.target_object_id })),
+        refused: r.refused.map((e) => ({
+          tool: e.tool,
+          target: e.target_object_id,
+          reason: e.reason,
+        })),
+        mode: "mock",
+      });
+      setTab("audit");
+      toast.success(`Executed ${r.executed.length} · refused ${r.refused.length} (gate held)`);
+      return;
+    }
     const n = executeApproved();
     if (n > 0) {
       toast.success(`${n} action${n === 1 ? "" : "s"} sent · audit recorded`);
@@ -471,25 +530,56 @@ export function ActionDiffDrawer() {
               <EmptyChanges />
             )
           ) : tab === "next" ? (
-            <ul className="space-y-3 px-5 py-4">
-              {nextActions.map((a) => {
-                const k = action_key(a);
-                return (
-                  <NextActionCard
-                    key={k}
-                    action={a}
-                    user={user_status[k] ?? "proposed"}
-                    setRef={(el) => (cardRefs.current[k] = el)}
-                    focused={drawer.focus_key === k}
-                  />
-                );
-              })}
-            </ul>
+            <div className="space-y-4 px-5 py-4">
+              <ul className="space-y-3">
+                {nextActions.map((a) => {
+                  const k = action_key(a);
+                  return (
+                    <NextActionCard
+                      key={k}
+                      action={a}
+                      user={user_status[k] ?? "proposed"}
+                      setRef={(el) => (cardRefs.current[k] = el)}
+                      focused={drawer.focus_key === k}
+                    />
+                  );
+                })}
+              </ul>
+              {blockedActions.length > 0 && (
+                <div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                      Blocked — won't run
+                    </span>
+                    <span className="rounded-full bg-[var(--danger-bg)] px-1.5 text-[10px] font-semibold text-[var(--danger)]">
+                      {blockedActions.length}
+                    </span>
+                  </div>
+                  <p className="mb-2 text-[11.5px] leading-snug text-[var(--muted-fg)]">
+                    The deterministic gate refuses these even if you approve them. Try to override
+                    one, then Send.
+                  </p>
+                  <ul className="space-y-2">
+                    {blockedActions.map((a) => {
+                      const k = action_key(a);
+                      const u = user_status[k];
+                      return (
+                        <OverrideCard
+                          key={k}
+                          action={a}
+                          overridden={u === "approved" || u === "edited"}
+                        />
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
           ) : tab === "notes" ? (
             <NotesPanel actions={noteActions} />
-          ) : LIVE && serverResult ? (
+          ) : execResult ? (
             <>
-              <GatewayResult events={serverResult} />
+              <ExecutionResult result={execResult} />
               {audit.length > 0 && <AuditLog />}
             </>
           ) : (
@@ -503,20 +593,24 @@ export function ActionDiffDrawer() {
             <div className="flex items-center justify-between gap-3">
               <div className="text-[11.5px] leading-snug text-[var(--secondary-text)]">
                 <span className="font-semibold text-foreground">{pendingCount} pending</span>
-                <span className="text-[var(--muted-fg)]">
-                  {" "}
-                  · blocked items stay in the packet readiness table
-                </span>
+                {overrideCount > 0 ? (
+                  <span className="font-semibold text-[var(--danger)]">
+                    {" "}
+                    · {overrideCount} override{overrideCount === 1 ? "" : "s"} will be refused
+                  </span>
+                ) : (
+                  <span className="text-[var(--muted-fg)]"> · blocked items won't run</span>
+                )}
               </div>
               {LIVE ? (
                 <button
                   type="button"
                   onClick={onSendAll}
-                  disabled={execute.isPending || pendingCount === 0}
+                  disabled={execute.isPending || !canSend}
                   className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-3.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-95 disabled:opacity-60"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  {execute.isPending ? "Sending…" : `Send all (${pendingCount})`}
+                  {execute.isPending ? "Sending…" : sendLabel}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
@@ -524,16 +618,16 @@ export function ActionDiffDrawer() {
                   <button
                     type="button"
                     onClick={onSendAll}
-                    disabled={pendingCount === 0}
+                    disabled={!canSend}
                     className={[
                       "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold text-white transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      pendingCount === 0
+                      !canSend
                         ? "cursor-not-allowed bg-[var(--muted-fg)] opacity-60"
                         : "bg-gradient-ai hover:opacity-95",
                     ].join(" ")}
                   >
                     <Send className="h-3.5 w-3.5" />
-                    Send all ({pendingCount})
+                    {sendLabel}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -1013,6 +1107,76 @@ function NextActionCard({
                 )}
               </button>
             </>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// A blocked action surfaced so the presenter can deliberately try to push it through. Approving it
+// stages an "override"; on Send the deterministic layer refuses it — proving the gate can't be bypassed.
+function OverrideCard({ action, overridden }: { action: Action; overridden: boolean }) {
+  const k = action_key(action);
+  const targetLabel = labelFor(action.diff.target_object_id);
+  return (
+    <li>
+      <div
+        className={[
+          "overflow-hidden rounded-xl border bg-card shadow-card transition-colors",
+          overridden ? "border-[var(--danger)]/45" : "border-dashed border-border",
+        ].join(" ")}
+      >
+        <div className="px-4 pt-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                {tool_labels[action.tool]}
+              </div>
+              <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+                {targetLabel}
+              </h3>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+              <Chip className="bg-[var(--danger-bg)] text-[var(--danger)]">Blocked</Chip>
+              {overridden && (
+                <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Override staged</Chip>
+              )}
+            </div>
+          </div>
+          <div className="mt-2 flex items-start gap-2 rounded-md border border-[var(--danger)]/25 bg-[var(--danger-bg)] px-2.5 py-2 text-[12px] leading-snug text-[var(--danger)]">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{action.blocked_reason}</span>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border bg-[var(--canvas)]/50 px-4 py-2">
+          <span className="text-[11px] text-[var(--muted-fg)]">
+            {overridden
+              ? "Will be sent as approved — and refused by the gate."
+              : "Demo: approve it anyway to test the gate."}
+          </span>
+          {overridden ? (
+            <button
+              type="button"
+              onClick={() => resetAction(k)}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2.5 text-[11.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)]"
+            >
+              <Undo2 className="h-3 w-3" />
+              Remove override
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                approveAction(k);
+                toast("Override staged", {
+                  description: "The deterministic gate will still refuse it on send.",
+                });
+              }}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--danger)]/40 bg-[var(--danger-bg)]/60 px-2.5 text-[11.5px] font-semibold text-[var(--danger)] transition-colors hover:bg-[var(--danger-bg)]"
+            >
+              Approve anyway (override)
+            </button>
           )}
         </div>
       </div>
@@ -1658,9 +1822,17 @@ function AuditLog() {
 /* Gateway execution result (live) — proof the server re-gates the plan        */
 /* -------------------------------------------------------------------------- */
 
-function GatewayResult({ events }: { events: ServerAuditEvent[] }) {
-  const skipped = events.filter((e) => e.action === "skipped").length;
-  const executed = events.length - skipped;
+function ExecutionResult({ result }: { result: ExecResult }) {
+  const { executed, refused, mode } = result;
+  const rows = [
+    ...executed.map((r) => ({ ...r, ok: true })),
+    ...refused.map((r) => ({ ...r, ok: false })),
+  ];
+  const heldOverride = refused.length > 0;
+  const badge =
+    mode === "live"
+      ? "Server-verified · POST /actions/execute"
+      : "Deterministic re-gate · the same rule the gateway runs";
   return (
     <div className="border-b border-border bg-background px-5 py-4">
       <div className="flex items-start gap-2.5">
@@ -1669,34 +1841,41 @@ function GatewayResult({ events }: { events: ServerAuditEvent[] }) {
         </span>
         <div className="min-w-0">
           <div className="text-[13px] font-semibold text-foreground">
-            Gateway execution · server-gated
+            {heldOverride ? "Gate held — override refused" : "Executed · gated"}
           </div>
           <div className="text-[11.5px] leading-snug text-[var(--secondary-text)]">
-            Approved all {events.length} indices · gateway executed{" "}
-            <span className="font-semibold text-[var(--success)]">{executed}</span> · refused{" "}
-            <span className="font-semibold text-[var(--danger)]">{skipped}</span> (re-gated
-            server-side)
+            Executed <span className="font-semibold text-[var(--success)]">{executed.length}</span>
+            {heldOverride && (
+              <>
+                {" "}
+                · refused{" "}
+                <span className="font-semibold text-[var(--danger)]">{refused.length}</span> (re-gated)
+              </>
+            )}
           </div>
         </div>
       </div>
 
+      <div className="mt-2.5 inline-flex items-center gap-1 rounded-full border border-[var(--primary)]/20 bg-[var(--primary-tint)]/50 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
+        <ShieldCheck className="h-3 w-3" />
+        {badge}
+      </div>
+
       <ol className="mt-3 space-y-1.5">
-        {events.map((e, i) => {
-          const ok = e.action === "executed";
-          const toolLabel =
-            tool_labels[e.detail.tool as keyof typeof tool_labels] ?? e.detail.tool ?? "action";
-          const target = e.detail.target ? labelFor(String(e.detail.target)) : "";
+        {rows.map((r, i) => {
+          const toolLabel = tool_labels[r.tool as keyof typeof tool_labels] ?? r.tool ?? "action";
+          const target = r.target ? labelFor(r.target) : "";
           return (
             <li
               key={i}
               className={[
                 "flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-[12px]",
-                ok
+                r.ok
                   ? "border-[var(--success)]/25 bg-[var(--success-bg)]/50"
                   : "border-[var(--danger)]/25 bg-[var(--danger-bg)]/40",
               ].join(" ")}
             >
-              {ok ? (
+              {r.ok ? (
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
               ) : (
                 <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
@@ -1704,12 +1883,12 @@ function GatewayResult({ events }: { events: ServerAuditEvent[] }) {
               <div className="min-w-0 flex-1">
                 <span className="font-medium text-foreground">{toolLabel}</span>
                 {target ? <span className="text-[var(--secondary-text)]"> · {target}</span> : null}
-                <span className={ok ? "ml-1 text-[var(--success)]" : "ml-1 text-[var(--danger)]"}>
-                  {ok ? "· executed" : "· refused"}
+                <span className={r.ok ? "ml-1 text-[var(--success)]" : "ml-1 text-[var(--danger)]"}>
+                  {r.ok ? "· executed" : "· refused"}
                 </span>
-                {!ok && e.detail.reason ? (
+                {!r.ok && r.reason ? (
                   <div className="mt-0.5 font-mono text-[10.5px] leading-snug text-[var(--danger)]">
-                    {e.detail.reason}
+                    {r.reason}
                   </div>
                 ) : null}
               </div>
@@ -1718,10 +1897,13 @@ function GatewayResult({ events }: { events: ServerAuditEvent[] }) {
         })}
       </ol>
 
-      <p className="mt-2.5 text-[11px] leading-snug text-[var(--muted-fg)]">
-        Every index was submitted as approved. The gateway recomposed the plan and refused the
-        blocked actions — a client cannot bypass a deterministic gate.
-      </p>
+      {heldOverride && (
+        <p className="mt-2.5 text-[11px] leading-snug text-[var(--muted-fg)]">
+          You approved a blocked action; the {mode === "live" ? "gateway" : "deterministic layer"}{" "}
+          recomposed the plan and refused it — a client can't bypass the gate.
+          {mode === "mock" ? " Start `make api` to verify against the live server." : ""}
+        </p>
+      )}
     </div>
   );
 }
