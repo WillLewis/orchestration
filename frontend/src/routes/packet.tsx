@@ -34,11 +34,11 @@ import {
   type SourceType,
 } from "@/data/brief";
 import { pinPacket, usePacketPinned } from "@/lib/packet-store";
-import { openDrawer, usePathReady } from "@/lib/actions-store";
+import { openDrawer } from "@/lib/actions-store";
+import { useGovernedBrief } from "@/lib/revalidation-store";
 import { type Action } from "@/data/actions";
 import {
   useActionPlanQuery,
-  useBriefQuery,
   useChatMutation,
   useMintWorkProductMutation,
   resolveReadinessAction,
@@ -482,7 +482,6 @@ function DecisionReadinessTable({
 function PacketWorkspace() {
   const { focus } = Route.useSearch();
   const { pinned, by, at } = usePacketPinned();
-  const pathReady = usePathReady();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const readinessRef = useRef<HTMLElement | null>(null);
 
@@ -493,7 +492,10 @@ function PacketWorkspace() {
     source_count,
     rulepack_id,
     rulepack_version,
-  } = useBriefQuery().data;
+    workflow_status,
+    banner_subtitle,
+    path_to_ready,
+  } = useGovernedBrief();
   const { actions: planActions } = useActionPlanQuery().data;
   const mint = useMintWorkProductMutation();
   const b = decision_brief;
@@ -675,7 +677,7 @@ function PacketWorkspace() {
                   </div>
                 </div>
                 <p className="mt-1.5 pl-8 text-[13px] leading-snug text-foreground">
-                  Credit Officer approval missing · discount exceeds delegated authority.
+                  {banner_subtitle}
                 </p>
               </div>
               <div className="rounded-lg border border-[var(--danger)]/20 bg-background/70 p-3">
@@ -683,11 +685,7 @@ function PacketWorkspace() {
                   Path to ready
                 </div>
                 <ul className="mt-2 space-y-1.5">
-                  {[
-                    { label: "Route to Credit Officer", done: pathReady.route_credit },
-                    { label: "Complete Legal approval", done: pathReady.complete_legal },
-                    { label: "Upload final covenant tracker", done: pathReady.upload_tracker },
-                  ].map((item) => (
+                  {path_to_ready.map((item) => (
                     <li
                       key={item.label}
                       className="flex items-center gap-2 text-[12.5px] text-foreground"
@@ -709,10 +707,10 @@ function PacketWorkspace() {
                     </li>
                   ))}
                 </ul>
-                {pathReady.workflow_status && (
+                {workflow_status && (
                   <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10.5px] font-semibold text-primary">
                     <Workflow className="h-3 w-3" />
-                    Workflow: {pathReady.workflow_status}
+                    Workflow: {workflow_status}
                   </div>
                 )}
               </div>

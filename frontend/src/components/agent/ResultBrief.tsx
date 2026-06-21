@@ -1,12 +1,22 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, XCircle, AlertTriangle, Lock, Files, GitCompareArrows } from "lucide-react";
-import { useBriefQuery, useMeetingQuery } from "@/hooks/queries";
+import {
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Lock,
+  Files,
+  GitCompareArrows,
+} from "lucide-react";
+import { useMeetingQuery } from "@/hooks/queries";
+import { useGovernedBrief } from "@/lib/revalidation-store";
 import { usePacketPinned } from "@/lib/packet-store";
 import { openDrawer } from "@/lib/actions-store";
 
 export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => void }) {
-  const { decision_brief: b, decision_readiness } = useBriefQuery().data;
+  const { decision_brief: b, decision_readiness } = useGovernedBrief();
   const { meeting } = useMeetingQuery().data;
+  const approvalReady = b.policy_gates.approval_ready;
   const { pinned } = usePacketPinned();
   const blockers = decision_readiness.rows.filter((row) => row.status === "blocking");
 
@@ -45,9 +55,20 @@ export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => 
               {b.decision_needed}
             </p>
 
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--danger-bg)] px-2.5 py-1 text-[12px] font-semibold text-[var(--danger)]">
-              <XCircle className="h-3.5 w-3.5" strokeWidth={2.25} />
-              Approval-ready: No
+            <div
+              className={[
+                "mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold",
+                approvalReady
+                  ? "bg-[var(--success-bg)] text-[var(--success)]"
+                  : "bg-[var(--danger-bg)] text-[var(--danger)]",
+              ].join(" ")}
+            >
+              {approvalReady ? (
+                <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.25} />
+              ) : (
+                <XCircle className="h-3.5 w-3.5" strokeWidth={2.25} />
+              )}
+              Approval-ready: {approvalReady ? "Yes" : "No"}
             </div>
           </section>
 

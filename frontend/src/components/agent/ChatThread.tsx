@@ -1,10 +1,19 @@
 import { useEffect, useRef } from "react";
-import { Lock, ShieldAlert, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import {
+  Lock,
+  ShieldAlert,
+  AlertTriangle,
+  FileText,
+  Loader2,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
 import { sources } from "@/data/brief";
-import type { ChatMessage, ChatResponse } from "@/hooks/queries";
+import type { ChatAction, ChatMessage, ChatResponse } from "@/hooks/queries";
 
-// A rendered turn: the wire shape plus an assistant turn's UI-only governance `meta`.
-export type Turn = ChatMessage & { meta?: ChatResponse };
+// A rendered turn: the wire shape plus an assistant turn's UI-only governance `meta` and an optional
+// pending-approval chip label (Beat 3).
+export type Turn = ChatMessage & { meta?: ChatResponse; pending?: string };
 
 // Each governance boolean → a chip, rendered only when the flag is exactly `true`, so an absent or
 // newly-added field never lights one. Styling + icons mirror ResultBrief / the packet STATUS_CHIP.
@@ -29,7 +38,17 @@ const GOV_CHIPS = [
   },
 ] as const;
 
-export function ChatThread({ messages, pending }: { messages: Turn[]; pending: boolean }) {
+export function ChatThread({
+  messages,
+  pending,
+  onAction,
+}: {
+  messages: Turn[];
+  pending: boolean;
+  // When provided, an assistant turn's `meta.actions` render as buttons (meeting panel only; the
+  // packet's read-only "Ask" omits this so no demo buttons appear there).
+  onAction?: (action: ChatAction) => void;
+}) {
   const endRef = useRef<HTMLDivElement>(null);
   // Scroll to the latest turn — and when the typing indicator appears.
   useEffect(() => {
@@ -39,7 +58,7 @@ export function ChatThread({ messages, pending }: { messages: Turn[]; pending: b
   return (
     <div className="space-y-3 px-5 py-4" aria-live="polite">
       {messages.map((m, i) => (
-        <ChatTurn key={i} turn={m} />
+        <ChatTurn key={i} turn={m} onAction={onAction} />
       ))}
       {pending && (
         <div className="flex items-center gap-2 px-1 text-[12.5px] text-[var(--muted-fg)]">
@@ -52,7 +71,7 @@ export function ChatThread({ messages, pending }: { messages: Turn[]; pending: b
   );
 }
 
-function ChatTurn({ turn }: { turn: Turn }) {
+function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatAction) => void }) {
   if (turn.role === "user") {
     return (
       <div className="flex justify-end">
@@ -65,6 +84,7 @@ function ChatTurn({ turn }: { turn: Turn }) {
 
   const meta = turn.meta;
   const citations = meta?.citations ?? [];
+  const actions = meta?.actions ?? [];
 
   // Permission/Gate are request-specific refusal EVENTS → boolean-driven. `missing_evidence` is a
   // persistent decision-STATE (true on nearly every Acme answer), so only surface it when THIS
@@ -88,6 +108,15 @@ function ChatTurn({ turn }: { turn: Turn }) {
             <span className="text-[var(--muted-fg)]">No answer was returned.</span>
           )}
         </div>
+
+        {turn.pending && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-md bg-[var(--warning-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--warning)]">
+              <Clock className="h-3 w-3" />
+              Pending approval · {turn.pending}
+            </span>
+          </div>
+        )}
 
         {chips.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -120,6 +149,22 @@ function ChatTurn({ turn }: { turn: Turn }) {
                 </span>
               );
             })}
+          </div>
+        )}
+
+        {onAction && actions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {actions.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onAction(a)}
+                className="inline-flex h-7 items-center gap-1 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {a.label}
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            ))}
           </div>
         )}
       </div>

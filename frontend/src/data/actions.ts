@@ -8,7 +8,8 @@ export type ToolKey =
   | "update_project_status"
   | "route_approval"
   | "draft_internal_note"
-  | "schedule_meeting";
+  | "schedule_meeting"
+  | "edit_document";
 
 export type SideEffect = "read" | "draft" | "propose" | "write";
 export type Risk = "low" | "medium" | "high";
@@ -38,12 +39,14 @@ export const tool_labels: Record<ToolKey, string> = {
   route_approval: "Route approval",
   draft_internal_note: "Draft internal note",
   schedule_meeting: "Schedule meeting",
+  edit_document: "Reconcile document",
 };
 
 // Friendly labels for target_object_id / sources. WS-A corpus supplies this live.
 export const object_labels: Record<string, string> = {
   wf_approval: "Acme approval workflow",
   doc_pricing_exception: "Pricing exception",
+  doc_cs_plan: "Customer success plan",
   doc_legal_memo: "Legal approval memo",
   doc_financials: "Acme financial model",
   doc_credit_memo: "Acme credit memo · v3",
@@ -173,3 +176,21 @@ export function action_key(a: Action): string {
   // Stable id for store keying — tool + target.
   return `${a.tool}:${a.diff.target_object_id}`;
 }
+
+// The Beat 5 cascade. The CO-approved 22% makes the customer success plan's 18% assumption stale, so
+// the agent proposes ONE human-accepted reconciliation edit. Kept OUT of `action_plan` so it never
+// pollutes the six-action follow-ups counts; the drawer renders it alone in "revalidation_edit" mode.
+export const cascade_action: Action = {
+  tool: "edit_document",
+  reason: "Discount approved at 22%; this plan still assumes 18%. Reconcile to the approved value.",
+  sources: [{ object_id: "doc_pricing_exception" }],
+  side_effect: "write",
+  risk: "low",
+  required_approver: null,
+  blocked_reason: null,
+  diff: {
+    target_object_id: "doc_cs_plan",
+    before: { assumed_discount: "18%" },
+    after: { assumed_discount: "22%" },
+  },
+};

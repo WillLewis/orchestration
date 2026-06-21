@@ -41,10 +41,11 @@ from core.schemas import (
     ContextBundle,
     DeterministicDecision,
     MissingEvidenceState,
+    RuleFiring,
     SourceRef,
 )
 
-from api.models import ChatMessage, ChatResponse
+from api.models import ChatAction, ChatMessage, ChatResponse
 from api.orchestrator import assemble_context, verify_context
 
 # --------------------------------------------------------------------------- #
@@ -256,6 +257,25 @@ def answer(
     asked_missing = _asked_missing_evidence(request_text, bundle)
     missing_roles = [r.role for r in decision.approvals.requirements if not r.present]
 
+    # 3a. Deterministic discount-application block (Beat 1) + permission-aware "why" (Beat 2). A
+    #     restricted-content question still refuses first; these never fire for the legal-memo case.
+    if not restricted_hit:
+        block = _detect_discount_block(request_text, decision)
+        if block is not None:
+            requested, delegated = block
+            return ChatResponse(
+                reply=_discount_block_reply(requested, delegated),
+                citations=_validate_citations(
+                    ["doc_pricing_exception", "wf_approval"], bundle
+                ),
+                permission_boundary_hit=False,
+                gate_held=True,
+                missing_evidence=bool(bundle.missing_evidence),
+                actions=_discount_block_actions(delegated),
+            )
+        if _asks_why_approval(request_text):
+            return _why_approval_response(bundle, decision)
+
     # 4. Build the final reply deterministically. Sensitive branches discard the draft entirely;
     #    the clean informational branch may use the (guarded) draft prose.
     if restricted_hit:
@@ -422,6 +442,129 @@ _GATE_SENSITIVE_HINTS: tuple[str, ...] = (
 def _is_gate_sensitive(request_text: str) -> bool:
     low = request_text.lower()
     return any(hint in low for hint in _GATE_SENSITIVE_HINTS)
+
+
+# --------------------------------------------------------------------------- #
+# Deterministic discount-application block (Beat 1) + permission-aware "why" (Beat 2)
+# --------------------------------------------------------------------------- #
+# Cues that the user is trying to APPLY/SET a discount (vs merely asking about status). "approve" is
+# deliberately NOT here — a bare "approve the renewal" is the generic gate-hold, not this block.
+_DISCOUNT_APPLY_HINTS: tuple[str, ...] = (
+    "apply",
+    "set the discount",
+    "set discount",
+    "give them",
+    "give the customer",
+    "make the discount",
+    "lock in",
+    "honor the",
+)
+_DISCOUNT_WORDS: tuple[str, ...] = ("discount", "pricing exception", "exception")
+
+
+def _approval_threshold_firing(decision: DeterministicDecision) -> RuleFiring | None:
+    return next((f for f in decision.firings if f.rule_id == "approval_threshold"), None)
+
+
+def _detect_discount_block(
+    request_text: str, decision: DeterministicDecision
+) -> tuple[float, float] | None:
+    """If the request tries to APPLY a discount that exceeds delegated authority, return
+    (requested, delegated) read from the deterministic ``approval_threshold`` firing — the numbers
+    are never invented by this layer. Returns None otherwise (a status question falls through)."""
+    firing = _approval_threshold_firing(decision)
+    if firing is None or firing.passed or not firing.threshold:
+        return None
+    requested = firing.threshold.get("requested_discount")
+    delegated = firing.threshold.get("delegated_authority")
+    if requested is None or delegated is None or requested <= delegated:
+        return None
+    low = request_text.lower()
+    wants_apply = any(h in low for h in _DISCOUNT_APPLY_HINTS)
+    mentions = any(w in low for w in _DISCOUNT_WORDS) or _pct(requested) in low
+    return (float(requested), float(delegated)) if wants_apply and mentions else None
+
+
+def _pct(value: float) -> str:
+    return f"{round(value * 100)}%"
+
+
+def _discount_block_reply(requested: float, delegated: float) -> str:
+    return (
+        f"I can't apply that. A {_pct(requested)} discount exceeds your delegated authority "
+        f"(up to {_pct(delegated)}). This needs Credit Officer approval before it can be applied."
+    )
+
+
+def _discount_block_actions(delegated: float) -> list[ChatAction]:
+    """The three governed buttons. Deterministic; the model never authors these."""
+    return [
+        ChatAction(id="explain", label="Explain", kind="explain"),
+        ChatAction(
+            id="route_credit_officer",
+            label="Route to Credit Officer",
+            kind="route_credit_officer",
+        ),
+        ChatAction(
+            id="apply_capped",
+            label=f"Use the max I can authorize ({_pct(delegated)})",
+            kind="apply_capped",
+        ),
+    ]
+
+
+_WHY_HINTS: tuple[str, ...] = ("why", "how come", "what makes", "what requires")
+_APPROVAL_WORDS: tuple[str, ...] = (
+    "approval",
+    "approve",
+    "sign off",
+    "sign-off",
+    "signoff",
+    "authoriz",
+)
+
+
+def _asks_why_approval(request_text: str) -> bool:
+    """A 'why does this need approval?' explanation intent — NOT a request for restricted content
+    (those are refused earlier) and NOT an apply/set request (handled by the block above)."""
+    low = request_text.lower()
+    return any(h in low for h in _WHY_HINTS) and any(w in low for w in _APPROVAL_WORDS)
+
+
+def _why_approval_response(
+    bundle: ContextBundle, decision: DeterministicDecision
+) -> ChatResponse:
+    """Permission-aware explanation: the threshold that triggers approval + an honest note that a
+    restricted source was omitted (named only by existence/type, never its contents). All numbers
+    come from the deterministic firing; the gate status is the authoritative clause."""
+    parts: list[str] = []
+    firing = _approval_threshold_firing(decision)
+    if firing is not None and firing.threshold:
+        requested = firing.threshold.get("requested_discount")
+        delegated = firing.threshold.get("delegated_authority")
+        if requested is not None and delegated is not None:
+            parts.append(
+                f"Your authority allows discounts up to {_pct(delegated)}; {_pct(requested)} "
+                "requires Credit Officer sign-off."
+            )
+    if not parts:
+        parts.append(
+            "This exceeds your delegated authority and requires Credit Officer sign-off."
+        )
+    excluded = bundle.permission_boundary.excluded_object_ids
+    if excluded:
+        parts.append(
+            "I based this only on the pricing policy and approval workflow you can access — a "
+            "related Legal memo is restricted, so it wasn't used."
+        )
+    parts.append(_gate_status_sentence(decision))
+    return ChatResponse(
+        reply=" ".join(parts),
+        citations=_validate_citations(["doc_pricing_exception", "wf_approval"], bundle),
+        permission_boundary_hit=bool(excluded),
+        gate_held=False,
+        missing_evidence=bool(bundle.missing_evidence),
+    )
 
 
 def _missing_tokens(state: MissingEvidenceState) -> set[str]:

@@ -18,6 +18,7 @@ _BASE_TS = datetime(2026, 6, 12, 14, 0, tzinfo=timezone.utc)
 _PRIOR_TS = datetime(2026, 6, 5, 14, 0, tzinfo=timezone.utc)
 _LEGAL_REVIEW_TS = datetime(2026, 6, 13, 9, 0, tzinfo=timezone.utc)
 _FINANCIALS_V2_TS = datetime(2026, 6, 13, 10, 30, tzinfo=timezone.utc)
+_CO_SIGNOFF_TS = datetime(2026, 6, 13, 11, 0, tzinfo=timezone.utc)
 
 _AUTHORITY_MATRICES: dict[str, AuthorityMatrix] = {
     "finance": {
@@ -50,7 +51,7 @@ _AUTHORITY_MATRICES: dict[str, AuthorityMatrix] = {
     },
 }
 
-_CHANGE_EVENTS = ("financials_v2", "legal_needs_review")
+_CHANGE_EVENTS = ("financials_v2", "legal_needs_review", "credit_officer_signoff")
 
 
 def load(vertical: Vertical) -> list[WorkspaceObject]:
@@ -124,6 +125,43 @@ def apply_change(objects: list[WorkspaceObject], event_name: str) -> list[Worksp
                 "metadata": financials_metadata,
                 "version": financials.version + 1,
                 "updated_at": _FINANCIALS_V2_TS,
+            },
+            deep=True,
+        )
+        return copied
+
+    if event_name == "credit_officer_signoff":
+        # hand-off (WS-A / Codex): added for the revalidation demo (Beat 3→4). Mirrors the existing
+        # source-change events. The Credit Officer signs off on the 22% pricing exception → the live
+        # `/revalidate-brief` path recomputes the brief. NOTE for the gate recompute to stay HONEST
+        # (approval_ready must remain False — covenant tracker + Legal still block), the verifier
+        # must keep a blocking required-document gate (final_covenant_tracker) and Legal as a
+        # blocking role; see docs/REVALIDATION_LIVE_PARITY_HANDOFF.md.
+        _require_ids(positions, ["wf_approval", "doc_pricing_exception"], event_name)
+        workflow = copied[positions["wf_approval"]]
+        workflow_metadata = dict(workflow.metadata)
+        workflow_metadata["credit_officer_approval"] = True
+        copied[positions["wf_approval"]] = workflow.model_copy(
+            update={
+                "metadata": workflow_metadata,
+                "version": workflow.version + 1,
+                "updated_at": _CO_SIGNOFF_TS,
+            },
+            deep=True,
+        )
+
+        exception = copied[positions["doc_pricing_exception"]]
+        exception_metadata = dict(exception.metadata)
+        # The exception is now approved at the Credit Officer's authority (0.25 ≥ the requested 0.22),
+        # so the delegated-authority threshold gate clears against the approving role's limit.
+        exception_metadata["approval_state"] = "credit_officer_approved"
+        exception_metadata["approved_by_role"] = "credit_officer"
+        exception_metadata["approver_authority"] = 0.25
+        copied[positions["doc_pricing_exception"]] = exception.model_copy(
+            update={
+                "metadata": exception_metadata,
+                "version": exception.version + 1,
+                "updated_at": _CO_SIGNOFF_TS,
             },
             deep=True,
         )

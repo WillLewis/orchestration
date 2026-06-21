@@ -83,6 +83,16 @@ class ChatRequest(BaseModel):
     history: list[ChatMessage] = Field(default_factory=list)
 
 
+class ChatAction(BaseModel):
+    """A deterministic suggested-action button attached to a governed chat reply. The wrapper sets
+    these (never the model); ``kind`` drives the frontend transition. Used by the deterministic
+    discount-application block (Beat 1): Explain · Route to Credit Officer · use the capped max."""
+
+    id: str
+    label: str
+    kind: Literal["explain", "route_credit_officer", "apply_capped"]
+
+
 class ChatResponse(BaseModel):
     """The governed answer. Prose may be model-drafted, but every field below is set by the API
     wrapper's deterministic post-processing — never by the model:
@@ -90,7 +100,9 @@ class ChatResponse(BaseModel):
     * ``citations`` are validated against ``bundle.sources`` (hallucinated/excluded ids dropped);
     * ``permission_boundary_hit`` is derived from ``bundle.permission_boundary`` + the request;
     * ``gate_held`` reflects the deterministic decision (the model can't grant approval);
-    * ``missing_evidence`` mirrors ``bundle.missing_evidence``.
+    * ``missing_evidence`` mirrors ``bundle.missing_evidence``;
+    * ``actions`` are deterministic suggested-action buttons (empty unless the wrapper attaches them,
+      e.g. the discount-application block) — never model-authored.
 
     Keep this set MINIMAL — adding a field changes the wire contract the frontend consumes.
     """
@@ -100,6 +112,7 @@ class ChatResponse(BaseModel):
     permission_boundary_hit: bool = False
     gate_held: bool = False
     missing_evidence: bool = False
+    actions: list[ChatAction] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #

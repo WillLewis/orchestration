@@ -109,8 +109,28 @@ def test_apply_change_legal_needs_review_mutates_copy_only():
     assert changed_by_id["doc_legal_memo"].version == original_by_id["doc_legal_memo"].version + 1
 
 
+def test_apply_change_credit_officer_signoff_mutates_copy_only():
+    original = corpus.load("finance")
+    changed = corpus.apply_change(original, "credit_officer_signoff")
+    original_by_id = _by_id(original)
+    changed_by_id = _by_id(changed)
+
+    # The CO sign-off flips approval on the copy only and stamps the exception CO-approved.
+    assert original_by_id["wf_approval"].metadata["credit_officer_approval"] is False
+    assert changed_by_id["wf_approval"].metadata["credit_officer_approval"] is True
+    exception = changed_by_id["doc_pricing_exception"]
+    assert exception.metadata["approved_by_role"] == "credit_officer"
+    # The approving role's authority covers the requested exception (0.25 >= 0.22).
+    assert exception.metadata["approver_authority"] >= exception.metadata["discount"]
+    assert exception.version == original_by_id["doc_pricing_exception"].version + 1
+
+
 def test_change_events_lists_available_events():
-    assert set(corpus.change_events()) >= {"legal_needs_review", "financials_v2"}
+    assert set(corpus.change_events()) >= {
+        "legal_needs_review",
+        "financials_v2",
+        "credit_officer_signoff",
+    }
 
 
 @pytest.mark.parametrize("vertical", ["finance", "legal", "health"])

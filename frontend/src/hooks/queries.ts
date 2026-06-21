@@ -40,6 +40,7 @@ import {
   type GovernanceCertificate,
   type VerifyResult,
 } from "@/data/record";
+import { scriptedChatResponse } from "@/data/demo-chat";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
 // Mocks on by default → Lovable parity. Live only when explicitly disabled + a base URL.
@@ -496,6 +497,15 @@ export interface ChatMessage {
   content: string;
 }
 
+// A governed chat suggested-action button (api/models.py ChatAction). `kind` drives the panel's
+// transition; `explain`/`route_credit_officer`/`apply_capped` come from the backend block, the
+// flow kinds (`open_cascade`/`propose_followups`) are appended by the panel as the arc advances.
+export interface ChatAction {
+  id: string;
+  label: string;
+  kind: "explain" | "route_credit_officer" | "apply_capped" | "open_cascade" | "propose_followups";
+}
+
 // Contract-shaped response (api/models.py ChatResponse). Everything but `reply` is optional so a
 // future backend field never breaks decode, and an absent boolean never falsely lights a chip.
 export interface ChatResponse {
@@ -504,6 +514,7 @@ export interface ChatResponse {
   permission_boundary_hit?: boolean;
   gate_held?: boolean;
   missing_evidence?: boolean;
+  actions?: ChatAction[];
 }
 
 // POST a governed question to the gateway. Mirrors the workproduct mutations above (inline
@@ -516,14 +527,17 @@ export function useChatMutation() {
       message: string;
       history: ChatMessage[];
     }): Promise<ChatResponse> => {
-      // Chat needs the live gateway — there is no single canned reply. Degrade gracefully (no
-      // crash). Never re-implement the refusals in JS; that would recreate the canned-state problem
-      // this wiring exists to kill.
+      // Mock mode: the revalidation demo runs under VITE_USE_MOCKS, so the scripted demo prompts
+      // (the 22% block, the why-explanation) return pinned governed replies that MIRROR the backend
+      // block — a demo script, not governance-in-JS. Any non-scripted question degrades to the
+      // offline notice; the live gateway owns the real, general refusals.
       if (!LIVE) {
+        const scripted = scriptedChatResponse(input.message);
+        if (scripted) return scripted;
         return {
           reply:
             "Live chat is offline in this preview. Run the gateway (make api) and set " +
-            "VITE_USE_MOCKS=false to ask governed questions.",
+            "VITE_USE_MOCKS=false to ask governed questions beyond the demo script.",
           citations: [],
           permission_boundary_hit: false,
           gate_held: false,

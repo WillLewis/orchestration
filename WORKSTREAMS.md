@@ -38,6 +38,15 @@ Contract-first parallelization. WS-0 locks `core/schemas.py`, `core/pipeline.py`
 3. **M3 — Platform proof:** + F + G + I → revalidation + three-vertical eval scorecard (Phase 3).
 4. **M4 — Demo:** + H → the 4 surfaces wired to the live pipeline; dry-runs.
 
+## Cross-lane hand-offs
+- **Revalidation "governed change" demo (WS-D/H + Track B/C):** the mock-first arc + live `/chat`
+  block ship now. A `credit_officer_signoff` event was added to `corpus/` (WS-A/Codex) with an inline
+  hand-off note. Remaining **live** gate-clearing + cascade parity (WS-C facts must keep
+  `approval_ready=False` post-sign-off; WS-F cascade route; WS-E `edit_document` ToolCard + remediation
+  carve-out; the `/revalidate-brief` endpoint) is specified in
+  [`docs/REVALIDATION_LIVE_PARITY_HANDOFF.md`](docs/REVALIDATION_LIVE_PARITY_HANDOFF.md). Not load-bearing
+  for the demo (mock proves the behavior).
+
 ---
 
 ## WS-0 frozen contract — v1 ✅ (LOCKED)

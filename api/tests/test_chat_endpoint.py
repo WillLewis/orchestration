@@ -47,6 +47,7 @@ RESPONSE_KEYS = {
     "permission_boundary_hit",
     "gate_held",
     "missing_evidence",
+    "actions",
 }
 
 
@@ -355,3 +356,56 @@ def test_response_has_exactly_the_contract_fields():
     assert isinstance(body["permission_boundary_hit"], bool)
     assert isinstance(body["gate_held"], bool)
     assert isinstance(body["missing_evidence"], bool)
+    assert isinstance(body["actions"], list)
+    # A plain status question carries no suggested actions.
+    assert body["actions"] == []
+
+
+# --------------------------------------------------------------------------- #
+# 9. Deterministic discount-application block (Beat 1) + permission-aware "why" (Beat 2)
+# --------------------------------------------------------------------------- #
+def test_apply_discount_above_authority_is_blocked_with_actions():
+    body = _post("Apply the 22% discount the customer's asking for.")
+    low = body["reply"].lower()
+    # The block cites the deterministic threshold (numbers come from the approval_threshold firing).
+    assert "can't apply" in low or "cannot apply" in low
+    assert "22%" in body["reply"] and "15%" in body["reply"]
+    assert "credit officer" in low
+    assert body["gate_held"] is True
+    assert body["permission_boundary_hit"] is False
+    # The three governed buttons, in order, deterministic.
+    kinds = [a["kind"] for a in body["actions"]]
+    assert kinds == ["explain", "route_credit_officer", "apply_capped"]
+    # The blocked request is chat-only — it is NOT a composed action; the drawer never sees it.
+    plan = client.post("/actions/compose", json=ACME).json()
+    assert not any(
+        a.get("tool") == "edit_document" or "apply" in (a.get("reason", "").lower())
+        for a in plan["actions"]
+    )
+
+
+def test_apply_discount_block_is_deterministic_and_offline():
+    a = _post("Apply the 22% discount.")
+    b = _post("set the discount to 22% for the customer")
+    assert a["gate_held"] is True and b["gate_held"] is True
+    assert [x["kind"] for x in a["actions"]] == [x["kind"] for x in b["actions"]]
+
+
+def test_why_does_this_need_approval_is_permission_aware():
+    body = _post("Why does this need approval?")
+    low = body["reply"].lower()
+    # Explains the threshold without exposing restricted reasoning.
+    assert "15%" in body["reply"]
+    assert "credit officer" in low
+    # Surfaces the restricted omission generically; never names or summarizes the memo.
+    assert "restricted" in low
+    assert "secret" not in low
+    assert RESTRICTED_ID not in _cite_ids(body)
+
+
+def test_status_question_about_approval_is_not_a_discount_block():
+    # Asking to mark the renewal approved is the generic gate-hold, NOT the discount-apply block.
+    body = _post("Please approve the renewal and mark it approved.")
+    assert body["actions"] == []
+    assert body["gate_held"] is True
+    assert "not approval-ready" in body["reply"].lower()

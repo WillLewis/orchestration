@@ -12,8 +12,13 @@ export type AuditEvent = {
   reverted?: boolean;
 };
 
+// "plan" = the multi-action follow-ups drawer (the existing six). "revalidation_edit" = the
+// single-mutation cascade drawer (Beat 5) — same diff component, one card only.
+export type DrawerMode = "plan" | "revalidation_edit";
+
 export type DrawerState = {
   open: boolean;
+  mode: DrawerMode;
   focus_key: string | null;
   source: string; // human label of the trigger
 };
@@ -28,7 +33,7 @@ type State = {
 };
 
 const initial: State = {
-  drawer: { open: false, focus_key: null, source: "" },
+  drawer: { open: false, mode: "plan", focus_key: null, source: "" },
   user_status: Object.fromEntries(
     action_plan.actions.map((a) => [action_key(a), "proposed"] as const),
   ),
@@ -57,16 +62,21 @@ export function useActionsStore(): State {
 
 /* -------- drawer controls -------- */
 
-export function openDrawer(opts?: { focus_key?: string | null; source?: string }) {
+export function openDrawer(opts?: {
+  focus_key?: string | null;
+  source?: string;
+  mode?: DrawerMode;
+}) {
   state.drawer = {
     open: true,
+    mode: opts?.mode ?? "plan",
     focus_key: opts?.focus_key ?? null,
     source: opts?.source ?? state.drawer.source ?? "Acme renewal — pre-committee review",
   };
   emit();
 }
 export function closeDrawer() {
-  state.drawer = { ...state.drawer, open: false, focus_key: null };
+  state.drawer = { ...state.drawer, open: false, mode: "plan", focus_key: null };
   emit();
 }
 

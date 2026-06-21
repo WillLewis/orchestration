@@ -8,6 +8,7 @@ import {
   CheckSquare,
   FileEdit,
   GitBranch,
+  GitCompareArrows,
   History,
   Lock,
   Pencil,
@@ -24,6 +25,7 @@ import { toast } from "sonner";
 import {
   action_key,
   approver_labels,
+  cascade_action,
   derive_status,
   object_labels,
   tool_labels,
@@ -45,6 +47,7 @@ import {
   useActionsStore,
   type UserStatus,
 } from "@/lib/actions-store";
+import { acceptCascadeEdit, useRevalidation } from "@/lib/revalidation-store";
 import {
   LIVE,
   useActionPlanQuery,
@@ -62,6 +65,7 @@ const TOOL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   route_approval: GitBranch,
   draft_internal_note: FileEdit,
   schedule_meeting: Calendar,
+  edit_document: GitCompareArrows,
 };
 
 function labelFor(id: string) {
@@ -152,7 +156,20 @@ const SIDE_CLS: Record<SideEffect, string> = {
 export function ActionDiffDrawer() {
   const store = useActionsStore();
   const { drawer, user_status, audit } = store;
+  const reval = useRevalidation();
   const planActions = useActionPlanQuery().data.actions;
+  // Beat 6: once the Credit Officer has signed off, the route-to-CO follow-up is already done —
+  // drop it so the plan proposes only the REMAINING work (tracker, Legal, schedule). The live
+  // gateway proof below still submits the full plan to prove server-side re-gating.
+  const visibleActions = useMemo(
+    () =>
+      reval.creditSigned
+        ? planActions.filter(
+            (a) => !(a.tool === "route_approval" && a.required_approver === "credit_officer"),
+          )
+        : planActions,
+    [planActions, reval.creditSigned],
+  );
   const [tab, setTab] = useState<"changes" | "audit">("changes");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const execute = useExecuteActionsMutation();
@@ -205,12 +222,12 @@ export function ActionDiffDrawer() {
       needs_approval: 1,
       blocked: 2,
     };
-    return [...planActions].sort((a, b) => order[derive_status(a)] - order[derive_status(b)]);
-  }, [planActions]);
+    return [...visibleActions].sort((a, b) => order[derive_status(a)] - order[derive_status(b)]);
+  }, [visibleActions]);
 
   const counts = useMemo(() => {
     const c = {
-      total: planActions.length,
+      total: visibleActions.length,
       ready: 0,
       needs_approval: 0,
       blocked: 0,
@@ -219,7 +236,7 @@ export function ActionDiffDrawer() {
       rejected: 0,
       committed: 0,
     };
-    planActions.forEach((a) => {
+    visibleActions.forEach((a) => {
       const d = derive_status(a);
       c[d] += 1;
       const u = user_status[action_key(a)];
@@ -229,15 +246,15 @@ export function ActionDiffDrawer() {
       else if (u === "committed") c.committed += 1;
     });
     return c;
-  }, [user_status, planActions]);
+  }, [user_status, visibleActions]);
 
   const executableCount = useMemo(
     () =>
-      planActions.filter((a) => {
+      visibleActions.filter((a) => {
         const u = user_status[action_key(a)];
         return (u === "approved" || u === "edited") && !a.blocked_reason;
       }).length,
-    [user_status, planActions],
+    [user_status, visibleActions],
   );
 
   function onExecute() {
@@ -249,6 +266,8 @@ export function ActionDiffDrawer() {
   }
 
   if (!drawer.open) return null;
+  // Beat 5: the single-mutation cascade — same diff component, one card, no 6-action chrome.
+  if (drawer.mode === "revalidation_edit") return <CascadeDrawer />;
 
   return (
     <div
@@ -999,6 +1018,210 @@ function GatewayResult({ events }: { events: ServerAuditEvent[] }) {
         Every index was submitted as approved. The gateway recomposed the plan and refused the
         blocked actions — a client cannot bypass a deterministic gate.
       </p>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cascade drawer (Beat 5) — one governed edit, human-accepted                */
+/* -------------------------------------------------------------------------- */
+
+function CascadeDrawer() {
+  const { drawer } = useActionsStore();
+  const reval = useRevalidation();
+  const a = cascade_action;
+  const Icon = TOOL_ICON[a.tool] ?? GitCompareArrows;
+  const targetLabel = labelFor(a.diff.target_object_id);
+  const fromLabel = labelFor(a.sources[0]?.object_id ?? "");
+  const accepted = reval.csReconciled;
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, string>>(() =>
+    Object.fromEntries(Object.entries(a.diff.after).map(([k, v]) => [k, formatVal(v)])),
+  );
+  const [after, setAfter] = useState<Record<string, unknown>>(a.diff.after);
+
+  function saveDraft() {
+    const next: Record<string, unknown> = {};
+    Object.keys(a.diff.after).forEach((key) => {
+      next[key] = draft[key] ?? "";
+    });
+    setAfter(next);
+    setEditing(false);
+  }
+
+  function onAccept() {
+    acceptCascadeEdit();
+    toast.success("Edit accepted · conflict reconciled", {
+      description: `${targetLabel} now reflects the approved 22%.`,
+    });
+    closeDrawer();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Revalidation edit"
+    >
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
+        onClick={closeDrawer}
+      />
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col border-l border-border bg-background shadow-panel animate-in slide-in-from-right duration-200 sm:w-[560px]">
+        {/* Header */}
+        <div className="shrink-0 border-b border-border px-5 pt-5 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className="grid h-6 w-6 place-items-center rounded-md bg-gradient-ai text-white"
+                  aria-hidden
+                >
+                  <GitCompareArrows className="h-3.5 w-3.5" />
+                </span>
+                <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
+                  Revalidation edit
+                </h2>
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10.5px] font-semibold text-[var(--secondary-text)]">
+                  <ShieldCheck className="h-3 w-3 text-primary" />
+                  Agent proposes · you dispose
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12px] text-[var(--secondary-text)]">
+                One dependent document needs your acceptance after the approved 22% exception.
+              </p>
+              <p className="mt-0.5 text-[11.5px] text-[var(--muted-fg)]">
+                from {drawer.source || "Revalidation — Acme renewal"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeDrawer}
+              className="grid h-7 w-7 place-items-center rounded-md text-[var(--muted-fg)] transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body — single card */}
+        <div className="flex-1 overflow-y-auto bg-[var(--canvas)]/40 px-5 py-4">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+            <div className="px-4 pt-3">
+              <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[var(--canvas)] text-[var(--secondary-text)]">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                      Revalidation edit
+                    </div>
+                    <div className="mt-0.5 truncate text-[14px] font-semibold leading-tight text-foreground">
+                      {targetLabel}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-1">
+                  <Chip className={SIDE_CLS[a.side_effect]}>{a.side_effect}</Chip>
+                  <Chip className={RISK_CLS[a.risk]}>low risk</Chip>
+                  <Chip
+                    className={
+                      accepted
+                        ? "bg-[var(--success-bg)] text-[var(--success)]"
+                        : "bg-[var(--warning-bg)] text-[var(--warning)]"
+                    }
+                  >
+                    {accepted ? "Accepted" : "Needs acceptance"}
+                  </Chip>
+                </div>
+              </div>
+
+              <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
+                {a.reason}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                  from
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
+                  {fromLabel}
+                </span>
+              </div>
+
+              <div className="mt-3 flex items-center gap-1.5 px-0 py-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                <GitCompareArrows className="h-3 w-3" />
+                Diff · {targetLabel}
+              </div>
+              <div className="mb-3 overflow-hidden rounded-md border border-border bg-background">
+                {editing ? (
+                  <DiffEditor origAfter={a.diff.after} draft={draft} setDraft={setDraft} />
+                ) : (
+                  <DiffView before={a.diff.before} after={after} />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer — Reject · Edit · Accept edit */}
+        <div className="shrink-0 border-t border-border bg-background px-5 py-3">
+          <div className="flex items-center justify-end gap-2">
+            {accepted ? (
+              <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--success)]">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Accepted · conflict reconciled
+              </span>
+            ) : editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="h-8 rounded-md px-3 text-[12.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveDraft}
+                  className="h-8 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-white hover:bg-[var(--primary-hover)]"
+                >
+                  Save edits
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="h-8 rounded-md px-3 text-[12.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)]"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={onAccept}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-gradient-ai px-3 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-95"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Accept edit
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
