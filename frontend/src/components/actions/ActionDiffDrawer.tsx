@@ -251,7 +251,12 @@ export function ActionDiffDrawer() {
     [nextActions, user_status],
   );
 
-  const changesCount = isAfterSourceChange ? 1 : 0;
+  const sourceChangeCount =
+    isAfterSourceChange && verification.changed_sources.length > 0 ? 1 : 0;
+  const gateChangeCount = isAfterSourceChange ? verification.gate_changes.length : 0;
+  const cascadeChangeCount =
+    isAfterSourceChange && (reval.cascadeAvailable || reval.csReconciled) ? 1 : 0;
+  const changesCount = sourceChangeCount + gateChangeCount + cascadeChangeCount;
   const nextCount = nextActions.length;
   const pendingCount = nextPending.length;
   const notesCount = noteActions.length;

@@ -24,7 +24,11 @@ export function AgentPanel() {
   const reconciledRef = useRef(false);
 
   // Entry buttons → "generate" (the brief flow). Free text → "ask" (the governed chat below).
-  const start = useCallback((_id: string) => {
+  const start = useCallback((id: string) => {
+    if (id === "followups") {
+      openDrawer({ mode: "plan", source: "Acme renewal — pre-committee review" });
+      return;
+    }
     setState("thinking");
   }, []);
 
