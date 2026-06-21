@@ -9,10 +9,108 @@ import { InputBar } from "./InputBar";
 import { ChatThread, type Turn } from "./ChatThread";
 import { useChatMutation, type ChatAction } from "@/hooks/queries";
 import { FLOW, PENDING_CREDIT_OFFICER } from "@/data/demo-chat";
-import { useRevalidation, routeToCreditOfficer, resetRevalidation } from "@/lib/revalidation-store";
+import {
+  useGovernedBrief,
+  useRevalidation,
+  routeToCreditOfficer,
+  resetRevalidation,
+  type GovernedBrief,
+} from "@/lib/revalidation-store";
 import { openDrawer } from "@/lib/actions-store";
 
 type AgentState = "idle" | "thinking" | "result";
+
+const STARTER_LABELS: Record<string, string> = {
+  changed: "What changed since last review?",
+  approval: "Check approval readiness",
+  summary: "Summarize this meeting",
+  monitor: "Monitor this decision",
+};
+
+function starterResponse(id: string, governed: GovernedBrief): Turn | null {
+  const brief = governed.decision_brief;
+  const blockingRows = governed.decision_readiness.rows.filter((row) => row.status === "blocking");
+  const pendingRows = governed.decision_readiness.rows.filter((row) => row.status === "pending");
+  const nextBlocker = blockingRows[0] ?? pendingRows[0];
+
+  if (id === "changed") {
+    return {
+      role: "assistant",
+      content:
+        `What changed since last review: 1. ${brief.what_changed[0]} 2. ${brief.what_changed[1]} ` +
+        `3. ${brief.what_changed[2]} I used the financial model, approval workflow, and sources ` +
+        "Dana can access; the restricted Legal memo was not used.",
+      meta: {
+        reply: "",
+        citations: [
+          { object_id: "doc_financials" },
+          { object_id: "wf_approval" },
+          { object_id: "doc_legal_memo" },
+        ],
+        permission_boundary_hit: true,
+      },
+    };
+  }
+
+  if (id === "approval") {
+    const failedRules = brief.policy_gates.firings.filter((f) => !f.passed).map((f) => f.detail);
+    const gateCopy = failedRules.length
+      ? `Failing gates: ${failedRules.join(" ")}`
+      : "Credit Officer approval and discount-authority gates are cleared.";
+    const blockerCopy = nextBlocker
+      ? `Next blocker: ${nextBlocker.gate} — ${nextBlocker.details}`
+      : "No open blockers remain.";
+    return {
+      role: "assistant",
+      content: `Approval-ready: ${brief.policy_gates.approval_ready ? "Yes" : "No"}. ${gateCopy} ${blockerCopy}`,
+      meta: {
+        reply: "",
+        citations: [{ object_id: "wf_approval" }, { object_id: "doc_pricing_exception" }],
+        gate_held: !brief.policy_gates.approval_ready,
+      },
+    };
+  }
+
+  if (id === "summary") {
+    return {
+      role: "assistant",
+      content:
+        "Acme is renewing a commercial facility with a 22% pricing exception and a covenant " +
+        "modification. The packet is not approval-ready: Legal is still pending, the final " +
+        "covenant tracker is missing, and the governed record must stay clear about which " +
+        "approval and conflict items have actually been resolved.",
+      meta: {
+        reply: "",
+        citations: [
+          { object_id: "mtg_committee_0612" },
+          { object_id: "doc_pricing_exception" },
+          { object_id: "doc_covenant_tracker" },
+        ],
+        missing_evidence: true,
+      },
+    };
+  }
+
+  if (id === "monitor") {
+    const status =
+      governed.stage === "initial"
+        ? "Monitoring is armed for source changes."
+        : `Monitoring is armed from the ${governed.stage.replace(/_/g, " ")} state.`;
+    return {
+      role: "assistant",
+      content:
+        `${status} I will revalidate if the approval workflow, financial model, pricing exception, ` +
+        "customer success plan, or covenant tracker changes. Approval workflow changes can require " +
+        "reapproval; financial or dependent-document changes can mark factual sections stale.",
+      meta: {
+        reply: "",
+        citations: [{ object_id: "wf_approval" }, { object_id: "doc_financials" }],
+      },
+    };
+  }
+
+  return null;
+}
 
 export function AgentPanel() {
   const [state, setState] = useState<AgentState>("idle");
@@ -20,17 +118,32 @@ export function AgentPanel() {
   const chat = useChatMutation();
   // The revalidation arc's deterministic state (CO sign-off, cascade) drives store-pushed turns.
   const reval = useRevalidation();
+  const governed = useGovernedBrief();
   const signedRef = useRef(false);
   const reconciledRef = useRef(false);
 
   // Entry buttons → "generate" (the brief flow). Free text → "ask" (the governed chat below).
-  const start = useCallback((id: string) => {
-    if (id === "followups") {
-      openDrawer({ mode: "plan", source: "Acme renewal — pre-committee review" });
-      return;
-    }
-    setState("thinking");
-  }, []);
+  const start = useCallback(
+    (id: string) => {
+      if (id === "followups") {
+        openDrawer({ mode: "plan", source: "Acme renewal — pre-committee review" });
+        return;
+      }
+      if (id !== "brief") {
+        const response = starterResponse(id, governed);
+        if (response) {
+          setState("idle");
+          setMessages([
+            { role: "user", content: STARTER_LABELS[id] ?? "Review this meeting" },
+            response,
+          ]);
+          return;
+        }
+      }
+      setState("thinking");
+    },
+    [governed],
+  );
 
   // Header reset is the panel-wide "start over": return to idle, drop the conversation, AND reset the
   // revalidation arc so the entry buttons reappear and the demo can be re-run cleanly.

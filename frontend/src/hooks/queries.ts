@@ -41,6 +41,7 @@ import {
   type VerifyResult,
 } from "@/data/record";
 import { scriptedChatResponse } from "@/data/demo-chat";
+import { setLatestRecordId } from "@/lib/record-store";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
 // Mocks on by default → Lovable parity. Live only when explicitly disabled + a base URL.
@@ -375,12 +376,13 @@ const recordKey = (id: string) => ["workproduct", id] as const;
 const verifyKey = (id: string) => ["workproduct", id, "verification"] as const;
 
 export function useRecordQuery(recordId: string) {
+  const initialRecord = { ...governance_certificate, record_id: recordId } as GovernanceCertificate;
   return useQuery<GovernanceCertificate>({
     queryKey: recordKey(recordId),
-    initialData: governance_certificate,
+    initialData: initialRecord,
     staleTime: STALE,
     queryFn: async (): Promise<GovernanceCertificate> => {
-      if (!LIVE) return governance_certificate;
+      if (!LIVE) return initialRecord;
       return getJSON<GovernanceCertificate>(`/workproducts/${recordId}`);
     },
   });
@@ -401,18 +403,20 @@ export function useMintWorkProductMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (
-      input: { work_product_id?: string } = {},
+      input: { work_product_id?: string; certificate?: GovernanceCertificate } = {},
     ): Promise<{ record_id: string; certificate: GovernanceCertificate }> => {
       if (!LIVE) {
+        const certificate = input.certificate ?? governance_certificate;
         return {
-          record_id: governance_certificate.record_id,
-          certificate: governance_certificate,
+          record_id: certificate.record_id,
+          certificate,
         };
       }
+      const { certificate: _certificate, ...request } = input;
       const res = await fetch(`${API_BASE}/workproducts/mint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify(request),
       });
       if (!res.ok) throw new Error(`/workproducts/mint → ${res.status}`);
       const data = await res.json();
@@ -420,6 +424,7 @@ export function useMintWorkProductMutation() {
       return { record_id: data.record_id, certificate: data.record ?? data.certificate };
     },
     onSuccess: (data) => {
+      setLatestRecordId(data.record_id);
       qc.setQueryData(recordKey(data.record_id), data.certificate);
       qc.setQueryData(verifyKey(data.record_id), null);
     },
@@ -432,8 +437,11 @@ export function useVerifyWorkProductMutation(recordId: string) {
     mutationFn: async (
       input: { event?: string } = { event: "legal_needs_review" },
     ): Promise<VerifyResult> => {
-      if (!LIVE)
-        return input.event === "financials_v2" ? verify_result_financials : verify_result_stale;
+      if (!LIVE) {
+        const result =
+          input.event === "financials_v2" ? verify_result_financials : verify_result_stale;
+        return { ...result, record_id: recordId };
+      }
       const res = await fetch(`${API_BASE}/workproducts/${recordId}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

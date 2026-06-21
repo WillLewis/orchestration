@@ -51,6 +51,7 @@ import {
   openDrawer,
 } from "@/lib/actions-store";
 import { acceptCascadeEdit, useRevalidation } from "@/lib/revalidation-store";
+import { useLatestRecordId } from "@/lib/record-store";
 import {
   LIVE,
   useActionPlanQuery,
@@ -153,6 +154,10 @@ const SIDE_CLS: Record<SideEffect, string> = {
   write: "bg-[var(--canvas)] text-[var(--secondary-text)] border border-border",
 };
 
+function renderedSideEffect(action: Action): SideEffect {
+  return action.tool === "route_approval" ? "write" : action.side_effect;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Drawer                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -161,12 +166,13 @@ export function ActionDiffDrawer() {
   const store = useActionsStore();
   const { drawer, user_status, audit } = store;
   const reval = useRevalidation();
+  const recordId = useLatestRecordId();
   const planActions = useActionPlanQuery().data.actions;
   const {
     data: verifyData,
     isPending: verifyPending,
     mutate: verifyMutate,
-  } = useVerifyWorkProductMutation("gwp_acme_001");
+  } = useVerifyWorkProductMutation(recordId);
   // Beat 6: once the Credit Officer has signed off, the route-to-CO follow-up is already done —
   // drop it so the plan proposes only the REMAINING work (tracker, Legal, schedule). The live
   // gateway proof below still submits the full plan to prove server-side re-gating.
@@ -184,7 +190,10 @@ export function ActionDiffDrawer() {
   const execute = useExecuteActionsMutation();
   const [serverResult, setServerResult] = useState<ServerAuditEvent[] | null>(null);
   const isAfterSourceChange = drawer.mode === "revalidation_edit";
-  const verification = verifyData ?? verify_result_financials;
+  const verification =
+    verifyData?.record_id === recordId
+      ? verifyData
+      : { ...verify_result_financials, record_id: recordId };
 
   // Open directly to the useful tab for each scenario.
   useEffect(() => {
@@ -193,10 +202,15 @@ export function ActionDiffDrawer() {
 
   // Live mode verifies through the backend; mock mode returns the pinned financials_v2 result.
   useEffect(() => {
-    if (drawer.open && drawer.mode === "revalidation_edit" && !verifyData && !verifyPending) {
+    if (
+      drawer.open &&
+      drawer.mode === "revalidation_edit" &&
+      verifyData?.record_id !== recordId &&
+      !verifyPending
+    ) {
       verifyMutate({ event: "financials_v2" });
     }
-  }, [drawer.open, drawer.mode, verifyData, verifyPending, verifyMutate]);
+  }, [drawer.open, drawer.mode, recordId, verifyData, verifyPending, verifyMutate]);
 
   // Scroll to focused card.
   useEffect(() => {
@@ -251,8 +265,7 @@ export function ActionDiffDrawer() {
     [nextActions, user_status],
   );
 
-  const sourceChangeCount =
-    isAfterSourceChange && verification.changed_sources.length > 0 ? 1 : 0;
+  const sourceChangeCount = isAfterSourceChange && verification.changed_sources.length > 0 ? 1 : 0;
   const gateChangeCount = isAfterSourceChange ? verification.gate_changes.length : 0;
   const cascadeChangeCount =
     isAfterSourceChange && (reval.cascadeAvailable || reval.csReconciled) ? 1 : 0;
@@ -886,7 +899,9 @@ function NextActionCard({
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-              <Chip className={SIDE_CLS[action.side_effect]}>{action.side_effect}</Chip>
+              <Chip className={SIDE_CLS[renderedSideEffect(action)]}>
+                {renderedSideEffect(action)}
+              </Chip>
               <Chip className={RISK_CLS[action.risk]}>
                 {action.risk === "low" ? "Low risk" : `${action.risk} risk`}
               </Chip>
@@ -1242,7 +1257,9 @@ function ActionCard({
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-1">
-              <Chip className={SIDE_CLS[action.side_effect]}>{action.side_effect}</Chip>
+              <Chip className={SIDE_CLS[renderedSideEffect(action)]}>
+                {renderedSideEffect(action)}
+              </Chip>
               <Chip className={RISK_CLS[action.risk]}>
                 {action.risk === "low" ? "low risk" : `${action.risk} risk`}
               </Chip>

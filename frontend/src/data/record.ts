@@ -1,5 +1,8 @@
 import { decision_brief, sources } from "@/data/brief";
 
+type DecisionBriefSnapshot = typeof decision_brief;
+type SourceSnapshot = typeof sources;
+
 // GET /workproducts/{id}  and  POST /workproducts/mint -> { record_id, certificate }
 export const governance_certificate = {
   record_id: "gwp_acme_001",
@@ -131,6 +134,59 @@ export const governance_certificate = {
 } as const;
 
 export type GovernanceCertificate = typeof governance_certificate;
+
+export function buildGovernanceCertificate(input: {
+  record_id?: string;
+  decision_brief: DecisionBriefSnapshot;
+  sources: SourceSnapshot;
+  creditSigned: boolean;
+  csReconciled: boolean;
+}): GovernanceCertificate {
+  const sourceVersions = governance_certificate.governance.source_versions.map((source) => {
+    if (source.object_id === "wf_approval") {
+      return {
+        ...source,
+        version: input.creditSigned ? 2 : source.version,
+        metadata: {
+          ...source.metadata,
+          legal_status: "pending",
+          credit_officer_approval: input.creditSigned,
+        },
+      };
+    }
+    if (source.object_id === "doc_cs_plan" && input.csReconciled) {
+      return {
+        ...source,
+        version: 2,
+        metadata: { assumed_discount: "22%" },
+      };
+    }
+    return source;
+  });
+
+  return {
+    ...governance_certificate,
+    record_id: input.record_id ?? governance_certificate.record_id,
+    minted_at: "2026-06-21T14:00:00Z",
+    decision_brief: input.decision_brief,
+    sources: input.sources,
+    governance: {
+      ...governance_certificate.governance,
+      approval_reason: input.creditSigned
+        ? "Final covenant tracker missing; Legal sign-off on the covenant modification pending."
+        : governance_certificate.governance.approval_reason,
+      path_to_ready: input.creditSigned
+        ? ["Complete Legal approval.", "Upload the final covenant tracker."]
+        : [...governance_certificate.governance.path_to_ready],
+      source_versions: sourceVersions,
+      loop_summary: input.csReconciled
+        ? "Discount exception approved at 22%; customer success plan reconciled. Legal approval and the final covenant tracker remain open."
+        : input.creditSigned
+          ? "Discount exception approved at 22%; downstream customer success plan reconciliation was pending at seal time."
+          : governance_certificate.governance.loop_summary,
+    },
+  } as GovernanceCertificate;
+}
 
 // POST /workproducts/{id}/verify   body: { "event": "legal_needs_review" | "financials_v2" }
 // Explicit type (not `typeof … as const`) so both event mocks below conform to one shape and the

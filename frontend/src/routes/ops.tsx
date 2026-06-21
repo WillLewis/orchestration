@@ -194,8 +194,8 @@ function ScorecardCard({
 /* ------------------------------------------------------------------ */
 
 function AgentOpsPage() {
-  const { eval_rows, telemetry_sample, eval_source_mix, failure_taxonomy } =
-    useOpsReportQuery().data;
+  const opsReport = useOpsReportQuery();
+  const { eval_rows, telemetry_sample, eval_source_mix, failure_taxonomy } = opsReport.data;
   const [openTrace, setOpenTrace] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(1); // 0..1
@@ -218,11 +218,13 @@ function AgentOpsPage() {
     return () => window.clearInterval(i);
   }, []);
 
-  function runEvals() {
+  async function runEvals() {
     if (running) return;
     setRunning(true);
     setProgress(0);
     setRowsRevealed(0);
+    const latest = await opsReport.refetch();
+    const rowsForRun = latest.data?.eval_rows ?? eval_rows;
 
     // stagger metric bar fill (~1.2s)
     const start = performance.now();
@@ -236,7 +238,7 @@ function AgentOpsPage() {
     raf = requestAnimationFrame(step);
 
     // stagger row reveals
-    eval_rows.forEach((_, i) => {
+    rowsForRun.forEach((_, i) => {
       window.setTimeout(() => setRowsRevealed((n) => Math.max(n, i + 1)), 120 + i * 80);
     });
 
@@ -247,9 +249,9 @@ function AgentOpsPage() {
         setNow(Date.now());
         cancelAnimationFrame(raf);
         setProgress(1);
-        setRowsRevealed(eval_rows.length);
+        setRowsRevealed(rowsForRun.length);
       },
-      120 + eval_rows.length * 80 + 200,
+      120 + rowsForRun.length * 80 + 200,
     );
   }
 
@@ -301,7 +303,7 @@ function AgentOpsPage() {
           <div className="flex items-center gap-3">
             <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 text-[11.5px] font-medium text-[var(--secondary-text)]">
               <Cpu className="h-3 w-3" />
-              <Mono>model: claude-sonnet-4-6 · temp 0</Mono>
+              <Mono>deterministic eval runner</Mono>
             </span>
             <span className="text-[11.5px] text-[var(--muted-fg)] tabular-nums">
               {lastRunLabel}

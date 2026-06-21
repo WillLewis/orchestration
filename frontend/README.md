@@ -33,3 +33,11 @@ VITE_USE_MOCKS=false
 Mock shapes mirror `core/schemas.py` (snake_case), so the live API returns the same shapes with no
 remapping. UI-only fields (`status`, `SourceStatus`, `SourceType`) are derived client-side and are
 **not** part of the frozen `core.schemas` contract.
+
+## Demo runbook
+
+Keep `VITE_USE_MOCKS=true` for the interview walkthrough. Mock mode powers the scripted hero arc
+end-to-end: the 22% chat block, Credit Officer signoff, live revalidation, cascade edit, Agent
+Actions drawer, Agent Batch handoff, and governed-record epilogue stay deterministic. Live API mode
+(`VITE_USE_MOCKS=false`) is for proving the backend contracts and eval endpoints against the same
+UI shapes.

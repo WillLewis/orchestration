@@ -187,7 +187,8 @@ export const loop_state: LoopState = {
 // UI-only overlay — NOT part of the backend `LoopState` contract. Presentational copy for the
 // closed-but-not-fully-resolved status banner.
 export const loop_ui = {
-  open_summary: "1 item open — Legal → Compliance review in flight; final committee scheduled.",
+  open_summary:
+    "1 item open — Legal → Compliance review in flight; committee meeting queued until Legal and tracker clear.",
 };
 
 // Derive the open/escalation status from canonical data (escalations), never from `closed`.

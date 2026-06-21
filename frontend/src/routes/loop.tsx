@@ -44,6 +44,7 @@ import {
   type DerivedStatus,
 } from "@/data/actions";
 import { approveAction, executeApproved, resetActions, useActionsStore } from "@/lib/actions-store";
+import { useRevalidation } from "@/lib/revalidation-store";
 import {
   LIVE,
   useActionPlanQuery,
@@ -159,7 +160,10 @@ const BATCH_GROUPS: { key: DerivedStatus; label: string; hint: string }[] = [
 
 const STATUS_CHIP: Record<DerivedStatus, { label: string; cls: string }> = {
   ready: { label: "Ready", cls: "bg-[var(--success-bg)] text-[var(--success)]" },
-  needs_approval: { label: "Routes for approval", cls: "bg-[var(--warning-bg)] text-[var(--warning)]" },
+  needs_approval: {
+    label: "Routes for approval",
+    cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
+  },
   blocked: { label: "Blocked", cls: "bg-[var(--danger-bg)] text-[var(--danger)]" },
 };
 
@@ -193,7 +197,23 @@ function WorkLoop() {
   // it here goes through the SAME shared store as the Agent Actions drawer, so the two surfaces are
   // one batch: run it all here, or piecemeal in chat — committed state + audit stay in sync.
   const { data: actionData } = useActionPlanQuery();
-  const actions = actionData.actions;
+  const baseActions = actionData.actions;
+  const revalidation = useRevalidation();
+  const actionEntries = useMemo(
+    () =>
+      baseActions
+        .map((action, index) => ({ action, index }))
+        .filter(
+          ({ action }) =>
+            !(
+              revalidation.creditSigned &&
+              action.tool === "route_approval" &&
+              action.required_approver === "credit_officer"
+            ),
+        ),
+    [baseActions, revalidation.creditSigned],
+  );
+  const actions = useMemo(() => actionEntries.map(({ action }) => action), [actionEntries]);
   const { user_status, audit: storeAudit } = useActionsStore();
   // The multi-party orchestration dossier (who the work fans out to + their replies/escalations).
   // Live mode composes this from the plan server-side; mock is the bundled scripted outcome.
@@ -212,6 +232,7 @@ function WorkLoop() {
     return g;
   }, [actions]);
   const runnable = useMemo(() => actions.filter((a) => !a.blocked_reason), [actions]);
+  const submittedIndexes = useMemo(() => actionEntries.map(({ index }) => index), [actionEntries]);
 
   const committedCount = useMemo(
     () => actions.filter((a) => user_status[action_key(a)] === "committed").length,
@@ -227,14 +248,19 @@ function WorkLoop() {
     if (LIVE) {
       // Submit every index; the gateway recomposes + re-gates, so blocked actions come back skipped.
       execute.mutate(
-        { approved_indices: actions.map((_, i) => i) },
+        { approved_indices: submittedIndexes },
         {
           onSuccess: (ev) => {
             setServerResult(ev);
             const skipped = ev.filter((e) => e.action === "skipped").length;
-            toast.success(`Ran ${ev.length - skipped} action${ev.length - skipped === 1 ? "" : "s"}`, {
-              description: skipped ? `${skipped} blocked action${skipped === 1 ? "" : "s"} re-gated server-side` : undefined,
-            });
+            toast.success(
+              `Ran ${ev.length - skipped} action${ev.length - skipped === 1 ? "" : "s"}`,
+              {
+                description: skipped
+                  ? `${skipped} blocked action${skipped === 1 ? "" : "s"} re-gated server-side`
+                  : undefined,
+              },
+            );
           },
           onError: () =>
             toast.error("Gateway didn't respond", {
@@ -268,11 +294,14 @@ function WorkLoop() {
   // distribute→schedule stages light up after the batch runs; Close after export.
   const doneStages = useMemo<Set<StageKey>>(() => {
     const d = new Set<StageKey>();
-    if (ran) (["plan", "distribute", "collect", "escalate", "schedule"] as StageKey[]).forEach((k) => d.add(k));
+    if (ran)
+      (["plan", "distribute", "collect", "escalate", "schedule"] as StageKey[]).forEach((k) =>
+        d.add(k),
+      );
     if (exported) d.add("close");
     return d;
   }, [ran, exported]);
-  const activeStage: StageKey = !ran ? "plan" : "close";
+  const activeStage: StageKey = !ran ? "plan" : exported ? "close" : "schedule";
 
   const statusPill = !ran
     ? {
@@ -280,7 +309,10 @@ function WorkLoop() {
         cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
       }
     : exported
-      ? { label: `Closed · ${inFlight}`, cls: "bg-[var(--success-bg)] text-[var(--success)]" }
+      ? {
+          label: `Batch run complete · ${inFlight}`,
+          cls: "bg-[var(--success-bg)] text-[var(--success)]",
+        }
       : {
           label: `Ran ${executedCount} · ${grouped.blocked.length} blocked`,
           cls: "bg-[var(--primary-tint)] text-primary",
@@ -307,7 +339,9 @@ function WorkLoop() {
         .map((e) => ({
           actor: e.actor || "Dana R.",
           action: `${tool_labels[e.detail.tool as keyof typeof tool_labels] ?? e.detail.tool ?? "action"} · ${
-            e.detail.target ? object_labels[String(e.detail.target)] ?? String(e.detail.target) : ""
+            e.detail.target
+              ? (object_labels[String(e.detail.target)] ?? String(e.detail.target))
+              : ""
           }`,
           time: "just now",
         }));
@@ -323,16 +357,26 @@ function WorkLoop() {
 
   const matrixRows = useMemo<MatrixRow[]>(() => {
     const rows: MatrixRow[] = [
-      { role: "relationship_manager", title: ROLE_TITLE.relationship_manager!, status: ran ? "approved" : "pending" },
-      { role: "credit_officer", title: ROLE_TITLE.credit_officer!, status: ran ? "signed" : "pending" },
+      {
+        role: "relationship_manager",
+        title: ROLE_TITLE.relationship_manager!,
+        status: ran ? "approved" : "pending",
+      },
+      {
+        role: "credit_officer",
+        title: ROLE_TITLE.credit_officer!,
+        status: revalidation.creditSigned || ran ? "signed" : "pending",
+      },
       { role: "legal", title: ROLE_TITLE.legal!, status: ran ? "escalated" : "pending" },
     ];
     if (ran && loop_state.escalations.length) {
       rows.push({ role: "compliance", title: ROLE_TITLE.compliance!, status: "in_review" });
     }
     return rows;
-  }, [ran, loop_state.escalations.length]);
-  const approvedCount = matrixRows.filter((r) => r.status === "approved" || r.status === "signed").length;
+  }, [ran, revalidation.creditSigned, loop_state.escalations.length]);
+  const approvedCount = matrixRows.filter(
+    (r) => r.status === "approved" || r.status === "signed",
+  ).length;
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--canvas)] text-foreground">
@@ -545,8 +589,8 @@ function BatchPlan({
               {total} recommended action{total === 1 ? "" : "s"}
             </h2>
             <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-              The same plan the chat and brief act on — run the whole batch here, or one-at-a-time in
-              chat. Nothing is sent until you approve.
+              The same plan the chat and brief act on — run the whole batch here, or one-at-a-time
+              in chat. Nothing is sent until you approve.
             </p>
             <p className="mt-1 text-[11.5px] leading-snug text-[var(--muted-fg)]">
               Derived from the{" "}
@@ -585,7 +629,11 @@ function BatchPlan({
                 </div>
                 <ul className="space-y-2">
                   {items.map((a) => (
-                    <BatchRow key={action_key(a)} action={a} status={userStatus[action_key(a)] ?? "proposed"} />
+                    <BatchRow
+                      key={action_key(a)}
+                      action={a}
+                      status={userStatus[action_key(a)] ?? "proposed"}
+                    />
                   ))}
                 </ul>
               </div>
@@ -657,7 +705,9 @@ function BatchRow({ action, status }: { action: Action; status: string }) {
         <div className="mt-0.5 text-[13px] font-semibold leading-snug text-foreground">
           {batchTitle(action)}
         </div>
-        <p className="mt-0.5 text-[12px] leading-snug text-[var(--secondary-text)]">{action.reason}</p>
+        <p className="mt-0.5 text-[12px] leading-snug text-[var(--secondary-text)]">
+          {action.reason}
+        </p>
         {action.blocked_reason && (
           <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-[var(--danger)]/25 bg-[var(--danger-bg)] px-2 py-1 text-[11.5px] leading-snug text-[var(--danger)]">
             <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
@@ -1032,7 +1082,11 @@ function CloseSection({
                 : "bg-[var(--success)] text-white shadow-card hover:opacity-95",
             ].join(" ")}
           >
-            {exported ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+            {exported ? (
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
             {exported ? "Dossier exported" : "Close & export dossier"}
           </button>
         </div>
@@ -1257,7 +1311,11 @@ function Dossier({
             )}
             <span>
               <span className="font-semibold">
-                {!ran ? "Not started" : exported ? `Closed · ${inFlightLabel}` : "Ran — open items"}
+                {!ran
+                  ? "Not started"
+                  : exported
+                    ? `Batch run complete · ${inFlightLabel}`
+                    : "Ran — open items"}
               </span>
               <span className="text-[var(--secondary-text)]">
                 {ran ? ` · ${loop_ui.open_summary}` : ""}

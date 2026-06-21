@@ -123,7 +123,12 @@ class AcmeFollowupProposer:
                 side_effect="write",
                 diff=ActionDiff(
                     target_object_id="task_new_1",
-                    after={"title": "Upload final covenant tracker", "status": "open"},
+                    after={
+                        "title": "Upload final covenant tracker",
+                        "assignee": "Priya N. (Analyst)",
+                        "due": "2026-06-22",
+                        "status": "open",
+                    },
                 ),
             ),
             Action(
@@ -135,7 +140,20 @@ class AcmeFollowupProposer:
                 side_effect="draft",
                 diff=ActionDiff(
                     target_object_id="note_new_1",
-                    after={"title": "Acme renewal — open risks", "status": "draft"},
+                    after={
+                        "title": "Acme renewal — open risks",
+                        "body": (
+                            "Revenue forecast revised to $38M. Discount (22%) exceeds standard "
+                            "threshold. Credit Officer approval and final covenant tracker "
+                            "outstanding."
+                        ),
+                        "key_points": [
+                            "Revenue forecast revised to $38M.",
+                            "22% discount exceeds standard threshold.",
+                            "Credit Officer approval and final covenant tracker are outstanding.",
+                        ],
+                        "status": "draft",
+                    },
                 ),
             ),
             Action(
@@ -147,7 +165,7 @@ class AcmeFollowupProposer:
                 side_effect="propose",
                 diff=ActionDiff(
                     target_object_id="doc_pricing_exception",
-                    after={"approval_route": "credit_officer", "state": "routed"},
+                    after={"approval_route": "Credit Officer", "state": "routed"},
                 ),
             ),
             Action(
@@ -163,14 +181,18 @@ class AcmeFollowupProposer:
                 ),
             ),
             Action(
-                tool="update_project_status",
-                reason="Mark the renewal Approved.",
-                sources=[SourceRef(object_id="wf_approval")],
-                required_approver="credit_officer",
-                risk="high",
+                tool="schedule_meeting",
+                reason="Book the final committee decision once prerequisites clear.",
+                sources=[SourceRef(object_id="mtg_committee_0612")],
+                risk="low",
                 side_effect="write",
                 diff=ActionDiff(
-                    target_object_id="wf_approval", after={"status": "Approved"}
+                    target_object_id="mtg_new_1",
+                    after={
+                        "title": "Acme — final committee decision",
+                        "attendees": ["Dana R.", "Chris O.", "Priya N.", "Sam L."],
+                        "proposed": "2026-06-24 14:00",
+                    },
                 ),
             ),
             Action(

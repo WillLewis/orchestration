@@ -3,6 +3,18 @@ import { meeting } from "@/lib/meeting-data";
 import { openDrawer } from "@/lib/actions-store";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function useRunningTimer(startSeconds: number) {
   const [s, setS] = useState(startSeconds);
@@ -26,6 +38,13 @@ type TopBarProps = {
 
 export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: TopBarProps) {
   const timer = useRunningTimer(42 * 60 + 18);
+
+  function leaveDemo() {
+    window.close();
+    window.setTimeout(() => {
+      toast("Your browser blocked tab close. You can close this tab manually.");
+    }, 150);
+  }
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-5">
@@ -108,13 +127,34 @@ export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: 
               aria-hidden
             />
 
-            <button
-              type="button"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--danger)] px-3 text-[13px] font-medium text-white transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Leave
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--danger)] px-3 text-[13px] font-medium text-white transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Leave
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leave the demo?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will close the demo tab if your browser allows it.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Stay</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={leaveDemo}
+                    className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
+                  >
+                    Leave demo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
       </div>

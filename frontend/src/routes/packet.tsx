@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import {
@@ -33,8 +33,9 @@ import {
   type SourceType,
 } from "@/data/brief";
 import { openDrawer } from "@/lib/actions-store";
-import { useGovernedBrief } from "@/lib/revalidation-store";
+import { useGovernedBrief, useRevalidation } from "@/lib/revalidation-store";
 import { type Action } from "@/data/actions";
+import { buildGovernanceCertificate } from "@/data/record";
 import {
   useActionPlanQuery,
   useChatMutation,
@@ -479,8 +480,10 @@ function DecisionReadinessTable({
 
 function PacketWorkspace() {
   const { focus } = Route.useSearch();
+  const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const readinessRef = useRef<HTMLDivElement | null>(null);
+  const revalidation = useRevalidation();
 
   const {
     decision_brief,
@@ -550,14 +553,20 @@ function PacketWorkspace() {
         type="button"
         disabled={mint.isPending}
         onClick={() => {
+          const certificate = buildGovernanceCertificate({
+            decision_brief,
+            sources,
+            creditSigned: revalidation.creditSigned,
+            csReconciled: revalidation.csReconciled,
+          });
           mint.mutate(
-            { work_product_id: "wp_acme_committee_packet" },
+            { work_product_id: "wp_acme_committee_packet", certificate },
             {
               onSuccess: (data) => {
                 toast.success("Sealed as governed record", {
-                  description: "Opening the governance certificate…",
+                  description: "Opening the governance certificate.",
                 });
-                window.open(`/record/${data.record_id}`, "_blank", "noopener");
+                navigate({ to: "/record/$recordId", params: { recordId: data.record_id } });
               },
               onError: () => toast.error("Could not seal record"),
             },

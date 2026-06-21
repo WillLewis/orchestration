@@ -131,7 +131,7 @@ def post_chat(req: ChatRequest) -> ChatResponse:
 # --------------------------------------------------------------------------- #
 @app.post("/actions/compose", response_model=ActionPlan)
 def post_actions_compose(req: BriefRequest) -> ActionPlan:
-    """Proposed follow-ups; every action carries a previewable diff or a `blocked_reason`."""
+    """Agent Actions; every action carries a previewable diff or a `blocked_reason`."""
     brief, bundle = assemble_brief(req.user_id, req.intent)
     return compose_actions(brief, bundle)
 
