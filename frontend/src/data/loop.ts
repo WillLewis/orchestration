@@ -30,7 +30,7 @@ export type Persona = {
 
 // UI-only: identities for avatars/labels. Reuses the meeting roster + Compliance.
 export const personas: Record<PersonaRole, Persona> = {
-  command_agent: { display: "Command Agent", initials: "CA", agent: true },
+  command_agent: { display: "ConnectAgent", initials: "CA", agent: true },
   relationship_manager: { display: "Dana R.", initials: "DR" },
   credit_officer: { display: "Chris O.", initials: "CO" },
   legal: { display: "Sam L.", initials: "SL" },

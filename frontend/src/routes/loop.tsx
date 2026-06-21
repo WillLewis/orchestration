@@ -956,7 +956,7 @@ function ScheduledBody({ ev }: { ev: Extract<TimelineEvent, { kind: "scheduled" 
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
-          <span className="font-semibold text-foreground">Command Agent</span>
+          <span className="font-semibold text-foreground">ConnectAgent</span>
           <span>scheduled</span>
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-tint)] px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">
             {ev.data.topic}

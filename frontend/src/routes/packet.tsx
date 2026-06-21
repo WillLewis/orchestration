@@ -548,18 +548,6 @@ function PacketWorkspace() {
     <>
       <button
         type="button"
-        onClick={() =>
-          openDrawer({
-            mode: "plan",
-            source: "Decision Packet — Acme renewal",
-          })
-        }
-        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      >
-        Agent Actions
-      </button>
-      <button
-        type="button"
         disabled={mint.isPending}
         onClick={() => {
           mint.mutate(

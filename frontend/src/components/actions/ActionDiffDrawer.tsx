@@ -342,7 +342,7 @@ export function ActionDiffDrawer() {
                 </span>
               </div>
               <p className="mt-1.5 text-[12px] text-[var(--secondary-text)]">
-                Review governed changes, outbound routes, and notes before anything is sent.
+                Review changes, outbound requests, and notes before sending.
               </p>
               <p className="mt-0.5 text-[11.5px] text-[var(--muted-fg)]">
                 from {drawer.source || "Acme renewal — pre-committee review"}

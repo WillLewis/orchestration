@@ -132,7 +132,7 @@ export function AgentPanel() {
   return (
     <aside
       className="flex h-full w-full flex-col overflow-hidden border-l border-border bg-background shadow-panel"
-      aria-label="Command Agent"
+      aria-label="ConnectAgent"
     >
       <div className="shrink-0">
         <AgentHeader onReset={reset} />

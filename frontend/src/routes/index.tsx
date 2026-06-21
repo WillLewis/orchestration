@@ -13,12 +13,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Live enterprise meeting with the governed Command Agent — turn discussion into decision-ready briefs.",
+          "Live enterprise meeting with the governed ConnectAgent — turn discussion into decision-ready briefs.",
       },
-      { property: "og:title", content: "ConnectWork — Command Agent" },
+      { property: "og:title", content: "ConnectWork — ConnectAgent" },
       {
         property: "og:description",
-        content: "Live enterprise meeting with the governed Command Agent.",
+        content: "Live enterprise meeting with the governed ConnectAgent.",
       },
     ],
   }),
@@ -58,7 +58,7 @@ function Index() {
               className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-gradient-ai px-4 py-3 text-[13px] font-semibold text-white shadow-panel"
             >
               <Sparkles className="h-4 w-4" />
-              Command Agent
+              ConnectAgent
             </button>
             {panelOpen && (
               <>
