@@ -12,7 +12,6 @@ import {
   Info,
   Lock,
   MessageSquare,
-  Pin,
   Scale,
   ShieldCheck,
   Sparkles,
@@ -33,7 +32,6 @@ import {
   type SourceStatus,
   type SourceType,
 } from "@/data/brief";
-import { pinPacket, usePacketPinned } from "@/lib/packet-store";
 import { openDrawer } from "@/lib/actions-store";
 import { useGovernedBrief } from "@/lib/revalidation-store";
 import { type Action } from "@/data/actions";
@@ -481,7 +479,6 @@ function DecisionReadinessTable({
 
 function PacketWorkspace() {
   const { focus } = Route.useSearch();
-  const { pinned, by, at } = usePacketPinned();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const readinessRef = useRef<HTMLElement | null>(null);
 
@@ -547,51 +544,19 @@ function PacketWorkspace() {
     }
   }, [focus]);
 
-  function handlePin() {
-    if (pinned) return;
-    pinPacket("Dana R.");
-    toast.success("Pinned as committee packet", {
-      description: "This packet will be revalidated if its sources change.",
-    });
-  }
-
-  const pinnedAgo = pinned && at ? "just now" : "";
-
   const rightSlot = (
     <>
       <button
         type="button"
         onClick={() =>
           openDrawer({
+            mode: "plan",
             source: "Decision Packet — Acme renewal",
           })
         }
         className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
-        Propose follow-ups
-      </button>
-      <button
-        type="button"
-        onClick={handlePin}
-        disabled={pinned}
-        className={[
-          "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-          pinned
-            ? "cursor-default bg-[var(--success-bg)] text-[var(--success)]"
-            : "bg-primary text-white hover:bg-[var(--primary-hover)]",
-        ].join(" ")}
-      >
-        {pinned ? (
-          <>
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Pinned
-          </>
-        ) : (
-          <>
-            <Pin className="h-3.5 w-3.5" />
-            Pin as committee packet
-          </>
-        )}
+        Agent Actions
       </button>
       <button
         type="button"

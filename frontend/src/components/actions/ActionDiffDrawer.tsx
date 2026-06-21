@@ -6,13 +6,15 @@ import {
   Calendar,
   CheckCircle2,
   CheckSquare,
+  ClipboardList,
   FileEdit,
+  FileText,
   GitBranch,
   GitCompareArrows,
   History,
   Lock,
   Pencil,
-  Play,
+  RefreshCw,
   Send,
   ShieldCheck,
   Sparkles,
@@ -34,9 +36,9 @@ import {
   type SideEffect,
   type Risk,
 } from "@/data/actions";
+import { verify_result_financials, type VerifyResult } from "@/data/record";
 import {
   approveAction,
-  approveAllReady,
   closeDrawer,
   executeApproved,
   getEffectiveAfter,
@@ -46,12 +48,14 @@ import {
   saveEdit,
   useActionsStore,
   type UserStatus,
+  openDrawer,
 } from "@/lib/actions-store";
 import { acceptCascadeEdit, useRevalidation } from "@/lib/revalidation-store";
 import {
   LIVE,
   useActionPlanQuery,
   useExecuteActionsMutation,
+  useVerifyWorkProductMutation,
   type ServerAuditEvent,
 } from "@/hooks/queries";
 
@@ -158,6 +162,11 @@ export function ActionDiffDrawer() {
   const { drawer, user_status, audit } = store;
   const reval = useRevalidation();
   const planActions = useActionPlanQuery().data.actions;
+  const {
+    data: verifyData,
+    isPending: verifyPending,
+    mutate: verifyMutate,
+  } = useVerifyWorkProductMutation("gwp_acme_001");
   // Beat 6: once the Credit Officer has signed off, the route-to-CO follow-up is already done —
   // drop it so the plan proposes only the REMAINING work (tracker, Legal, schedule). The live
   // gateway proof below still submits the full plan to prove server-side re-gating.
@@ -170,37 +179,24 @@ export function ActionDiffDrawer() {
         : planActions,
     [planActions, reval.creditSigned],
   );
-  const [tab, setTab] = useState<"changes" | "audit">("changes");
+  const [tab, setTab] = useState<"changes" | "next" | "notes" | "audit">("next");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const execute = useExecuteActionsMutation();
   const [serverResult, setServerResult] = useState<ServerAuditEvent[] | null>(null);
+  const isAfterSourceChange = drawer.mode === "revalidation_edit";
+  const verification = verifyData ?? verify_result_financials;
 
-  // Anti-bypass demo (live only): approve EVERY index — including blocked ones — and let the gateway
-  // recompose + re-gate the plan. Blocked actions come back `skipped`, proving a client can't bypass.
-  function onRunGateway() {
-    execute.mutate(
-      { approved_indices: planActions.map((_, i) => i) },
-      {
-        onSuccess: (events) => {
-          setServerResult(events);
-          setTab("audit");
-          const skipped = events.filter((e) => e.action === "skipped").length;
-          toast.success(
-            `Gateway executed ${events.length - skipped}, refused ${skipped} (re-gated)`,
-          );
-        },
-        onError: () =>
-          toast.error("Gateway didn't respond", {
-            description: "Start it with `make api`, or use the client-side execute.",
-          }),
-      },
-    );
-  }
-
-  // Switch to audit tab when commits land; back to changes on reopen.
+  // Open directly to the useful tab for each scenario.
   useEffect(() => {
-    if (drawer.open) setTab("changes");
-  }, [drawer.open]);
+    if (drawer.open) setTab(drawer.mode === "revalidation_edit" ? "changes" : "next");
+  }, [drawer.open, drawer.mode]);
+
+  // Live mode verifies through the backend; mock mode returns the pinned financials_v2 result.
+  useEffect(() => {
+    if (drawer.open && drawer.mode === "revalidation_edit" && !verifyData && !verifyPending) {
+      verifyMutate({ event: "financials_v2" });
+    }
+  }, [drawer.open, drawer.mode, verifyData, verifyPending, verifyMutate]);
 
   // Scroll to focused card.
   useEffect(() => {
@@ -225,56 +221,84 @@ export function ActionDiffDrawer() {
     return [...visibleActions].sort((a, b) => order[derive_status(a)] - order[derive_status(b)]);
   }, [visibleActions]);
 
-  const counts = useMemo(() => {
-    const c = {
-      total: visibleActions.length,
-      ready: 0,
-      needs_approval: 0,
-      blocked: 0,
-      approved: 0,
-      edited: 0,
-      rejected: 0,
-      committed: 0,
-    };
-    visibleActions.forEach((a) => {
-      const d = derive_status(a);
-      c[d] += 1;
-      const u = user_status[action_key(a)];
-      if (u === "approved") c.approved += 1;
-      else if (u === "edited") c.edited += 1;
-      else if (u === "rejected") c.rejected += 1;
-      else if (u === "committed") c.committed += 1;
-    });
-    return c;
-  }, [user_status, visibleActions]);
-
-  const executableCount = useMemo(
+  const nextActions = useMemo(
     () =>
-      visibleActions.filter((a) => {
-        const u = user_status[action_key(a)];
-        return (u === "approved" || u === "edited") && !a.blocked_reason;
-      }).length,
-    [user_status, visibleActions],
+      ordered.filter(
+        (a) =>
+          !a.blocked_reason &&
+          a.tool !== "draft_internal_note" &&
+          a.tool !== "update_project_status",
+      ),
+    [ordered],
+  );
+  const noteActions = useMemo(
+    () => ordered.filter((a) => !a.blocked_reason && a.tool === "draft_internal_note"),
+    [ordered],
+  );
+  const actionIndexByKey = useMemo(
+    () => new Map(planActions.map((a, i) => [action_key(a), i] as const)),
+    [planActions],
   );
 
-  function onExecute() {
+  const changesCount = isAfterSourceChange ? 1 : 0;
+  const nextCount = nextActions.length;
+  const notesCount = noteActions.length;
+
+  function switchScenario(mode: "plan" | "revalidation_edit") {
+    openDrawer({
+      mode,
+      focus_key: null,
+      source:
+        mode === "revalidation_edit"
+          ? "After source change — financial model v2"
+          : "Acme renewal — pre-committee review",
+    });
+  }
+
+  function approvedIndices(actions: Action[]) {
+    return actions
+      .map((a) => actionIndexByKey.get(action_key(a)))
+      .filter((i): i is number => typeof i === "number");
+  }
+
+  function onSendAll() {
+    if (nextCount === 0) return;
+    if (LIVE) {
+      execute.mutate(
+        { approved_indices: approvedIndices(nextActions) },
+        {
+          onSuccess: (events) => {
+            setServerResult(events);
+            setTab("audit");
+            const skipped = events.filter((e) => e.action === "skipped").length;
+            toast.success(
+              `Sent ${events.length - skipped} action${events.length - skipped === 1 ? "" : "s"}`,
+            );
+          },
+          onError: () =>
+            toast.error("Gateway didn't respond", {
+              description: "Start it with `make api`, or use mock mode.",
+            }),
+        },
+      );
+      return;
+    }
+    nextActions.forEach((a) => approveAction(action_key(a)));
     const n = executeApproved();
     if (n > 0) {
-      toast.success(`${n} action${n === 1 ? "" : "s"} executed · audit recorded`);
+      toast.success(`${n} action${n === 1 ? "" : "s"} sent · audit recorded`);
       setTab("audit");
     }
   }
 
   if (!drawer.open) return null;
-  // Beat 5: the single-mutation cascade — same diff component, one card, no 6-action chrome.
-  if (drawer.mode === "revalidation_edit") return <CascadeDrawer />;
 
   return (
     <div
       className="fixed inset-0 z-[60]"
       role="dialog"
       aria-modal="true"
-      aria-label="Proposed follow-ups"
+      aria-label="Agent Actions"
     >
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
@@ -293,7 +317,7 @@ export function ActionDiffDrawer() {
                   <GitBranch className="h-3.5 w-3.5" />
                 </span>
                 <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
-                  Proposed follow-ups
+                  Agent Actions
                 </h2>
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10.5px] font-semibold text-[var(--secondary-text)]">
                   <ShieldCheck className="h-3 w-3 text-primary" />
@@ -301,12 +325,7 @@ export function ActionDiffDrawer() {
                 </span>
               </div>
               <p className="mt-1.5 text-[12px] text-[var(--secondary-text)]">
-                {counts.total} actions ·{" "}
-                <span className="font-medium text-[var(--success)]">{counts.ready} ready</span> ·{" "}
-                <span className="font-medium text-[var(--warning)]">
-                  {counts.needs_approval} need approval
-                </span>{" "}
-                · <span className="font-medium text-[var(--danger)]">{counts.blocked} blocked</span>
+                Review governed changes, outbound routes, and notes before anything is sent.
               </p>
               <p className="mt-0.5 text-[11.5px] text-[var(--muted-fg)]">
                 from {drawer.source || "Acme renewal — pre-committee review"}
@@ -322,29 +341,72 @@ export function ActionDiffDrawer() {
             </button>
           </div>
 
+          {/* Scenario */}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
+              Scenario
+            </span>
+            <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-[12px] font-medium">
+              <button
+                type="button"
+                onClick={() => switchScenario("plan")}
+                className={[
+                  "rounded-[5px] px-2.5 py-1 transition-colors",
+                  !isAfterSourceChange
+                    ? "bg-[var(--primary-tint)] text-primary"
+                    : "text-[var(--secondary-text)] hover:text-foreground",
+                ].join(" ")}
+              >
+                Happy path
+              </button>
+              <button
+                type="button"
+                onClick={() => switchScenario("revalidation_edit")}
+                className={[
+                  "rounded-[5px] px-2.5 py-1 transition-colors",
+                  isAfterSourceChange
+                    ? "bg-[var(--primary-tint)] text-primary"
+                    : "text-[var(--secondary-text)] hover:text-foreground",
+                ].join(" ")}
+              >
+                After source change
+              </button>
+            </div>
+          </div>
+
           {/* Tabs */}
-          <div className="mt-3 inline-flex rounded-md bg-[var(--canvas)] p-0.5 text-[12px] font-medium">
-            <button
-              type="button"
-              onClick={() => setTab("changes")}
-              className={[
-                "inline-flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 transition-colors",
-                tab === "changes"
-                  ? "bg-background text-foreground shadow-card"
-                  : "text-[var(--secondary-text)] hover:text-foreground",
-              ].join(" ")}
-            >
-              <GitBranch className="h-3 w-3" />
-              Changes
-            </button>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="inline-flex rounded-md bg-[var(--canvas)] p-0.5 text-[12px] font-medium">
+              <DrawerTabButton
+                active={tab === "changes"}
+                icon={GitCompareArrows}
+                label="Changes"
+                count={changesCount}
+                onClick={() => setTab("changes")}
+              />
+              <DrawerTabButton
+                active={tab === "next"}
+                icon={ClipboardList}
+                label="Next actions"
+                count={nextCount}
+                onClick={() => setTab("next")}
+              />
+              <DrawerTabButton
+                active={tab === "notes"}
+                icon={FileText}
+                label="Notes"
+                count={notesCount}
+                onClick={() => setTab("notes")}
+              />
+            </div>
             <button
               type="button"
               onClick={() => setTab("audit")}
               className={[
-                "inline-flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 transition-colors",
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors",
                 tab === "audit"
                   ? "bg-background text-foreground shadow-card"
-                  : "text-[var(--secondary-text)] hover:text-foreground",
+                  : "text-[var(--muted-fg)] hover:text-foreground",
               ].join(" ")}
             >
               <History className="h-3 w-3" />
@@ -361,11 +423,29 @@ export function ActionDiffDrawer() {
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-[var(--canvas)]/40">
           {tab === "changes" ? (
+            isAfterSourceChange ? (
+              <RevalidationChanges
+                verification={verification}
+                pending={verifyPending}
+                showCascade={reval.cascadeAvailable}
+                cascadeAccepted={reval.csReconciled}
+                onAcceptCascade={() => {
+                  acceptCascadeEdit();
+                  toast.success("Edit accepted · conflict reconciled", {
+                    description: "Customer success plan now reflects the approved 22%.",
+                  });
+                  closeDrawer();
+                }}
+              />
+            ) : (
+              <EmptyChanges />
+            )
+          ) : tab === "next" ? (
             <ul className="space-y-3 px-5 py-4">
-              {ordered.map((a) => {
+              {nextActions.map((a) => {
                 const k = action_key(a);
                 return (
-                  <ActionCard
+                  <NextActionCard
                     key={k}
                     action={a}
                     user={user_status[k] ?? "proposed"}
@@ -375,6 +455,8 @@ export function ActionDiffDrawer() {
                 );
               })}
             </ul>
+          ) : tab === "notes" ? (
+            <NotesPanel actions={noteActions} />
           ) : LIVE && serverResult ? (
             <>
               <GatewayResult events={serverResult} />
@@ -386,67 +468,42 @@ export function ActionDiffDrawer() {
         </div>
 
         {/* Footer */}
-        {tab === "changes" && (
+        {tab === "next" && (
           <div className="shrink-0 border-t border-border bg-background px-5 py-3">
-            {LIVE && (
-              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-md border border-[var(--primary)]/20 bg-[var(--primary-tint)]/40 px-2.5 py-1.5">
-                <span className="text-[11px] leading-snug text-[var(--secondary-text)]">
-                  <span className="font-semibold text-primary">Server-gated:</span> approve all{" "}
-                  {planActions.length} &amp; let the gateway re-gate blocked ones.
-                </span>
-                <button
-                  type="button"
-                  onClick={onRunGateway}
-                  disabled={execute.isPending}
-                  className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-gradient-ai px-2.5 text-[11.5px] font-semibold text-white transition-opacity hover:opacity-95 disabled:opacity-60"
-                >
-                  <Play className="h-3 w-3" />
-                  {execute.isPending ? "Running…" : "Run all on gateway"}
-                </button>
-              </div>
-            )}
             <div className="flex items-center justify-between gap-3">
               <div className="text-[11.5px] leading-snug text-[var(--secondary-text)]">
-                <span className="font-semibold text-[var(--success)]">
-                  {counts.approved} approved
-                </span>
-                {counts.edited > 0 && (
-                  <>
-                    {" "}
-                    · <span className="font-semibold text-primary">{counts.edited} edited</span>
-                  </>
-                )}{" "}
-                ·{" "}
+                <span className="font-semibold text-foreground">{nextCount} pending</span>
                 <span className="text-[var(--muted-fg)]">
-                  {counts.rejected} rejected · {counts.blocked} blocked
+                  {" "}
+                  · blocked items stay in the packet readiness table
                 </span>
               </div>
               {LIVE ? (
-                <span className="text-[11px] leading-snug text-[var(--muted-fg)]">
-                  Client execute is off in live — run on the gateway above.
-                </span>
+                <button
+                  type="button"
+                  onClick={onSendAll}
+                  disabled={execute.isPending || nextCount === 0}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-3.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-95 disabled:opacity-60"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  {execute.isPending ? "Sending…" : `Send all (${nextCount})`}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
               ) : (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={approveAllReady}
-                    className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    Approve all ready
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onExecute}
-                    disabled={executableCount === 0}
+                    onClick={onSendAll}
+                    disabled={nextCount === 0}
                     className={[
                       "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold text-white transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      executableCount === 0
+                      nextCount === 0
                         ? "cursor-not-allowed bg-[var(--muted-fg)] opacity-60"
                         : "bg-gradient-ai hover:opacity-95",
                     ].join(" ")}
                   >
                     <Send className="h-3.5 w-3.5" />
-                    Execute {executableCount > 0 ? executableCount : ""} approved
+                    Send all ({nextCount})
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -457,6 +514,532 @@ export function ActionDiffDrawer() {
       </aside>
     </div>
   );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Drawer panels                                                              */
+/* -------------------------------------------------------------------------- */
+
+function DrawerTabButton({
+  active,
+  icon: Icon,
+  label,
+  count,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "inline-flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 transition-colors",
+        active
+          ? "bg-background text-primary shadow-card"
+          : "text-[var(--secondary-text)] hover:text-foreground",
+      ].join(" ")}
+    >
+      <Icon className="h-3 w-3" />
+      {label}
+      {count > 0 && (
+        <span
+          className={[
+            "ml-0.5 rounded-full px-1.5 text-[10px] font-semibold",
+            active ? "bg-primary text-white" : "bg-[var(--primary-tint)] text-primary",
+          ].join(" ")}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function EmptyChanges() {
+  return (
+    <div className="flex h-full items-center justify-center px-8 py-16 text-center">
+      <div>
+        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--success-bg)] text-[var(--success)]">
+          <CheckCircle2 className="h-4 w-4" />
+        </div>
+        <p className="mt-3 text-[13px] font-medium text-foreground">No source-change diffs</p>
+        <p className="mt-1 max-w-[320px] text-[12px] leading-snug text-[var(--secondary-text)]">
+          Happy path has no inbound reconciliation. Use Next actions for outbound routing and tasks.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RevalidationChanges({
+  verification,
+  pending,
+  showCascade,
+  cascadeAccepted,
+  onAcceptCascade,
+}: {
+  verification: VerifyResult;
+  pending: boolean;
+  showCascade: boolean;
+  cascadeAccepted: boolean;
+  onAcceptCascade: () => void;
+}) {
+  return (
+    <div className="space-y-3 px-5 py-4">
+      {pending && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[12px] text-[var(--secondary-text)] shadow-card">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />
+          Verifying the governed record against the latest source versions…
+        </div>
+      )}
+
+      {(showCascade || cascadeAccepted) && (
+        <CascadeChangeCard accepted={cascadeAccepted} onAccept={onAcceptCascade} />
+      )}
+
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
+          <div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+              Source change
+            </div>
+            <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+              Acme financial model
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Stale</Chip>
+            <Chip className="bg-[var(--canvas)] text-[var(--secondary-text)] border border-border">
+              Needs recompute
+            </Chip>
+          </div>
+        </div>
+
+        <div className="px-4 pt-2">
+          <p className="text-[12.5px] leading-snug text-[var(--secondary-text)]">
+            The financial source changed after the record was sealed. Factual sections are stale; no
+            reapproval route is created for this data-only change.
+          </p>
+          <div className="mt-3 overflow-hidden rounded-md border border-border bg-background">
+            {verification.changed_sources.map((change) => (
+              <DiffView
+                key={`${change.object_id}:${change.field}`}
+                before={{ [labelForField(change.field)]: change.before }}
+                after={{ [labelForField(change.field)]: change.after }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3 border-t border-border bg-[var(--canvas)]/50 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+              stale sections
+            </span>
+            {verification.stale_sections.map((s) => (
+              <span
+                key={s.section}
+                className="inline-flex rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]"
+              >
+                {labelForField(s.section)}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {verification.gate_changes.map((gate) => (
+        <div
+          key={gate.rule_id}
+          className="overflow-hidden rounded-xl border border-border bg-card shadow-card"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
+            <div>
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                Gate change
+              </div>
+              <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+                {labelForField(gate.rule_id)}
+              </h3>
+            </div>
+            <Chip className="bg-[var(--danger-bg)] text-[var(--danger)]">Blocking</Chip>
+          </div>
+          <div className="px-4 py-3">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+              <GateState passed={gate.before_passed} label="Before" />
+              <ArrowRight className="h-3.5 w-3.5 text-[var(--muted-fg)]" />
+              <GateState passed={gate.after_passed} label="After" />
+            </div>
+            <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
+              {gate.detail}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CascadeChangeCard({ accepted, onAccept }: { accepted: boolean; onAccept: () => void }) {
+  const a = cascade_action;
+  const targetLabel = labelFor(a.diff.target_object_id);
+  const fromLabel = labelFor(a.sources[0]?.object_id ?? "");
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+      <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
+        <div>
+          <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+            Revalidation edit
+          </div>
+          <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+            {targetLabel}
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          <Chip className={SIDE_CLS[a.side_effect]}>{a.side_effect}</Chip>
+          <Chip className={RISK_CLS[a.risk]}>Low risk</Chip>
+          <Chip
+            className={
+              accepted
+                ? "bg-[var(--success-bg)] text-[var(--success)]"
+                : "bg-[var(--warning-bg)] text-[var(--warning)]"
+            }
+          >
+            {accepted ? "Accepted" : "Needs acceptance"}
+          </Chip>
+        </div>
+      </div>
+      <div className="px-4 pt-2">
+        <p className="text-[12.5px] leading-snug text-[var(--secondary-text)]">{a.reason}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+            from
+          </span>
+          <span className="inline-flex rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
+            {fromLabel}
+          </span>
+        </div>
+        <div className="mt-3 overflow-hidden rounded-md border border-border bg-background">
+          <DiffView before={a.diff.before} after={a.diff.after} />
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-border bg-[var(--canvas)]/50 px-4 py-2">
+        {accepted ? (
+          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--success)]">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Accepted · conflict reconciled
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={closeDrawer}
+              className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+            >
+              Reject
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)]"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onAccept}
+              className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+            >
+              Accept edit
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GateState({ passed, label }: { passed: boolean; label: string }) {
+  return (
+    <div>
+      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+        {label}
+      </div>
+      <div
+        className={[
+          "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+          passed
+            ? "bg-[var(--success-bg)] text-[var(--success)]"
+            : "bg-[var(--danger-bg)] text-[var(--danger)]",
+        ].join(" ")}
+      >
+        {passed ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+        {passed ? "Pass" : "Fail"}
+      </div>
+    </div>
+  );
+}
+
+function NextActionCard({
+  action,
+  user,
+  setRef,
+  focused,
+}: {
+  action: Action;
+  user: UserStatus;
+  setRef: (el: HTMLDivElement | null) => void;
+  focused: boolean;
+}) {
+  const k = action_key(action);
+  const after = getEffectiveAfter(action);
+  const targetLabel = labelFor(action.diff.target_object_id);
+  const destination = destinationFor(action);
+  const primary = primaryLabelFor(action);
+  const staged = user === "approved" || user === "edited" || user === "committed";
+
+  return (
+    <li>
+      <div
+        ref={setRef}
+        tabIndex={0}
+        className={[
+          "overflow-hidden rounded-xl border bg-card shadow-card outline-none transition-shadow",
+          focused
+            ? "border-primary ring-2 ring-primary/30"
+            : "border-border focus-visible:ring-2 focus-visible:ring-primary",
+        ].join(" ")}
+      >
+        <div className="px-4 pt-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                {tool_labels[action.tool]}
+              </div>
+              <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+                {targetLabel}
+              </h3>
+              <div className="mt-2 inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-semibold text-[var(--secondary-text)]">
+                <ArrowRight className="h-3 w-3" />
+                {destination}
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+              <Chip className={SIDE_CLS[action.side_effect]}>{action.side_effect}</Chip>
+              <Chip className={RISK_CLS[action.risk]}>
+                {action.risk === "low" ? "Low risk" : `${action.risk} risk`}
+              </Chip>
+              <Chip
+                className={
+                  staged
+                    ? "bg-[var(--success-bg)] text-[var(--success)]"
+                    : "bg-[var(--success-bg)] text-[var(--success)]"
+                }
+              >
+                {staged ? "Staged" : "Ready"}
+              </Chip>
+            </div>
+          </div>
+
+          {action.tool === "create_task" ? (
+            <PreviewTable
+              rows={[
+                ["Title", formatVal(after.title)],
+                ["Assignee", formatVal(after.assignee)],
+                ["Due", formatDate(formatVal(after.due))],
+                ["Status", formatVal(after.status)],
+              ]}
+            />
+          ) : (
+            <div className="mt-3 rounded-md border border-border bg-background px-3 py-2">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                What happens
+              </div>
+              <p className="mt-1 text-[12px] leading-snug text-[var(--secondary-text)]">
+                {routeDescription(action)}
+              </p>
+            </div>
+          )}
+
+          <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
+            {action.reason}
+          </p>
+          <SourceRow sources={action.sources.map((s) => s.object_id)} />
+        </div>
+
+        <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-border bg-[var(--canvas)]/50 px-4 py-2">
+          <button
+            type="button"
+            onClick={() => rejectAction(k)}
+            className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              toast("Edit action", {
+                description: `${tool_labels[action.tool]} can be adjusted before sending.`,
+              })
+            }
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2 text-[11.5px] font-medium text-foreground transition-colors hover:bg-[var(--canvas)]"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              approveAction(k);
+              toast.success(`${primary} staged`, { description: targetLabel });
+            }}
+            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+          >
+            {primary}
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function NotesPanel({ actions }: { actions: Action[] }) {
+  if (actions.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center px-8 py-16 text-center">
+        <div>
+          <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--canvas)] text-[var(--muted-fg)]">
+            <FileText className="h-4 w-4" />
+          </div>
+          <p className="mt-3 text-[13px] font-medium text-foreground">No notes proposed</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 px-5 py-4">
+      {actions.map((a) => {
+        const k = action_key(a);
+        const after = getEffectiveAfter(a);
+        const body = formatVal(after.body);
+        const points = body
+          .split(".")
+          .map((p) => p.trim())
+          .filter(Boolean);
+        return (
+          <div
+            key={k}
+            className="overflow-hidden rounded-xl border border-border bg-card shadow-card"
+          >
+            <div className="px-4 pt-3">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                Draft internal note
+              </div>
+              <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+                {formatVal(after.title)}
+              </h3>
+              <ul className="mt-3 space-y-1.5">
+                {points.map((point) => (
+                  <li
+                    key={point}
+                    className="flex gap-2 text-[12.5px] leading-snug text-[var(--secondary-text)]"
+                  >
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--muted-fg)]" />
+                    <span>{point}.</span>
+                  </li>
+                ))}
+              </ul>
+              <SourceRow sources={a.sources.map((s) => s.object_id)} />
+            </div>
+            <div className="mt-3 flex items-center justify-end border-t border-border bg-[var(--canvas)]/50 px-4 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  approveAction(k);
+                  toast.success("Draft saved", { description: formatVal(after.title) });
+                }}
+                className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+              >
+                Save draft
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PreviewTable({ rows }: { rows: Array<[string, string]> }) {
+  return (
+    <dl className="mt-3 rounded-md border border-border bg-background px-3 py-2">
+      {rows.map(([k, v]) => (
+        <div key={k} className="grid grid-cols-[86px_1fr] gap-3 py-1 text-[12px]">
+          <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+            {k}
+          </dt>
+          <dd className="font-medium text-[var(--secondary-text)]">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function SourceRow({ sources }: { sources: string[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+        from
+      </span>
+      {sources.map((s) => (
+        <span
+          key={s}
+          className="inline-flex rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]"
+        >
+          {labelFor(s)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function destinationFor(action: Action) {
+  if (action.tool === "create_task") return formatVal(getEffectiveAfter(action).assignee);
+  if (action.required_approver)
+    return approver_labels[action.required_approver] ?? action.required_approver;
+  return labelFor(action.diff.target_object_id);
+}
+
+function primaryLabelFor(action: Action) {
+  if (action.tool === "create_task") return "Create & assign";
+  if (action.tool === "route_approval") return `Route to ${destinationFor(action)}`;
+  return "Send";
+}
+
+function routeDescription(action: Action) {
+  const destination = destinationFor(action);
+  if (action.required_approver === "legal") {
+    return "Creates a review task for Legal; sets the workflow to 'Pending Legal'.";
+  }
+  return `Creates an approval task for the ${destination}; sets the workflow to 'routed'.`;
+}
+
+function labelForField(field: string) {
+  return field.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function formatDate(value: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return value;
+  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 /* -------------------------------------------------------------------------- */

@@ -39,11 +39,11 @@ import { useLoopQuery } from "@/hooks/queries";
 export const Route = createFileRoute("/loop")({
   head: () => ({
     meta: [
-      { title: "Work Loop — Acme renewal" },
+      { title: "Agent Batch — Acme renewal" },
       {
         name: "description",
         content:
-          "Watch the Command Agent orchestrate multi-party follow-up work: distribute, collect, escalate, schedule, and close with a human-approved audit trail.",
+          "Watch the Command Agent batch-orchestrate multi-party follow-up work: distribute, collect, escalate, schedule, and close with a human-approved audit trail.",
       },
     ],
   }),
@@ -312,10 +312,10 @@ function WorkLoop() {
             <div className="min-w-0">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-primary">
                 <Workflow className="h-3 w-3" />
-                Work Loop
+                Agent Batch
               </div>
               <h1 className="mt-2 text-[24px] font-semibold leading-tight tracking-tight text-foreground">
-                Work Loop — Acme renewal
+                Agent Batch — Acme renewal
               </h1>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted-fg)]">
                 <Link
@@ -497,7 +497,7 @@ function ProposedPlan({ onApprove }: { onApprove: () => void }) {
             Plan
           </div>
           <div className="text-[11.5px] text-[var(--secondary-text)]">
-            Agent's proposed loop · nothing executes until you approve
+            Agent's proposed batch · nothing executes until you approve
           </div>
         </div>
       </div>
@@ -509,8 +509,8 @@ function ProposedPlan({ onApprove }: { onApprove: () => void }) {
               Proposed plan
             </h2>
             <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-              The Command Agent will perform these {PLAN_ITEMS.length} steps in sequence. No
-              messages are sent and no tasks are created until you approve.
+              The Command Agent will batch these {PLAN_ITEMS.length} steps in sequence. No messages
+              are sent and no tasks are created until you approve.
             </p>
             <p className="mt-1 text-[11.5px] leading-snug text-[var(--muted-fg)]">
               Derived from the{" "}
@@ -602,7 +602,7 @@ const STAGE_META: Record<
 > = {
   plan: {
     label: "Plan",
-    sub: "Agent's proposed loop",
+    sub: "Agent's proposed batch",
     icon: ListChecks,
   },
   distribute: {
@@ -939,7 +939,7 @@ function CloseStage({
             {meta.label}
           </div>
           <div className="text-[11.5px] text-[var(--secondary-text)]">
-            {closed ? "Audit-ready record below" : "Finalize the approved loop"}
+            {closed ? "Audit-ready record below" : "Finalize the approved batch"}
           </div>
         </div>
       </div>
@@ -964,7 +964,7 @@ function CloseStage({
               className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--success)] px-3.5 text-[13px] font-semibold text-white shadow-card transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--success)] focus-visible:ring-offset-2"
             >
               <Download className="h-3.5 w-3.5" />
-              Close loop &amp; export dossier
+              Close batch &amp; export dossier
             </button>
           </div>
         </div>
@@ -1007,7 +1007,7 @@ function CloseStage({
               aria-hidden
             />
             <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-3.5 py-2.5 text-[12.5px] leading-snug text-foreground">
-              <span className="font-semibold">Loop status:</span> {loop_ui.open_summary}
+              <span className="font-semibold">Batch status:</span> {loop_ui.open_summary}
             </div>
           </li>
         </ol>
@@ -1060,11 +1060,11 @@ function Dossier({
       <div className="overflow-hidden rounded-xl border border-border bg-background shadow-card">
         <div className="border-b border-border px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="text-[13px] font-semibold text-foreground">Loop Dossier</div>
+            <div className="text-[13px] font-semibold text-foreground">Batch Dossier</div>
             <ShieldCheck className="h-4 w-4 text-primary" />
           </div>
           <p className="mt-0.5 text-[11.5px] text-[var(--secondary-text)]">
-            Audit-ready record of this loop's state.
+            Audit-ready record of this batch's state.
           </p>
         </div>
 
@@ -1228,7 +1228,7 @@ function Dossier({
                 ? "border-border bg-background text-foreground hover:bg-[var(--primary-tint)] hover:text-primary"
                 : "cursor-not-allowed border-border bg-background text-[var(--muted-fg)]",
             ].join(" ")}
-            title={closed ? "Loop dossier exported" : "Exports when loop is closed"}
+            title={closed ? "Batch dossier exported" : "Exports when batch is closed"}
           >
             {closed ? (
               <>

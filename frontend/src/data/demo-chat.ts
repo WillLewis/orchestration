@@ -111,7 +111,7 @@ export const FLOW: {
       "Accepted. The customer success plan now reflects the approved 22%, and the 22%-vs-18% conflict " +
       "is cleared. Two blockers remain — the final covenant tracker and Legal sign-off — so it's still " +
       "not approval-ready.",
-    actions: [{ id: "propose_followups", label: "Propose follow-ups", kind: "propose_followups" }],
+    actions: [{ id: "propose_followups", label: "Agent Actions", kind: "propose_followups" }],
   },
   // Beat 1 alt — the safe capped path (not the hero path). Within authority; moves no gate.
   capped: {

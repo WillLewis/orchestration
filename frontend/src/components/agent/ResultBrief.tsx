@@ -10,14 +10,12 @@ import {
 } from "lucide-react";
 import { useMeetingQuery } from "@/hooks/queries";
 import { useGovernedBrief } from "@/lib/revalidation-store";
-import { usePacketPinned } from "@/lib/packet-store";
 import { openDrawer } from "@/lib/actions-store";
 
 export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => void }) {
   const { decision_brief: b, decision_readiness } = useGovernedBrief();
   const { meeting } = useMeetingQuery().data;
   const approvalReady = b.policy_gates.approval_ready;
-  const { pinned } = usePacketPinned();
   const blockers = decision_readiness.rows.filter((row) => row.status === "blocking");
 
   return (
@@ -143,18 +141,14 @@ export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => 
               type="button"
               onClick={() =>
                 openDrawer({
+                  mode: "plan",
                   source: "Acme renewal — pre-committee review",
                 })
               }
               className="inline-flex h-8 items-center rounded-md px-2.5 text-[12.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Propose follow-ups
+              Agent Actions
             </button>
-            {pinned && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10.5px] font-semibold text-primary">
-                Packet pinned
-              </span>
-            )}
           </div>
           <Link
             to="/packet"

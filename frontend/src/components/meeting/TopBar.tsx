@@ -55,10 +55,10 @@ export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: 
           <Link
             to="/loop"
             className="ml-1 inline-flex h-6 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-medium text-[var(--secondary-text)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary-tint)] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label="Open Work Loop orchestration"
+            aria-label="Open Agent Batch orchestration"
           >
             <Workflow className="h-3 w-3" />
-            Work Loop
+            Agent Batch
           </Link>
         </div>
 
