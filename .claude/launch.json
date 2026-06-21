@@ -8,6 +8,14 @@
       "cwd": "frontend",
       "port": 8080,
       "autoPort": false
+    },
+    {
+      "name": "frontend-preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "preview", "--port", "4173", "--host"],
+      "cwd": "frontend",
+      "port": 4173,
+      "autoPort": false
     }
   ]
 }
