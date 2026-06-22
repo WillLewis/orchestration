@@ -4,7 +4,7 @@
 // pinned governed replies keyed to the demo prompts — mirroring the SAME deterministic block the
 // backend `/chat` produces in live mode (the threshold numbers come from the brief's policy gates,
 // not invented). This is a demo SCRIPT, not governance-in-JS: for any non-scripted question, mock
-// mode falls back to the offline notice and the live gateway owns the real refusals.
+// mode gives a bounded preview answer and the live gateway owns the real, general refusals.
 import type { ChatAction, ChatResponse } from "@/hooks/queries";
 
 // Normalize a presenter's typing (case, spacing, %, trailing punctuation) to match robustly.
@@ -53,13 +53,45 @@ const WHY_RESPONSE: ChatResponse = {
   actions: [ROUTE_ACTION],
 };
 
-// The scripted reply for a demo prompt, or null (→ mock fallback / live gateway).
+const GOVERNED_QUESTIONS_RESPONSE: ChatResponse = {
+  reply:
+    "Good governed questions for this Acme review are: What changed since last review? Is the " +
+    "packet approval-ready? Why is Credit Officer approval blocking? What evidence is missing? " +
+    "Which sources were not used because of permissions? What safe actions can I take next?",
+  citations: [
+    { object_id: "doc_pricing_exception" },
+    { object_id: "wf_approval" },
+    { object_id: "doc_covenant_tracker" },
+  ],
+  permission_boundary_hit: false,
+  gate_held: false,
+  missing_evidence: false,
+  actions: [],
+};
+
+export const PREVIEW_FALLBACK_RESPONSE: ChatResponse = {
+  reply:
+    "In this preview I can answer the governed Acme demo questions: readiness, blockers, " +
+    "permission limits, source conflicts, DSCR, missing evidence, and safe next actions. For " +
+    "arbitrary workspace questions, run the gateway with VITE_USE_MOCKS=false.",
+  citations: [],
+  permission_boundary_hit: false,
+  gate_held: false,
+  missing_evidence: false,
+};
+
+// The scripted reply for a demo prompt, or null (→ bounded mock fallback / live gateway).
 export function scriptedChatResponse(message: string): ChatResponse | null {
   const m = normalize(message);
 
   // "Apply / set / give the 22% discount" → deterministic block.
   if (
-    (m.includes("apply") || m.includes("set") || m.includes("give")) &&
+    (m.includes("apply") ||
+      m.includes("set") ||
+      m.includes("give") ||
+      m.includes("change") ||
+      m.includes("update") ||
+      m.includes("make")) &&
     m.includes("22") &&
     m.includes("discount")
   ) {
@@ -71,6 +103,10 @@ export function scriptedChatResponse(message: string): ChatResponse | null {
     (m.includes("approval") || m.includes("approve") || m.includes("sign"))
   ) {
     return WHY_RESPONSE;
+  }
+  // "What are the governed questions?" → keep preview mode useful during panel walkthroughs.
+  if (m.includes("governed") && (m.includes("question") || m.includes("questions"))) {
+    return GOVERNED_QUESTIONS_RESPONSE;
   }
   return null;
 }

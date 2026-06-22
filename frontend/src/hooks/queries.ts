@@ -40,7 +40,7 @@ import {
   type GovernanceCertificate,
   type VerifyResult,
 } from "@/data/record";
-import { scriptedChatResponse } from "@/data/demo-chat";
+import { PREVIEW_FALLBACK_RESPONSE, scriptedChatResponse } from "@/data/demo-chat";
 import { setLatestRecordId } from "@/lib/record-store";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
@@ -536,21 +536,13 @@ export function useChatMutation() {
       history: ChatMessage[];
     }): Promise<ChatResponse> => {
       // Mock mode: the revalidation demo runs under VITE_USE_MOCKS, so the scripted demo prompts
-      // (the 22% block, the why-explanation) return pinned governed replies that MIRROR the backend
-      // block — a demo script, not governance-in-JS. Any non-scripted question degrades to the
-      // offline notice; the live gateway owns the real, general refusals.
+      // return pinned governed replies that MIRROR the backend block — a demo script, not
+      // governance-in-JS. Any non-scripted question gets a bounded preview answer; the live gateway
+      // owns the real, general refusals.
       if (!LIVE) {
         const scripted = scriptedChatResponse(input.message);
         if (scripted) return scripted;
-        return {
-          reply:
-            "Live chat is offline in this preview. Run the gateway (make api) and set " +
-            "VITE_USE_MOCKS=false to ask governed questions beyond the demo script.",
-          citations: [],
-          permission_boundary_hit: false,
-          gate_held: false,
-          missing_evidence: false,
-        };
+        return PREVIEW_FALLBACK_RESPONSE;
       }
       const res = await fetch(`${API_BASE}/chat`, {
         method: "POST",

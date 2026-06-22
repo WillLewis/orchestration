@@ -336,9 +336,9 @@
     <p class="sec-sub">Front-load a 75-second cold open to de-risk and set the arc, then spend the bulk live where trust is <i>earned</i> — the refusal, the honest revalidation, and the batch that closes the loop across the team. I leave the platform proof for the close. Click a segment to jump.</p>
     <div class="timeline">
       <button onclick="go('beat1')"><span class="t">Cold open</span><span class="m">0:00–1:15</span><div class="bar" style="width:100%"></div></button>
-      <button onclick="go('beat2')"><span class="t">Reframe</span><span class="m">1:15–3:15</span><div class="bar"></div></button>
-      <button onclick="go('beat3')"><span class="t">The user</span><span class="m">3:15–5:30</span><div class="bar"></div></button>
-      <button onclick="go('beat4')"><span class="t">The refusal</span><span class="m">5:30–9:30</span><div class="bar"></div></button>
+      <button onclick="go('beat2')"><span class="t">The user</span><span class="m">1:15–3:30</span><div class="bar"></div></button>
+      <button onclick="go('beat3')"><span class="t">The refusal</span><span class="m">3:30–7:30</span><div class="bar"></div></button>
+      <button onclick="go('beat4')"><span class="t">Reframe</span><span class="m">7:30–9:30</span><div class="bar"></div></button>
       <button onclick="go('beat5')"><span class="t">Brief + math</span><span class="m">9:30–13:00</span><div class="bar"></div></button>
       <button onclick="go('beat6')"><span class="t">Revalidate</span><span class="m">13:00–17:00</span><div class="bar"></div></button>
       <button onclick="go('beat7')"><span class="t">Agent Actions</span><span class="m">17:00–20:00</span><div class="bar"></div></button>
@@ -375,8 +375,8 @@
           <div class="label">The 75-second recording script</div>
           <div class="say" style="border-left-color:#6c4ce0">
             <em>(no voiceover, captions only)</em><br>
-            00:00 — "Acme renewal · pre-committee review" meeting, ConnectAgent panel open.<br>
-            00:08 — type <b>"Apply the 22% discount"</b> → blocked on Dana's own 15% authority.<br>
+            00:00 — type <b>"Apply the 22% discount"</b> → blocked on Dana's own 15% authority.<br>
+            00:08 — the "Acme renewal · pre-committee review" meeting it's grounded in — permissions-aware.<br>
             00:20 — <b>Route to Credit Officer</b> → CO signs off → agent revalidates: still not ready.<br>
             00:34 — accept the one cascade edit (CS plan 18%→22%) → conflict clears.<br>
             00:46 — <b>Agent Actions</b> → Approve all → blocked row still skips with a reason.<br>
@@ -395,6 +395,18 @@
 
         <div class="frame">
           <div class="scrn"><span class="ts">00:00</span>
+            <div class="mcard">
+              <div class="mini" style="font-weight:700;color:var(--primary)">✦ ConnectAgent</div>
+              <div class="mbubble u">Apply the 22% discount</div>
+              <div class="mbubble b">22% exceeds your delegated authority (up to 15%). Needs Credit Officer approval.</div>
+              <span class="mchip" style="background:var(--danger-bg);color:var(--danger)">⛔ Gate held</span>
+            </div>
+          </div>
+          <div class="cap"><b>Open cold on the refusal.</b> A real user hits the agent's edge — blocked on her own authority.</div>
+        </div>
+
+        <div class="frame">
+          <div class="scrn"><span class="ts">00:08</span>
             <div class="mpane">
               <div class="mcard"><div class="mini" style="font-weight:700">Acme credit memo · v3</div><div class="mbar" style="width:92%"></div><div class="mbar" style="width:78%"></div><div class="mbar" style="width:88%"></div><div class="mbar" style="width:64%"></div><div class="mbar" style="width:82%"></div></div>
               <div class="mcard" style="background:var(--canvas)">
@@ -405,19 +417,7 @@
               </div>
             </div>
           </div>
-          <div class="cap"><b>Open on the meeting.</b> ConnectAgent — grounded &amp; permissions-aware.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:08</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700;color:var(--primary)">✦ ConnectAgent</div>
-              <div class="mbubble u">Apply the 22% discount</div>
-              <div class="mbubble b">22% exceeds your delegated authority (up to 15%). Needs Credit Officer approval.</div>
-              <span class="mchip" style="background:var(--danger-bg);color:var(--danger)">⛔ Gate held</span>
-            </div>
-          </div>
-          <div class="cap"><b>Try to do your job.</b> It blocks her own authority — won't budge.</div>
+          <div class="cap"><b>Grounded in this meeting.</b> The refusal came from real, permissions-aware context.</div>
         </div>
 
         <div class="frame">
@@ -517,40 +517,16 @@
         </div>
         <div class="notes">
           <div class="label">Say</div>
-          <div class="say">"Before I touch anything live — here's the whole product in 75 seconds, so you know where we're going." <em>(play)</em> "Everything you just saw is running on my machine right now. Let's go do it for real."</div>
+          <div class="say">"This isn't a smarter chatbot — it's the first surface of a governed orchestration platform; watch a real user hit its edges. Before I touch anything live — here's the whole product in 75 seconds, so you know where we're going." <em>(play)</em> "Everything you just saw is running on my machine right now. Let's go do it for real."</div>
           <div class="label" style="margin-top:13px">Why it lands</div>
           <div class="lands"><span class="chip tint">Communication</span><span class="chip ghost">De-risks the room</span><span class="chip ghost">Sets the arc</span></div>
         </div>
       </div>
     </div>
 
-    <!-- BEAT 2 -->
+    <!-- BEAT 2 — THE USER -->
     <div class="card beat" id="beat2">
-      <div class="bhead"><div class="bn">2</div><h3>Reframe: a platform problem, not a chatbot feature</h3><span class="time">1:15–3:15</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="card pad" style="box-shadow:none">
-            <div class="label">The reframe on one slide</div>
-            <p style="font-size:13.5px;margin:0 0 10px">Today: <b>summarize</b> &nbsp;→&nbsp; Next: answer <b>what changed, what matters, what's missing, what's allowed, what to do, who owns it, and whether it's still true.</b></p>
-            <div class="lands">
-              <span class="chip ghost">ContextBundle</span><span class="chip ghost">RulePack</span><span class="chip ghost">ToolCard</span>
-              <span class="chip ghost">ActionDiff</span><span class="chip ghost">WorkProductContract</span><span class="chip ghost">EvalTrace</span>
-            </div>
-            <div class="note">Six reusable primitives — vertical-agnostic by design. Verticals differ only by RulePack + recipe + eval pack.</div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="label">Say</div>
-          <div class="say">"I treated this less as a chatbot enhancement and more as the first visible surface of a regulated <em>work-orchestration platform</em>. The category is being commoditized — summaries and transcript Q&A are table stakes the moment Copilot ships them. The durable wedge is the unglamorous substrate: permission-aware context, deterministic verification, safe actions, multi-owner orchestration, lifecycle, and a privacy-preserving eval loop."</div>
-          <div class="label" style="margin-top:13px">Why it lands</div>
-          <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip info">Platform mindset (JD)</span><span class="chip ghost">Names the primitives early</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 3 -->
-    <div class="card beat" id="beat3">
-      <div class="bhead"><div class="bn">3</div><h3>The user & the stakes — meet Dana</h3><span class="time">3:15–5:30</span></div>
+      <div class="bhead"><div class="bn">2</div><h3>The user & the stakes — meet Dana</h3><span class="time">1:15–3:30</span></div>
       <div class="bbody">
         <div class="stage">
           <div class="card pad" style="box-shadow:none">
@@ -578,9 +554,9 @@
       </div>
     </div>
 
-    <!-- BEAT 4 — LIVE CHAT: THE REFUSAL (interactive) -->
-    <div class="card beat" id="beat4">
-      <div class="bhead"><div class="bn">4</div><h3>The refusal — she asks the agent to do her job, and it says no</h3><span class="time">5:30–9:30 · hero</span></div>
+    <!-- BEAT 3 — LIVE CHAT: THE REFUSAL (interactive) -->
+    <div class="card beat" id="beat3">
+      <div class="bhead"><div class="bn">3</div><h3>The refusal — she asks the agent to do her job, and it says no</h3><span class="time">3:30–7:30 · hero</span></div>
       <div class="bbody">
         <div class="stage">
           <div class="app">
@@ -610,6 +586,31 @@
           </ul>
           <div class="money"><div class="k">Money line</div>"She asked the agent to do her job and it told her <b>no — and exactly why.</b> I can turn the model off and this refusal is byte-identical, because the authority lives in the rulepack, not the model."</div>
           <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip tint">Product design</span><span class="chip dang">Edge cases earned, not staged</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BEAT 4 — REFRAME -->
+    <div class="card beat" id="beat4">
+      <div class="bhead"><div class="bn">4</div><h3>Reframe: a platform problem, not a chatbot feature</h3><span class="time">7:30–9:30</span></div>
+      <div class="bbody">
+        <div class="stage">
+          <div class="card pad" style="box-shadow:none">
+            <div class="label">The reframe on one slide</div>
+            <p style="font-size:13.5px;margin:0 0 10px">Today: <b>summarize</b> &nbsp;→&nbsp; Next: answer <b>what changed, what matters, what's missing, what's allowed, what to do, who owns it, and whether it's still true.</b></p>
+            <div class="lands">
+              <span class="chip ghost">ContextBundle</span><span class="chip ghost">RulePack</span><span class="chip ghost">ToolCard</span>
+              <span class="chip ghost">ActionDiff</span><span class="chip ghost">WorkProductContract</span><span class="chip ghost">EvalTrace</span>
+            </div>
+            <div class="note">Six reusable primitives — vertical-agnostic by design. Verticals differ only by RulePack + recipe + eval pack.</div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="label">Say</div>
+          <div class="say">"I treated this less as a chatbot enhancement and more as the first visible surface of a regulated <em>work-orchestration platform</em>. The category is being commoditized — summaries and transcript Q&A are table stakes the moment Copilot ships them. And the deterministic layer isn't overhead on retrieval — emerging neurosymbolic-RAG research points the other way. RuleRAG reports an ~89% Recall@10 improvement from using symbolic rules to guide retrieval; the recent Saxena survey on neurosymbolic retrievers argues this matters most in high-stakes domains where opaque retrieval erodes trust. So this layer makes retrieval better AND trustworthy. The durable wedge is the unglamorous substrate: permission-aware context, deterministic verification, safe actions, multi-owner orchestration, lifecycle, and a privacy-preserving eval loop."</div>
+          <div class="note">RuleRAG's figure, cited in Saxena et al. 2026 (arXiv 2601.04568) — emerging research, not consensus.</div>
+          <div class="label" style="margin-top:13px">Why it lands</div>
+          <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip info">Platform mindset (JD)</span><span class="chip ghost">Names the primitives early</span><span class="chip ghost">"Not just RAG" rebuttal</span></div>
         </div>
       </div>
     </div>
@@ -762,7 +763,7 @@
         </div>
         <div class="notes">
           <div class="label">Say</div>
-          <div class="say">"When the packet's ready, Dana seals it as a <em>governed record</em> — a server-minted certificate with an integrity seal, full provenance, and the permission omissions baked in. Now decisions go stale. I change a <em>different</em> source each time and verify — and the impact routes to a <em>different</em> place. Legal moves to 'Needs Review' → the approval sections go stale and reapproval routes to Legal. The financial model revs to v2 → DSCR drops to 1.18, <em>breaches the covenant floor</em>, and the factual sections go stale — but there's no reapproval route, because it's a data change, not an approval change. This is derived from a real source-dependency graph."</div>
+          <div class="say">"When the packet's ready, Dana seals it as a <em>governed record</em> — a server-minted certificate with an integrity seal, full provenance, and the permission omissions baked in. Now decisions go stale. I change a <em>different</em> source each time and verify — and the impact routes to a <em>different</em> place. Legal moves to 'Needs Review' → the approval sections go stale and reapproval routes to Legal. The financial model revs to v2 → DSCR drops to 1.18, <em>breaches the covenant floor</em>, and the factual sections go stale — but there's no reapproval route, because it's a data change, not an approval change. This is derived from a real source-dependency graph. For a regulated credit decision this isn't a nice-to-have. Credit scoring is a named Annex III high-risk category under the EU AI Act, and Article 14 requires a human-interpretable record surfacing the factors behind each decision — with penalties up to 7% of global turnover. I built the regulation's requirement as a primitive."</div>
           <div class="money"><div class="k">Money line</div>"The agent stops saying 'I generated an answer' and starts saying <b>'I'm tracking whether this is still true'</b> — and proves it with a server seal."</div>
           <div class="lands"><span class="chip tint">Product design</span><span class="chip info">Real-world usage signals (JD)</span><span class="chip ghost">Edge case: stale work product</span></div>
         </div>
@@ -818,11 +819,12 @@
           <div class="card pad" style="box-shadow:none">
             <div class="label">Roadmap (phased, Phase 0 first — that's the judgment)</div>
             <div style="display:grid;gap:8px;font-size:12.5px">
-              <div><span class="chip tint">Phase 0</span> Substrate: permission-aware context · RulePack/gates · ActionDiff · EvalTrace.</div>
-              <div><span class="chip tint">Phase 1</span> Financial Decision Brief (the churning vertical).</div>
+              <div><span class="chip tint">Phase 0</span> Substrate: permission-aware grounding &amp; retrieval (the foundation) · RulePack/gates · ActionDiff · EvalTrace.</div>
+              <div><span class="chip tint">Phase 1</span> Financial Decision Brief — grounded retrieval into a verified, cited packet (the churning vertical).</div>
               <div><span class="chip tint">Phase 2</span> Controlled work loop: typed tools, diffs, approval, multi-owner batch, audit.</div>
               <div><span class="chip tint">Phase 3</span> Lifecycle, sealed records, evals, AI Studio recipes, Legal + Health.</div>
             </div>
+            <div class="note">Grounding is the foundation, demonstrated throughout — the deterministic substrate is what makes it safe to act on. Read first, then governed action.</div>
           </div>
         </div>
         <div class="notes">
@@ -858,7 +860,7 @@
     <p class="sec-sub">I'll invite them to role-play departments (Eng/Design/GTM) and dig. Pre-loaded answers, each with an "I built this" hook.</p>
 
     <details class="qa"><summary><span class="q">?</span>Isn't this just RAG with extra steps?</summary>
-      <div class="a"><b>RAG is necessary, not sufficient.</b> It finds content; it doesn't validate an approval matrix, recompute a covenant ratio, or prove an action is safe. Published financial-reasoning benchmarks put RAG-with-reranking near ~50% factual correctness; a neurosymbolic layer reaches ~95%. The differentiator is <b>verification over retrieved context</b> — and you watched the arithmetic, not a vibe.<div class="hook">Hook: understander → planner → verifier → executor with explicit typed contracts.</div></div></details>
+      <div class="a"><b>RAG is necessary, not sufficient.</b> It finds content; it doesn't validate an approval matrix, recompute a covenant ratio, or prove an action is safe. Published financial-reasoning benchmarks put RAG-with-reranking near ~50% factual correctness; a neurosymbolic layer reaches ~95%. And the symbolic layer doesn't just sit on top of retrieval — it improves it: RuleRAG reports an ~89% Recall@10 improvement from using symbolic rules to guide retrieval (RuleRAG's figure, cited in Saxena et al. 2026, arXiv 2601.04568 — emerging research, not consensus), and the Saxena survey argues this matters most in high-stakes domains where opaque retrieval erodes trust. So the symbolic layer <b>improves retrieval AND owns the pass/fail</b> — you watched the arithmetic, not a vibe.<div class="hook">Hook: understander → planner → verifier → executor with explicit typed contracts.</div></div></details>
 
     <details class="qa"><summary><span class="q">?</span>The "Agent Batch" — is that real orchestration or a scripted animation?</summary>
       <div class="a">Real. The batch is a typed loop — <b>assignments</b> to typed owners, <b>replies</b> with a decision enum, <b>escalations</b>, <b>scheduled</b> items, and an <b>audit</b> — the same shape the gateway returns from <code>POST /actions/loop</code>. The Legal→Compliance escalation is <b>derived</b> from authority being exceeded, and the "1 item open" banner reads escalations-in-flight, not a hardcoded "closed" flag.<div class="hook">Hook: <code>closed</code> means the cycle ran; open status is computed from <code>escalations</code>, so a closed batch can still be honestly unfinished.</div></div></details>
@@ -873,7 +875,7 @@
       <div class="a">Layered and content-free: synthetic evals, <b>tenant-local</b> runners (raw stays in the tenant), consented redacted samples, AI Studio feedback, and <b>differential-privacy</b> aggregates. The honest caveat: DP helps aggregate trend learning, not row-level debugging — that's what tenant-local + redacted samples are for. You saw the trace: typed signals only, enforced by schema.<div class="hook">Hook: offline-replay eval harness; accept/edit/reject telemetry becomes the regression set.</div></div></details>
 
     <details class="qa"><summary><span class="q">?</span>Why finance first — isn't it over-engineered?</summary>
-      <div class="a">Finance has the clearest churn signal and the richest deterministic surface — calculations, approvals, MNPI, auditability. The depth is intentional, but the primitives are platform primitives, which is why the demo ends with Legal + Health on the <b>same substrate</b>. Configuration, not code.<div class="hook">Hook: verticals differ only by RulePack + recipe + eval pack.</div></div></details>
+      <div class="a">Finance has the clearest churn signal and the richest deterministic surface — calculations, approvals, MNPI, auditability. It's also where the regulation is most concrete: credit scoring is a named Annex III high-risk category under the EU AI Act, and Article 14 requires a human-interpretable record of the factors behind each decision — so the "over-engineering" is the buyer's compliance requirement, not gold-plating. The depth is intentional, but the primitives are platform primitives, which is why the demo ends with Legal + Health on the <b>same substrate</b>. Configuration, not code.<div class="hook">Hook: verticals differ only by RulePack + recipe + eval pack.</div></div></details>
 
     <details class="qa"><summary><span class="q">?</span>Single most important deterministic component?</summary>
       <div class="a">The <b>approval / policy gate.</b> It directly addresses the churn-driving trust gap — and it's the one place you must never let the model decide. You saw it hold when Dana tried to apply the discount herself, when she approved every action at once, and after a sign-off when two blockers remained.<div class="hook">Hook: the gate is enforced in the wrapper and re-run server-side on execute; any model "approved" text is neutralized.</div></div></details>
@@ -894,9 +896,9 @@
     <table class="mtx">
       <thead><tr><th>Beat</th><th>Strategic</th><th>Product design</th><th>Technical & AI</th><th>Communication</th><th>Customer sense</th></tr></thead>
       <tbody>
-        <tr><td>2 · Reframe</td><td><span class="dotm"></span></td><td></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td></td></tr>
-        <tr><td>3 · The user</td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td></tr>
-        <tr><td>4 · The refusal</td><td></td><td><span class="dotm"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
+        <tr><td>2 · The user</td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td></tr>
+        <tr><td>3 · The refusal</td><td></td><td><span class="dotm"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
+        <tr><td>4 · Reframe</td><td><span class="dotm"></span></td><td></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td></td></tr>
         <tr><td>5 · Brief + math</td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
         <tr><td>6 · Revalidate</td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td></tr>
         <tr><td>7 · Agent Actions</td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
