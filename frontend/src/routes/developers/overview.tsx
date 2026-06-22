@@ -1,0 +1,211 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
+import type { ReactNode } from "react";
+
+import { DocsSidebar } from "@/components/docs/DocsSidebar";
+
+export const Route = createFileRoute("/developers/overview")({
+  head: () => ({
+    meta: [
+      { title: "Overview - ConnectWork Platform API" },
+      {
+        name: "description",
+        content:
+          "Executive summary: turning the Conversational Insights Agent into a single governed agent that closes the loop, with finance as the initial wedge.",
+      },
+    ],
+  }),
+  component: OverviewDocsPage,
+});
+
+function Block({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section
+      className="border-t border-zinc-900 pt-7"
+      style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
+    >
+      <h2 className="text-[18px] font-semibold tracking-tight text-zinc-100">{title}</h2>
+      <div className="mt-2.5 max-w-[68ch] space-y-3 text-[14px] leading-relaxed text-zinc-400">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function OverviewDocsPage() {
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0a0c] text-zinc-200">
+      <header className="sticky top-0 z-30 border-b border-zinc-800/80 bg-[#0a0a0c]/85 backdrop-blur">
+        <div className="mx-auto flex h-12 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              to="/ops"
+              className="inline-flex h-7 items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-2 text-[11px] text-zinc-400 hover:text-zinc-200"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Agent Ops
+            </Link>
+            <span className="truncate text-[13px] font-semibold tracking-tight text-zinc-100">
+              ConnectWork Platform API
+            </span>
+            <span className="inline-flex h-5 items-center rounded border border-zinc-700 bg-zinc-900 px-1.5 font-mono text-[10.5px] text-zinc-300">
+              v2
+            </span>
+          </div>
+          <div className="hidden text-[11.5px] text-zinc-500 sm:block">
+            developers.connectwork.com
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto block w-full max-w-[1320px] gap-8 px-4 py-8 sm:px-6 md:flex">
+        <DocsSidebar />
+
+        <main className="w-full min-w-0 space-y-7 md:flex-1">
+          <section style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
+              Getting started
+            </div>
+            <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50">
+              Overview
+            </h1>
+            <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-zinc-300">
+              Today's Conversational Insights Agent describes conversations. We turn it into a
+              single governed agent that closes the loop from discussed to done — it grounds across
+              the workspace, drafts the decision, acts on it through a deterministic policy gate,
+              orchestrates the follow-ups across owners, and seals an audit-ready record that knows
+              when it's gone stale. The hard part isn't a smarter model; it's the orchestration
+              substrate that makes every output permission-safe, deterministically verified, and
+              auditable.
+            </p>
+          </section>
+
+          <Block title="Why this, not a smarter chatbot">
+            <p>
+              Summarization and transcript Q&amp;A are becoming table stakes — the week a horizontal
+              copilot ships them, they stop being a differentiator. The durable wedge is the
+              unglamorous substrate underneath: permission-aware context, deterministic
+              verification, safe actions, multi-owner orchestration, lifecycle, and a
+              privacy-preserving evaluation loop. The agent is the visible surface; the substrate is
+              the product.
+            </p>
+          </Block>
+
+          <Block title="How we chose what to build">
+            <p>
+              The theme list isn't a grab bag. It's the minimal set of capabilities an agent needs
+              to cross from describing to doing on regulated work: ground (read), decide (brief),
+              act safely (gate), orchestrate (batch), and stay true (lifecycle). Each maps to a
+              phase of the build.
+            </p>
+            <p>
+              We then scored eight candidate themes against the brief's own criteria — value,
+              platform leverage, differentiation, and risk — and let the ranking, not instinct,
+              order them. Cross-source grounding ranked first as the foundation; deterministic
+              gating second as the rail that makes acting safe. The full scorecard is on the{" "}
+              <Link
+                to="/developers/prioritization"
+                className="text-emerald-300 underline-offset-2 hover:underline"
+              >
+                Prioritization
+              </Link>{" "}
+              page.
+            </p>
+          </Block>
+
+          <Block title="Why finance first">
+            <p>
+              We lead with a financial-services credit decision because that's where the trust
+              problem bites hardest. When the agent gets a number wrong on a credit memo, it isn't a
+              bad summary — it's a sanctioned decision. It's also where the deterministic layer is
+              most legible (a 22%-over-15%-authority breach is computed, not guessed) and where the
+              audit requirement is already real.
+            </p>
+            <p>
+              Finance is a beachhead, not a vertical bet: the same primitives extend to Legal and
+              Health by swapping the Policy Artifact and the evaluation pack. Prove it for one
+              regulated cohort, then expand.
+            </p>
+          </Block>
+
+          <section
+            className="rounded-lg border-l-2 border-emerald-400/80 bg-emerald-400/[0.06] p-4"
+            style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
+          >
+            <p className="max-w-[68ch] text-[14px] leading-relaxed text-emerald-100/90">
+              <span className="font-semibold text-emerald-50">
+                Finance is the wedge, not the architecture.
+              </span>{" "}
+              The platform is shared primitives, measured by typed signals — the orchestration layer
+              this work is really about.
+            </p>
+          </section>
+
+          <Block title="The shape of the build">
+            <p>
+              Substrate first — context, policy, action preview, evaluation — then read before
+              write, then govern the lifecycle of what the agent produces. The phased plan and its
+              sequencing logic live on the{" "}
+              <Link
+                to="/developers/roadmap"
+                className="text-emerald-300 underline-offset-2 hover:underline"
+              >
+                Roadmap
+              </Link>
+              . The north star is decision → closed-work-product cycle time for regulated review;
+              everything else is a driver.
+            </p>
+          </Block>
+        </main>
+      </div>
+
+      <footer className="border-t border-zinc-800/60 bg-[#0a0a0c]">
+        <div className="mx-auto max-w-[1320px] px-6 py-10">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-3">
+              <div className="text-[13px] font-semibold tracking-tight text-zinc-100">
+                ConnectWork
+              </div>
+              <p className="text-[12.5px] leading-relaxed text-zinc-500">
+                A leading SaaS provider of collaborative workspace solutions for large enterprises.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="text-[13px] font-semibold tracking-tight text-zinc-100">Platform</div>
+              <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
+                <li>Document management</li>
+                <li>Team communication</li>
+                <li>Project organization</li>
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <div className="text-[13px] font-semibold tracking-tight text-zinc-100">
+                AI Agents
+              </div>
+              <p className="text-[12.5px] leading-relaxed text-zinc-500">
+                Conversational Insights Agent - embedded within chat and meeting tools to boost
+                productivity.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="text-[13px] font-semibold tracking-tight text-zinc-100">
+                Developers
+              </div>
+              <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
+                <li>Platform API v2</li>
+                <li>Policy artifacts</li>
+                <li>Deterministic gating</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-zinc-800/60 pt-6 sm:flex-row">
+            <p className="text-[11.5px] text-zinc-600">
+              © {new Date().getFullYear()} ConnectWork, Inc. All rights reserved.
+            </p>
+            <p className="text-[11.5px] text-zinc-600">developers.connectwork.com</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

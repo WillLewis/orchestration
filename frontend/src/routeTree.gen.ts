@@ -14,6 +14,10 @@ import { Route as OpsRouteImport } from './routes/ops'
 import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
+import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
+import { Route as DevelopersRoadmapRouteImport } from './routes/developers/roadmap'
+import { Route as DevelopersPrioritizationRouteImport } from './routes/developers/prioritization'
+import { Route as DevelopersOverviewRouteImport } from './routes/developers/overview'
 import { Route as DevelopersGatingRouteImport } from './routes/developers/gating'
 
 const PacketRoute = PacketRouteImport.update({
@@ -41,6 +45,27 @@ const RecordRecordIdRoute = RecordRecordIdRouteImport.update({
   path: '/record/$recordId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersVisionRoute = DevelopersVisionRouteImport.update({
+  id: '/developers/vision',
+  path: '/developers/vision',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRoadmapRoute = DevelopersRoadmapRouteImport.update({
+  id: '/developers/roadmap',
+  path: '/developers/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersPrioritizationRoute =
+  DevelopersPrioritizationRouteImport.update({
+    id: '/developers/prioritization',
+    path: '/developers/prioritization',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DevelopersOverviewRoute = DevelopersOverviewRouteImport.update({
+  id: '/developers/overview',
+  path: '/developers/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevelopersGatingRoute = DevelopersGatingRouteImport.update({
   id: '/developers/gating',
   path: '/developers/gating',
@@ -53,6 +78,10 @@ export interface FileRoutesByFullPath {
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
   '/developers/gating': typeof DevelopersGatingRoute
+  '/developers/overview': typeof DevelopersOverviewRoute
+  '/developers/prioritization': typeof DevelopersPrioritizationRoute
+  '/developers/roadmap': typeof DevelopersRoadmapRoute
+  '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +90,10 @@ export interface FileRoutesByTo {
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
   '/developers/gating': typeof DevelopersGatingRoute
+  '/developers/overview': typeof DevelopersOverviewRoute
+  '/developers/prioritization': typeof DevelopersPrioritizationRoute
+  '/developers/roadmap': typeof DevelopersRoadmapRoute
+  '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRoutesById {
@@ -70,6 +103,10 @@ export interface FileRoutesById {
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
   '/developers/gating': typeof DevelopersGatingRoute
+  '/developers/overview': typeof DevelopersOverviewRoute
+  '/developers/prioritization': typeof DevelopersPrioritizationRoute
+  '/developers/roadmap': typeof DevelopersRoadmapRoute
+  '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +117,10 @@ export interface FileRouteTypes {
     | '/ops'
     | '/packet'
     | '/developers/gating'
+    | '/developers/overview'
+    | '/developers/prioritization'
+    | '/developers/roadmap'
+    | '/developers/vision'
     | '/record/$recordId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +129,10 @@ export interface FileRouteTypes {
     | '/ops'
     | '/packet'
     | '/developers/gating'
+    | '/developers/overview'
+    | '/developers/prioritization'
+    | '/developers/roadmap'
+    | '/developers/vision'
     | '/record/$recordId'
   id:
     | '__root__'
@@ -96,6 +141,10 @@ export interface FileRouteTypes {
     | '/ops'
     | '/packet'
     | '/developers/gating'
+    | '/developers/overview'
+    | '/developers/prioritization'
+    | '/developers/roadmap'
+    | '/developers/vision'
     | '/record/$recordId'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +154,10 @@ export interface RootRouteChildren {
   OpsRoute: typeof OpsRoute
   PacketRoute: typeof PacketRoute
   DevelopersGatingRoute: typeof DevelopersGatingRoute
+  DevelopersOverviewRoute: typeof DevelopersOverviewRoute
+  DevelopersPrioritizationRoute: typeof DevelopersPrioritizationRoute
+  DevelopersRoadmapRoute: typeof DevelopersRoadmapRoute
+  DevelopersVisionRoute: typeof DevelopersVisionRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
 }
 
@@ -145,6 +198,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecordRecordIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developers/vision': {
+      id: '/developers/vision'
+      path: '/developers/vision'
+      fullPath: '/developers/vision'
+      preLoaderRoute: typeof DevelopersVisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/roadmap': {
+      id: '/developers/roadmap'
+      path: '/developers/roadmap'
+      fullPath: '/developers/roadmap'
+      preLoaderRoute: typeof DevelopersRoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/prioritization': {
+      id: '/developers/prioritization'
+      path: '/developers/prioritization'
+      fullPath: '/developers/prioritization'
+      preLoaderRoute: typeof DevelopersPrioritizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/overview': {
+      id: '/developers/overview'
+      path: '/developers/overview'
+      fullPath: '/developers/overview'
+      preLoaderRoute: typeof DevelopersOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/developers/gating': {
       id: '/developers/gating'
       path: '/developers/gating'
@@ -161,6 +242,10 @@ const rootRouteChildren: RootRouteChildren = {
   OpsRoute: OpsRoute,
   PacketRoute: PacketRoute,
   DevelopersGatingRoute: DevelopersGatingRoute,
+  DevelopersOverviewRoute: DevelopersOverviewRoute,
+  DevelopersPrioritizationRoute: DevelopersPrioritizationRoute,
+  DevelopersRoadmapRoute: DevelopersRoadmapRoute,
+  DevelopersVisionRoute: DevelopersVisionRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
 }
 export const routeTree = rootRouteImport

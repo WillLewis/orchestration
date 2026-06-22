@@ -461,26 +461,3 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
     },
   },
 };
-
-export const gatingNav = [
-  {
-    label: "Getting started",
-    items: ["Overview", "Authentication", "Rate limits", "Errors", "Changelog"],
-  },
-  {
-    label: "Agents",
-    items: ["ConnectWork Agent", "AI Studio", "Automate"],
-  },
-  {
-    label: "Content",
-    items: ["Files & metadata", "Permissions", "Extract"],
-  },
-  {
-    label: "Connectivity",
-    items: ["MCP Server", "Webhooks"],
-  },
-  {
-    label: "Governance",
-    items: ["Deterministic Gating", "Revalidation", "Audit dossier"],
-  },
-] as const;

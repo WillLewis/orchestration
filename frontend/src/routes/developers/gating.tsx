@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { gatingExamples, gatingNav, type GatingExample, type GatingVertical } from "@/data/gating";
+import { DocsSidebar } from "@/components/docs/DocsSidebar";
+import { gatingExamples, type GatingExample, type GatingVertical } from "@/data/gating";
 
 export const Route = createFileRoute("/developers/gating")({
   head: () => ({
@@ -437,36 +438,7 @@ function GatingDocsPage() {
       </header>
 
       <div className="mx-auto block w-full max-w-[1320px] gap-8 px-4 py-8 sm:px-6 md:flex">
-        <aside className="sticky top-[64px] hidden h-[calc(100vh-80px)] w-56 shrink-0 overflow-y-auto pr-2 md:block">
-          <nav className="space-y-6">
-            {gatingNav.map((section) => (
-              <div key={section.label}>
-                <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
-                  {section.label}
-                </div>
-                <ul className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <li key={item}>
-                      {item === "Deterministic Gating" ? (
-                        <span className="relative block rounded px-2 py-1 text-[12.5px] font-medium text-zinc-100">
-                          <span className="absolute inset-y-1 left-0 w-[2px] rounded bg-emerald-400" />
-                          <span className="pl-2">{item}</span>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="block w-full cursor-default rounded px-2 py-1 text-left text-[12.5px] text-zinc-500 hover:text-zinc-300"
-                        >
-                          {item}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </nav>
-        </aside>
+        <DocsSidebar />
 
         <main className="w-full min-w-0 space-y-12 md:flex-1">
           <section style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}>
