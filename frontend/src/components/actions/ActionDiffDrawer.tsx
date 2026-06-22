@@ -1140,7 +1140,9 @@ function OverrideCard({ action, overridden }: { action: Action; overridden: bool
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
               <Chip className="bg-[var(--danger-bg)] text-[var(--danger)]">Blocked</Chip>
               {overridden && (
-                <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Override staged</Chip>
+                <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">
+                  Override staged
+                </Chip>
               )}
             </div>
           </div>
@@ -1849,7 +1851,8 @@ function ExecutionResult({ result }: { result: ExecResult }) {
               <>
                 {" "}
                 · refused{" "}
-                <span className="font-semibold text-[var(--danger)]">{refused.length}</span> (re-gated)
+                <span className="font-semibold text-[var(--danger)]">{refused.length}</span>{" "}
+                (re-gated)
               </>
             )}
           </div>

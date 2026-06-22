@@ -14,6 +14,7 @@ import { Route as OpsRouteImport } from './routes/ops'
 import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
+import { Route as DevelopersGatingRouteImport } from './routes/developers/gating'
 
 const PacketRoute = PacketRouteImport.update({
   id: '/packet',
@@ -40,12 +41,18 @@ const RecordRecordIdRoute = RecordRecordIdRouteImport.update({
   path: '/record/$recordId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersGatingRoute = DevelopersGatingRouteImport.update({
+  id: '/developers/gating',
+  path: '/developers/gating',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/developers/gating': typeof DevelopersGatingRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/developers/gating': typeof DevelopersGatingRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,34 @@ export interface FileRoutesById {
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/developers/gating': typeof DevelopersGatingRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/loop' | '/ops' | '/packet' | '/record/$recordId'
+  fullPaths:
+    | '/'
+    | '/loop'
+    | '/ops'
+    | '/packet'
+    | '/developers/gating'
+    | '/record/$recordId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/loop' | '/ops' | '/packet' | '/record/$recordId'
-  id: '__root__' | '/' | '/loop' | '/ops' | '/packet' | '/record/$recordId'
+  to:
+    | '/'
+    | '/loop'
+    | '/ops'
+    | '/packet'
+    | '/developers/gating'
+    | '/record/$recordId'
+  id:
+    | '__root__'
+    | '/'
+    | '/loop'
+    | '/ops'
+    | '/packet'
+    | '/developers/gating'
+    | '/record/$recordId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +104,7 @@ export interface RootRouteChildren {
   LoopRoute: typeof LoopRoute
   OpsRoute: typeof OpsRoute
   PacketRoute: typeof PacketRoute
+  DevelopersGatingRoute: typeof DevelopersGatingRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
 }
 
@@ -116,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecordRecordIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developers/gating': {
+      id: '/developers/gating'
+      path: '/developers/gating'
+      fullPath: '/developers/gating'
+      preLoaderRoute: typeof DevelopersGatingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -124,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoopRoute: LoopRoute,
   OpsRoute: OpsRoute,
   PacketRoute: PacketRoute,
+  DevelopersGatingRoute: DevelopersGatingRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
 }
 export const routeTree = rootRouteImport

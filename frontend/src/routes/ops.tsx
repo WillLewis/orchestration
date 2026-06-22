@@ -308,6 +308,12 @@ function AgentOpsPage() {
             <span className="text-[11.5px] text-[var(--muted-fg)] tabular-nums">
               {lastRunLabel}
             </span>
+            <Link
+              to="/developers/gating"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              View API reference
+            </Link>
             <button
               type="button"
               onClick={runEvals}
