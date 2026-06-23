@@ -1,0 +1,9 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+import { DeveloperDocPage } from "@/components/docs/DeveloperDocPage";
+import { getDeveloperDocHead } from "@/data/developerDocMeta";
+
+export const Route = createFileRoute("/developers/metrics")({
+  head: () => getDeveloperDocHead("metrics"),
+  component: () => <DeveloperDocPage pageId="metrics" />,
+});

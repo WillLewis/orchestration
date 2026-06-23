@@ -7,7 +7,23 @@ export type LiveDocsRoute =
   | "/developers/vision"
   | "/developers/prioritization"
   | "/developers/roadmap"
-  | "/developers/gating";
+  | "/developers/metrics"
+  | "/developers/risks"
+  | "/developers/context-assembly"
+  | "/developers/gating"
+  | "/developers/action-diff"
+  | "/developers/eval-trace"
+  | "/developers/compliance-trace"
+  | "/developers/rag"
+  | "/developers/decision-brief"
+  | "/developers/insight-cards"
+  | "/developers/action-packets"
+  | "/developers/orchestration"
+  | "/developers/audit-log"
+  | "/developers/sealed-records"
+  | "/developers/revalidation"
+  | "/developers/ai-studio"
+  | "/developers/verticals";
 
 export type DocsNavItem =
   | {
@@ -34,43 +50,43 @@ export const docsNav: DocsNavSection[] = [
       { label: "Agent Vision", to: "/developers/vision", live: true },
       { label: "Prioritization", to: "/developers/prioritization", live: true },
       { label: "Roadmap", to: "/developers/roadmap", live: true },
-      { label: "Success Metrics", to: "/developers/metrics" },
-      { label: "Risks & Mitigations", to: "/developers/risks" },
+      { label: "Success Metrics", to: "/developers/metrics", live: true },
+      { label: "Risks & Mitigations", to: "/developers/risks", live: true },
     ],
   },
   {
     label: "Substrate",
     items: [
-      { label: "Context Assembly", to: "/developers/context-assembly" },
+      { label: "Context Assembly", to: "/developers/context-assembly", live: true },
       { label: "Deterministic Gating", to: "/developers/gating", live: true },
-      { label: "Action Diff", to: "/developers/action-diff" },
-      { label: "Eval Trace", to: "/developers/eval-trace" },
-      { label: "Compliance Trace", to: "/developers/compliance-trace" },
+      { label: "Action Diff", to: "/developers/action-diff", live: true },
+      { label: "Eval Trace", to: "/developers/eval-trace", live: true },
+      { label: "Compliance Trace", to: "/developers/compliance-trace", live: true },
     ],
   },
   {
     label: "Read",
     items: [
-      { label: "RAG", to: "/developers/rag" },
-      { label: "Decision Brief", to: "/developers/decision-brief" },
-      { label: "Insight Cards", to: "/developers/insight-cards" },
+      { label: "RAG", to: "/developers/rag", live: true },
+      { label: "Decision Brief", to: "/developers/decision-brief", live: true },
+      { label: "Insight Cards", to: "/developers/insight-cards", live: true },
     ],
   },
   {
     label: "Actions",
     items: [
-      { label: "Action Packets", to: "/developers/action-packets" },
-      { label: "Orchestration", to: "/developers/orchestration" },
-      { label: "Audit log", to: "/developers/audit-log" },
+      { label: "Action Packets", to: "/developers/action-packets", live: true },
+      { label: "Orchestration", to: "/developers/orchestration", live: true },
+      { label: "Audit log", to: "/developers/audit-log", live: true },
     ],
   },
   {
     label: "Lifecycle",
     items: [
-      { label: "Sealed records", to: "/developers/sealed-records" },
-      { label: "Revalidation", to: "/developers/revalidation" },
-      { label: "AI Studio", to: "/developers/ai-studio" },
-      { label: "Verticals", to: "/developers/verticals" },
+      { label: "Sealed records", to: "/developers/sealed-records", live: true },
+      { label: "Revalidation", to: "/developers/revalidation", live: true },
+      { label: "AI Studio", to: "/developers/ai-studio", live: true },
+      { label: "Verticals", to: "/developers/verticals", live: true },
     ],
   },
 ];

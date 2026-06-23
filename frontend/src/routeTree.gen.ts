@@ -15,10 +15,26 @@ import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
 import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
+import { Route as DevelopersVerticalsRouteImport } from './routes/developers/verticals'
+import { Route as DevelopersSealedRecordsRouteImport } from './routes/developers/sealed-records'
 import { Route as DevelopersRoadmapRouteImport } from './routes/developers/roadmap'
+import { Route as DevelopersRisksRouteImport } from './routes/developers/risks'
+import { Route as DevelopersRevalidationRouteImport } from './routes/developers/revalidation'
+import { Route as DevelopersRagRouteImport } from './routes/developers/rag'
 import { Route as DevelopersPrioritizationRouteImport } from './routes/developers/prioritization'
 import { Route as DevelopersOverviewRouteImport } from './routes/developers/overview'
+import { Route as DevelopersOrchestrationRouteImport } from './routes/developers/orchestration'
+import { Route as DevelopersMetricsRouteImport } from './routes/developers/metrics'
+import { Route as DevelopersInsightCardsRouteImport } from './routes/developers/insight-cards'
 import { Route as DevelopersGatingRouteImport } from './routes/developers/gating'
+import { Route as DevelopersEvalTraceRouteImport } from './routes/developers/eval-trace'
+import { Route as DevelopersDecisionBriefRouteImport } from './routes/developers/decision-brief'
+import { Route as DevelopersContextAssemblyRouteImport } from './routes/developers/context-assembly'
+import { Route as DevelopersComplianceTraceRouteImport } from './routes/developers/compliance-trace'
+import { Route as DevelopersAuditLogRouteImport } from './routes/developers/audit-log'
+import { Route as DevelopersAiStudioRouteImport } from './routes/developers/ai-studio'
+import { Route as DevelopersActionPacketsRouteImport } from './routes/developers/action-packets'
+import { Route as DevelopersActionDiffRouteImport } from './routes/developers/action-diff'
 
 const PacketRoute = PacketRouteImport.update({
   id: '/packet',
@@ -50,9 +66,34 @@ const DevelopersVisionRoute = DevelopersVisionRouteImport.update({
   path: '/developers/vision',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersVerticalsRoute = DevelopersVerticalsRouteImport.update({
+  id: '/developers/verticals',
+  path: '/developers/verticals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersSealedRecordsRoute = DevelopersSealedRecordsRouteImport.update({
+  id: '/developers/sealed-records',
+  path: '/developers/sealed-records',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevelopersRoadmapRoute = DevelopersRoadmapRouteImport.update({
   id: '/developers/roadmap',
   path: '/developers/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRisksRoute = DevelopersRisksRouteImport.update({
+  id: '/developers/risks',
+  path: '/developers/risks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRevalidationRoute = DevelopersRevalidationRouteImport.update({
+  id: '/developers/revalidation',
+  path: '/developers/revalidation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRagRoute = DevelopersRagRouteImport.update({
+  id: '/developers/rag',
+  path: '/developers/rag',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevelopersPrioritizationRoute =
@@ -66,9 +107,66 @@ const DevelopersOverviewRoute = DevelopersOverviewRouteImport.update({
   path: '/developers/overview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersOrchestrationRoute = DevelopersOrchestrationRouteImport.update({
+  id: '/developers/orchestration',
+  path: '/developers/orchestration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersMetricsRoute = DevelopersMetricsRouteImport.update({
+  id: '/developers/metrics',
+  path: '/developers/metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersInsightCardsRoute = DevelopersInsightCardsRouteImport.update({
+  id: '/developers/insight-cards',
+  path: '/developers/insight-cards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevelopersGatingRoute = DevelopersGatingRouteImport.update({
   id: '/developers/gating',
   path: '/developers/gating',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersEvalTraceRoute = DevelopersEvalTraceRouteImport.update({
+  id: '/developers/eval-trace',
+  path: '/developers/eval-trace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersDecisionBriefRoute = DevelopersDecisionBriefRouteImport.update({
+  id: '/developers/decision-brief',
+  path: '/developers/decision-brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersContextAssemblyRoute =
+  DevelopersContextAssemblyRouteImport.update({
+    id: '/developers/context-assembly',
+    path: '/developers/context-assembly',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DevelopersComplianceTraceRoute =
+  DevelopersComplianceTraceRouteImport.update({
+    id: '/developers/compliance-trace',
+    path: '/developers/compliance-trace',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DevelopersAuditLogRoute = DevelopersAuditLogRouteImport.update({
+  id: '/developers/audit-log',
+  path: '/developers/audit-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersAiStudioRoute = DevelopersAiStudioRouteImport.update({
+  id: '/developers/ai-studio',
+  path: '/developers/ai-studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersActionPacketsRoute = DevelopersActionPacketsRouteImport.update({
+  id: '/developers/action-packets',
+  path: '/developers/action-packets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersActionDiffRoute = DevelopersActionDiffRouteImport.update({
+  id: '/developers/action-diff',
+  path: '/developers/action-diff',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -77,10 +175,26 @@ export interface FileRoutesByFullPath {
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/developers/action-diff': typeof DevelopersActionDiffRoute
+  '/developers/action-packets': typeof DevelopersActionPacketsRoute
+  '/developers/ai-studio': typeof DevelopersAiStudioRoute
+  '/developers/audit-log': typeof DevelopersAuditLogRoute
+  '/developers/compliance-trace': typeof DevelopersComplianceTraceRoute
+  '/developers/context-assembly': typeof DevelopersContextAssemblyRoute
+  '/developers/decision-brief': typeof DevelopersDecisionBriefRoute
+  '/developers/eval-trace': typeof DevelopersEvalTraceRoute
   '/developers/gating': typeof DevelopersGatingRoute
+  '/developers/insight-cards': typeof DevelopersInsightCardsRoute
+  '/developers/metrics': typeof DevelopersMetricsRoute
+  '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
   '/developers/prioritization': typeof DevelopersPrioritizationRoute
+  '/developers/rag': typeof DevelopersRagRoute
+  '/developers/revalidation': typeof DevelopersRevalidationRoute
+  '/developers/risks': typeof DevelopersRisksRoute
   '/developers/roadmap': typeof DevelopersRoadmapRoute
+  '/developers/sealed-records': typeof DevelopersSealedRecordsRoute
+  '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
@@ -89,10 +203,26 @@ export interface FileRoutesByTo {
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/developers/action-diff': typeof DevelopersActionDiffRoute
+  '/developers/action-packets': typeof DevelopersActionPacketsRoute
+  '/developers/ai-studio': typeof DevelopersAiStudioRoute
+  '/developers/audit-log': typeof DevelopersAuditLogRoute
+  '/developers/compliance-trace': typeof DevelopersComplianceTraceRoute
+  '/developers/context-assembly': typeof DevelopersContextAssemblyRoute
+  '/developers/decision-brief': typeof DevelopersDecisionBriefRoute
+  '/developers/eval-trace': typeof DevelopersEvalTraceRoute
   '/developers/gating': typeof DevelopersGatingRoute
+  '/developers/insight-cards': typeof DevelopersInsightCardsRoute
+  '/developers/metrics': typeof DevelopersMetricsRoute
+  '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
   '/developers/prioritization': typeof DevelopersPrioritizationRoute
+  '/developers/rag': typeof DevelopersRagRoute
+  '/developers/revalidation': typeof DevelopersRevalidationRoute
+  '/developers/risks': typeof DevelopersRisksRoute
   '/developers/roadmap': typeof DevelopersRoadmapRoute
+  '/developers/sealed-records': typeof DevelopersSealedRecordsRoute
+  '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
@@ -102,10 +232,26 @@ export interface FileRoutesById {
   '/loop': typeof LoopRoute
   '/ops': typeof OpsRoute
   '/packet': typeof PacketRoute
+  '/developers/action-diff': typeof DevelopersActionDiffRoute
+  '/developers/action-packets': typeof DevelopersActionPacketsRoute
+  '/developers/ai-studio': typeof DevelopersAiStudioRoute
+  '/developers/audit-log': typeof DevelopersAuditLogRoute
+  '/developers/compliance-trace': typeof DevelopersComplianceTraceRoute
+  '/developers/context-assembly': typeof DevelopersContextAssemblyRoute
+  '/developers/decision-brief': typeof DevelopersDecisionBriefRoute
+  '/developers/eval-trace': typeof DevelopersEvalTraceRoute
   '/developers/gating': typeof DevelopersGatingRoute
+  '/developers/insight-cards': typeof DevelopersInsightCardsRoute
+  '/developers/metrics': typeof DevelopersMetricsRoute
+  '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
   '/developers/prioritization': typeof DevelopersPrioritizationRoute
+  '/developers/rag': typeof DevelopersRagRoute
+  '/developers/revalidation': typeof DevelopersRevalidationRoute
+  '/developers/risks': typeof DevelopersRisksRoute
   '/developers/roadmap': typeof DevelopersRoadmapRoute
+  '/developers/sealed-records': typeof DevelopersSealedRecordsRoute
+  '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
 }
@@ -116,10 +262,26 @@ export interface FileRouteTypes {
     | '/loop'
     | '/ops'
     | '/packet'
+    | '/developers/action-diff'
+    | '/developers/action-packets'
+    | '/developers/ai-studio'
+    | '/developers/audit-log'
+    | '/developers/compliance-trace'
+    | '/developers/context-assembly'
+    | '/developers/decision-brief'
+    | '/developers/eval-trace'
     | '/developers/gating'
+    | '/developers/insight-cards'
+    | '/developers/metrics'
+    | '/developers/orchestration'
     | '/developers/overview'
     | '/developers/prioritization'
+    | '/developers/rag'
+    | '/developers/revalidation'
+    | '/developers/risks'
     | '/developers/roadmap'
+    | '/developers/sealed-records'
+    | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
   fileRoutesByTo: FileRoutesByTo
@@ -128,10 +290,26 @@ export interface FileRouteTypes {
     | '/loop'
     | '/ops'
     | '/packet'
+    | '/developers/action-diff'
+    | '/developers/action-packets'
+    | '/developers/ai-studio'
+    | '/developers/audit-log'
+    | '/developers/compliance-trace'
+    | '/developers/context-assembly'
+    | '/developers/decision-brief'
+    | '/developers/eval-trace'
     | '/developers/gating'
+    | '/developers/insight-cards'
+    | '/developers/metrics'
+    | '/developers/orchestration'
     | '/developers/overview'
     | '/developers/prioritization'
+    | '/developers/rag'
+    | '/developers/revalidation'
+    | '/developers/risks'
     | '/developers/roadmap'
+    | '/developers/sealed-records'
+    | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
   id:
@@ -140,10 +318,26 @@ export interface FileRouteTypes {
     | '/loop'
     | '/ops'
     | '/packet'
+    | '/developers/action-diff'
+    | '/developers/action-packets'
+    | '/developers/ai-studio'
+    | '/developers/audit-log'
+    | '/developers/compliance-trace'
+    | '/developers/context-assembly'
+    | '/developers/decision-brief'
+    | '/developers/eval-trace'
     | '/developers/gating'
+    | '/developers/insight-cards'
+    | '/developers/metrics'
+    | '/developers/orchestration'
     | '/developers/overview'
     | '/developers/prioritization'
+    | '/developers/rag'
+    | '/developers/revalidation'
+    | '/developers/risks'
     | '/developers/roadmap'
+    | '/developers/sealed-records'
+    | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
   fileRoutesById: FileRoutesById
@@ -153,10 +347,26 @@ export interface RootRouteChildren {
   LoopRoute: typeof LoopRoute
   OpsRoute: typeof OpsRoute
   PacketRoute: typeof PacketRoute
+  DevelopersActionDiffRoute: typeof DevelopersActionDiffRoute
+  DevelopersActionPacketsRoute: typeof DevelopersActionPacketsRoute
+  DevelopersAiStudioRoute: typeof DevelopersAiStudioRoute
+  DevelopersAuditLogRoute: typeof DevelopersAuditLogRoute
+  DevelopersComplianceTraceRoute: typeof DevelopersComplianceTraceRoute
+  DevelopersContextAssemblyRoute: typeof DevelopersContextAssemblyRoute
+  DevelopersDecisionBriefRoute: typeof DevelopersDecisionBriefRoute
+  DevelopersEvalTraceRoute: typeof DevelopersEvalTraceRoute
   DevelopersGatingRoute: typeof DevelopersGatingRoute
+  DevelopersInsightCardsRoute: typeof DevelopersInsightCardsRoute
+  DevelopersMetricsRoute: typeof DevelopersMetricsRoute
+  DevelopersOrchestrationRoute: typeof DevelopersOrchestrationRoute
   DevelopersOverviewRoute: typeof DevelopersOverviewRoute
   DevelopersPrioritizationRoute: typeof DevelopersPrioritizationRoute
+  DevelopersRagRoute: typeof DevelopersRagRoute
+  DevelopersRevalidationRoute: typeof DevelopersRevalidationRoute
+  DevelopersRisksRoute: typeof DevelopersRisksRoute
   DevelopersRoadmapRoute: typeof DevelopersRoadmapRoute
+  DevelopersSealedRecordsRoute: typeof DevelopersSealedRecordsRoute
+  DevelopersVerticalsRoute: typeof DevelopersVerticalsRoute
   DevelopersVisionRoute: typeof DevelopersVisionRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
 }
@@ -205,11 +415,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopersVisionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developers/verticals': {
+      id: '/developers/verticals'
+      path: '/developers/verticals'
+      fullPath: '/developers/verticals'
+      preLoaderRoute: typeof DevelopersVerticalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/sealed-records': {
+      id: '/developers/sealed-records'
+      path: '/developers/sealed-records'
+      fullPath: '/developers/sealed-records'
+      preLoaderRoute: typeof DevelopersSealedRecordsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/developers/roadmap': {
       id: '/developers/roadmap'
       path: '/developers/roadmap'
       fullPath: '/developers/roadmap'
       preLoaderRoute: typeof DevelopersRoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/risks': {
+      id: '/developers/risks'
+      path: '/developers/risks'
+      fullPath: '/developers/risks'
+      preLoaderRoute: typeof DevelopersRisksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/revalidation': {
+      id: '/developers/revalidation'
+      path: '/developers/revalidation'
+      fullPath: '/developers/revalidation'
+      preLoaderRoute: typeof DevelopersRevalidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/rag': {
+      id: '/developers/rag'
+      path: '/developers/rag'
+      fullPath: '/developers/rag'
+      preLoaderRoute: typeof DevelopersRagRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/developers/prioritization': {
@@ -226,11 +471,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopersOverviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developers/orchestration': {
+      id: '/developers/orchestration'
+      path: '/developers/orchestration'
+      fullPath: '/developers/orchestration'
+      preLoaderRoute: typeof DevelopersOrchestrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/metrics': {
+      id: '/developers/metrics'
+      path: '/developers/metrics'
+      fullPath: '/developers/metrics'
+      preLoaderRoute: typeof DevelopersMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/insight-cards': {
+      id: '/developers/insight-cards'
+      path: '/developers/insight-cards'
+      fullPath: '/developers/insight-cards'
+      preLoaderRoute: typeof DevelopersInsightCardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/developers/gating': {
       id: '/developers/gating'
       path: '/developers/gating'
       fullPath: '/developers/gating'
       preLoaderRoute: typeof DevelopersGatingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/eval-trace': {
+      id: '/developers/eval-trace'
+      path: '/developers/eval-trace'
+      fullPath: '/developers/eval-trace'
+      preLoaderRoute: typeof DevelopersEvalTraceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/decision-brief': {
+      id: '/developers/decision-brief'
+      path: '/developers/decision-brief'
+      fullPath: '/developers/decision-brief'
+      preLoaderRoute: typeof DevelopersDecisionBriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/context-assembly': {
+      id: '/developers/context-assembly'
+      path: '/developers/context-assembly'
+      fullPath: '/developers/context-assembly'
+      preLoaderRoute: typeof DevelopersContextAssemblyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/compliance-trace': {
+      id: '/developers/compliance-trace'
+      path: '/developers/compliance-trace'
+      fullPath: '/developers/compliance-trace'
+      preLoaderRoute: typeof DevelopersComplianceTraceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/audit-log': {
+      id: '/developers/audit-log'
+      path: '/developers/audit-log'
+      fullPath: '/developers/audit-log'
+      preLoaderRoute: typeof DevelopersAuditLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/ai-studio': {
+      id: '/developers/ai-studio'
+      path: '/developers/ai-studio'
+      fullPath: '/developers/ai-studio'
+      preLoaderRoute: typeof DevelopersAiStudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/action-packets': {
+      id: '/developers/action-packets'
+      path: '/developers/action-packets'
+      fullPath: '/developers/action-packets'
+      preLoaderRoute: typeof DevelopersActionPacketsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/action-diff': {
+      id: '/developers/action-diff'
+      path: '/developers/action-diff'
+      fullPath: '/developers/action-diff'
+      preLoaderRoute: typeof DevelopersActionDiffRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -241,10 +563,26 @@ const rootRouteChildren: RootRouteChildren = {
   LoopRoute: LoopRoute,
   OpsRoute: OpsRoute,
   PacketRoute: PacketRoute,
+  DevelopersActionDiffRoute: DevelopersActionDiffRoute,
+  DevelopersActionPacketsRoute: DevelopersActionPacketsRoute,
+  DevelopersAiStudioRoute: DevelopersAiStudioRoute,
+  DevelopersAuditLogRoute: DevelopersAuditLogRoute,
+  DevelopersComplianceTraceRoute: DevelopersComplianceTraceRoute,
+  DevelopersContextAssemblyRoute: DevelopersContextAssemblyRoute,
+  DevelopersDecisionBriefRoute: DevelopersDecisionBriefRoute,
+  DevelopersEvalTraceRoute: DevelopersEvalTraceRoute,
   DevelopersGatingRoute: DevelopersGatingRoute,
+  DevelopersInsightCardsRoute: DevelopersInsightCardsRoute,
+  DevelopersMetricsRoute: DevelopersMetricsRoute,
+  DevelopersOrchestrationRoute: DevelopersOrchestrationRoute,
   DevelopersOverviewRoute: DevelopersOverviewRoute,
   DevelopersPrioritizationRoute: DevelopersPrioritizationRoute,
+  DevelopersRagRoute: DevelopersRagRoute,
+  DevelopersRevalidationRoute: DevelopersRevalidationRoute,
+  DevelopersRisksRoute: DevelopersRisksRoute,
   DevelopersRoadmapRoute: DevelopersRoadmapRoute,
+  DevelopersSealedRecordsRoute: DevelopersSealedRecordsRoute,
+  DevelopersVerticalsRoute: DevelopersVerticalsRoute,
   DevelopersVisionRoute: DevelopersVisionRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
 }
