@@ -82,34 +82,57 @@ function OverviewDocsPage() {
 
           <Block title="Why this, not a smarter chatbot">
             <p>
-              Summarization and transcript Q&amp;A are becoming table stakes — the week a horizontal
-              copilot ships them, they stop being a differentiator. The durable wedge is the
-              unglamorous substrate underneath: permission-aware context, deterministic
-              verification, safe actions, multi-owner orchestration, lifecycle, and a
-              privacy-preserving evaluation loop. The agent is the visible surface; the substrate is
-              the product.
+              Integrating RAG with our Conversational Agent was step one — but it's not enough.
+              Model capability is commoditizing fast, and we've made a deliberate bet: rather than
+              build our own frontier model, we give clients flexibility across the leading ones
+              (OpenAI, Anthropic, and more). That prevents lock-in. But it isn't the moat.
+            </p>
+            <p>
+              The moat is what comes after model choice. As agents grow more capable, our regulated
+              clients in Finance, Law, and Health need a governance layer that scales with that
+              capability — permission-aware context, deterministic verification, auditable decisions
+              — across content wherever it lives.
+            </p>
+            <p>
+              That's what our clients put frontier-model agents on their most sensitive work with
+              provable controls, without building the control plane themselves. The agent is the
+              visible surface; the substrate is the product.
+            </p>
+          </Block>
+
+          <Block title="What it is">
+            <p>
+              We build the unglamorous substrate underneath the model: permission-aware context,
+              deterministic verification, safe actions, multi-owner orchestration, lifecycle, and a
+              privacy-preserving evaluation loop. It's powered by our{" "}
+              <Link
+                to="/developers/gating"
+                className="text-emerald-300 underline-offset-2 hover:underline"
+              >
+                Deterministic Gating Engine
+              </Link>
+              .
             </p>
           </Block>
 
           <Block title="How we chose what to build">
             <p>
-              The theme list isn't a grab bag. It's the minimal set of capabilities an agent needs
-              to cross from describing to doing on regulated work: ground (read), decide (brief),
-              act safely (gate), orchestrate (batch), and stay true (lifecycle). Each maps to a
-              phase of the build.
-            </p>
-            <p>
-              We then scored eight candidate themes against the brief's own criteria — value,
-              platform leverage, differentiation, and risk — and let the ranking, not instinct,
-              order them. Cross-source grounding ranked first as the foundation; deterministic
-              gating second as the rail that makes acting safe. The full scorecard is on the{" "}
+              The list of themes we prioritize on our{" "}
               <Link
                 to="/developers/prioritization"
                 className="text-emerald-300 underline-offset-2 hover:underline"
               >
                 Prioritization
               </Link>{" "}
-              page.
+              page is the minimal set of capabilities an agent needs to cross from describing to
+              doing on regulated work: ground (read), decide (brief), act safely (gate), orchestrate
+              (batch), and stay true (lifecycle). Each maps to a phase of the build.
+            </p>
+            <p>
+              We then scored eight candidate themes against the brief's own criteria — value,
+              platform leverage, differentiation, and risk — and let the ranking, not instinct,
+              order them. Cross-source grounding ranked first as the foundation; deterministic
+              gating second as the rail that makes acting safe.
             </p>
           </Block>
 

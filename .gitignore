@@ -11,3 +11,6 @@ frontend/schemas.json
 wandb/
 .braintrust/
 .gstack/
+
+# Internal strategy doc — not for the public repo
+ConnectWork_Case_Plan_of_Attack.md

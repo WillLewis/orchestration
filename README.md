@@ -6,8 +6,6 @@ governed work products**, with **deterministic controls** where correctness is n
 Hero vertical: **Financial Services** (credit/risk committee). Platform proof: the same
 substrate runs **finance + legal + health** recipes through one eval scorecard.
 
-> Full strategy is in `ConnectWork_Case_Plan_of_Attack.md`. This repo is the build.
-
 ## Quickstart
 ```bash
 make install        # pip install -e ".[dev]"
@@ -25,7 +23,6 @@ to bundled mocks (identical to the Lovable demo) and can fetch live from the gat
 cd frontend && bun install && bun run dev    # mock data by default
 # live: set VITE_USE_MOCKS=false + VITE_API_URL=http://localhost:8000 (see frontend/README.md)
 ```
-New here? Read `CONTRIBUTING.md` for the contract-first rules every workstream follows.
 
 ## How the work is split (contract-first, then fan out)
 `core/schemas.py` + `core/pipeline.py` are the **locked contracts**. Every workstream owns one
