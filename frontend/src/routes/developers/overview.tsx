@@ -94,9 +94,9 @@ function OverviewDocsPage() {
               — across content wherever it lives.
             </p>
             <p>
-              That's what our clients put frontier-model agents on their most sensitive work with
-              provable controls, without building the control plane themselves. The agent is the
-              visible surface; the substrate is the product.
+              That's what lets our clients put frontier-model agents on their most sensitive work
+              with provable controls, without building the control plane themselves. The agent is
+              the visible surface; the substrate is the product.
             </p>
           </Block>
 
