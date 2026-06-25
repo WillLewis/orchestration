@@ -552,9 +552,10 @@ function GatingDocsPage() {
                   action proposals; developers can also call it for preflight checks.
                 </p>
                 <p>
-                  Firings report <code className="text-zinc-300">result</code> and{" "}
-                  <code className="text-zinc-300">blocks_commit</code> - no ambiguous{" "}
-                  <code>passed</code> field.
+                  Each firing reports <code className="text-zinc-300">passed</code> and a{" "}
+                  <code className="text-zinc-300">detail</code>, matching the{" "}
+                  <code>RuleFiring</code> contract; threshold rules also carry the typed numbers
+                  behind the outcome.
                 </p>
               </>
             }

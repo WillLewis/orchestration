@@ -36,10 +36,10 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       id: "finance_credit_v1",
       object: "policy_artifact",
       vertical: "finance",
-      version: 3,
+      version: 1,
       status: "active",
       owner: "RevOps Policy Admin",
-      evalpack_id: "finance_credit_eval_v7",
+      evalpack_id: "ep_finance",
       runtime_mode: "advisory_hitl_writes",
       rules: [
         {
@@ -101,34 +101,28 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
     evaluateResponse: {
       object: "compliance_trace",
       policy_artifact_id: "finance_credit_v1",
-      policy_artifact_version: 3,
+      policy_artifact_version: 1,
       approval_ready: false,
       firings: [
         {
           rule_id: "discount_authority",
-          result: "BLOCK",
-          blocks_commit: true,
+          passed: false,
+          detail: "You can approve up to 15%. A 22% discount requires Credit Officer approval.",
           threshold: { requested_discount: 0.22, delegated_authority: 0.15 },
-          user_safe_explanation:
-            "You can approve up to 15%. A 22% discount requires Credit Officer approval.",
         },
         {
           rule_id: "legal_approval",
-          result: "NOT_APPROVAL_READY",
-          blocks_commit: true,
+          passed: false,
           detail: "Covenant modification detected; Legal approval remains pending.",
         },
         {
           rule_id: "permission_boundary",
-          result: "PARTIAL_CONTEXT",
-          blocks_commit: false,
-          user_safe_explanation:
-            "A related Legal memo is restricted, so it was not used or summarized.",
+          passed: true,
+          detail: "A related Legal memo is restricted, so it was not used or summarized.",
         },
         {
           rule_id: "pre_commit_freshness",
-          result: "PASS",
-          blocks_commit: false,
+          passed: true,
           detail: "No stale source detected at commit time.",
         },
       ],
@@ -141,7 +135,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
     replayResponse: {
       object: "readiness_report",
       policy_artifact_id: "finance_credit_v1",
-      policy_artifact_version: 3,
+      policy_artifact_version: 1,
       cases_evaluated: 500,
       projected_block_rate: 0.114,
       policy_violations_caught: 57,
@@ -186,7 +180,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       version: 2,
       status: "active",
       owner: "Legal Ops Admin",
-      evalpack_id: "legal_contract_eval_v4",
+      evalpack_id: "ep_legal",
       runtime_mode: "advisory_hitl_writes",
       rules: [
         {
@@ -250,29 +244,25 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       firings: [
         {
           rule_id: "non_standard_clause_approval",
-          result: "BLOCK",
-          blocks_commit: true,
-          threshold: { requested_multiple: 3, playbook_max: 1.5 },
-          user_safe_explanation:
+          passed: false,
+          detail:
             "A 3x liability cap exceeds the 1.5x playbook limit; General Counsel approval required.",
+          threshold: { requested_multiple: 3, playbook_max: 1.5 },
         },
         {
           rule_id: "verified_citation",
-          result: "NOT_APPROVAL_READY",
-          blocks_commit: true,
+          passed: false,
           detail: "Issue #4 cites a clause with no verified source span.",
         },
         {
           rule_id: "privilege_boundary",
-          result: "PARTIAL_CONTEXT",
-          blocks_commit: false,
-          user_safe_explanation:
-            "A privileged strategy memo is unavailable to you based on permissions.",
+          passed: true,
+          detail: "A privileged strategy memo is unavailable to you based on permissions.",
         },
         {
           rule_id: "pre_commit_redline_freshness",
-          result: "PASS",
-          blocks_commit: false,
+          passed: true,
+          detail: "No stale source detected at commit time.",
         },
       ],
     },
@@ -329,7 +319,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       version: 1,
       status: "active",
       owner: "Clinical Governance Admin",
-      evalpack_id: "health_protocol_eval_v3",
+      evalpack_id: "ep_health",
       runtime_mode: "advisory_hitl_writes",
       rules: [
         {
@@ -389,29 +379,24 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       firings: [
         {
           rule_id: "phi_minimum_necessary",
-          result: "BLOCK",
-          blocks_commit: true,
+          passed: false,
+          detail: "Packet includes 14 PHI fields; minimum necessary is 6. Reduce before sharing.",
           threshold: { phi_fields_included: 14, minimum_necessary: 6 },
-          user_safe_explanation:
-            "Packet includes 14 PHI fields; minimum necessary is 6. Reduce before sharing.",
         },
         {
           rule_id: "required_clinical_reviewer",
-          result: "NOT_APPROVAL_READY",
-          blocks_commit: true,
+          passed: false,
           detail: "Attending physician review missing.",
         },
         {
           rule_id: "external_packet_redaction",
-          result: "PARTIAL_CONTEXT",
-          blocks_commit: false,
-          user_safe_explanation:
-            "A restricted patient record is unavailable to you based on permissions.",
+          passed: true,
+          detail: "A restricted patient record is unavailable to you based on permissions.",
         },
         {
           rule_id: "pre_commit_protocol_freshness",
-          result: "PASS",
-          blocks_commit: false,
+          passed: true,
+          detail: "No stale source detected at commit time.",
         },
       ],
     },

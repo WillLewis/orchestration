@@ -729,7 +729,7 @@ function RecordPage() {
             </dl>
           </div>
 
-          {/* Schema / rulepack */}
+          {/* Schema / policy artifact */}
           <dl className="mt-5 grid gap-3 text-[12px] sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-[10.5px] uppercase tracking-[0.06em] text-[var(--muted-fg)]">
@@ -751,7 +751,7 @@ function RecordPage() {
             </div>
             <div>
               <dt className="text-[10.5px] uppercase tracking-[0.06em] text-[var(--muted-fg)]">
-                Rulepack
+                Policy Artifact
               </dt>
               <dd className="font-mono text-foreground">
                 {gov.rulepack_id} · v{gov.rulepack_version}

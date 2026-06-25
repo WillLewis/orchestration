@@ -95,12 +95,12 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
   aiStudio: {
     title: "AI Studio",
     description:
-      "AI Studio documentation for admin authoring of recipes, rulepacks, eval packs, policy artifacts, replay, activation, and rollback.",
+      "AI Studio documentation for admin authoring of recipes, policy artifacts, eval packs, replay, activation, and rollback.",
   },
   verticals: {
     title: "Verticals",
     description:
-      "Verticals documentation for finance, legal, and healthcare recipes, rulepacks, eval packs, and the shared substrate proof.",
+      "Verticals documentation for finance, legal, and healthcare recipes, policy artifacts, eval packs, and the shared substrate proof.",
   },
 };
 

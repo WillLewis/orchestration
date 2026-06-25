@@ -231,7 +231,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
       {
         label: "AI Studio",
         to: "/developers/ai-studio",
-        description: "Where admins author rulepacks and replay them before activation.",
+        description: "Where admins author policy artifacts and replay them before activation.",
       },
     ],
     content: EvalTracePage,
@@ -242,8 +242,8 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     description: (
       <p>
         Compliance Trace is the deterministic record of why the gate passed or failed. It carries
-        rule firings, approval matrix state, calculation checks, schema validation, rulepack id, and
-        rulepack version.
+        rule firings, approval matrix state, calculation checks, schema validation, and the policy
+        artifact id and version.
       </p>
     ),
     descriptionMeta:
@@ -473,13 +473,13 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     title: "AI Studio",
     description: (
       <p>
-        AI Studio is the admin surface for authoring recipes, rulepacks, eval packs, and policy
-        artifacts. It opens the primitives once the core patterns are proven: draft, replay, review,
-        activate, monitor, and roll back.
+        AI Studio is the admin surface for authoring recipes, policy artifacts, and eval packs. It
+        opens the primitives once the core patterns are proven: draft, replay, review, activate,
+        monitor, and roll back.
       </p>
     ),
     descriptionMeta:
-      "AI Studio documentation for admin authoring of recipes, rulepacks, eval packs, policy artifacts, replay, activation, and rollback.",
+      "AI Studio documentation for admin authoring of recipes, policy artifacts, eval packs, replay, activation, and rollback.",
     related: [
       {
         label: "Deterministic Gating",
@@ -499,13 +499,13 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     title: "Verticals",
     description: (
       <p>
-        Vertical expansion swaps recipes, rulepacks, and eval packs while keeping the same
+        Vertical expansion swaps recipes, policy artifacts, and eval packs while keeping the same
         substrate: permission-aware context, deterministic gates, action packets, lifecycle, and
         privacy-preserving evals.
       </p>
     ),
     descriptionMeta:
-      "Verticals documentation for finance, legal, and healthcare recipes, rulepacks, eval packs, and the shared substrate proof.",
+      "Verticals documentation for finance, legal, and healthcare recipes, policy artifacts, eval packs, and the shared substrate proof.",
     related: [
       {
         label: "AI Studio",
@@ -686,7 +686,7 @@ function RisksPage() {
           {
             risk: "Vertical drift",
             mitigation:
-              "Each vertical ships as recipe + rulepack + eval pack over shared primitives.",
+              "Each vertical ships as recipe + policy artifact + eval pack over shared primitives.",
             owner: <DocLink to="/developers/verticals">Verticals</DocLink>,
           },
         ]}
@@ -1582,7 +1582,7 @@ function AiStudioPage() {
               {
                 label: "draft",
                 title: "Create policy artifact",
-                detail: "Recipe, RulePack, EvalPack, owner, version, status.",
+                detail: "Recipe, Policy Artifact, EvalPack, owner, version, status.",
               },
               {
                 label: "replay",
@@ -1609,8 +1609,8 @@ function AiStudioPage() {
         }
       >
         <p>
-          AI Studio should expose the primitives the repo already has: AgentRecipe, RulePack,
-          EvalPack, Policy Artifact, RegressionSuite, and RecipeScorecard. It does not let admins
+          AI Studio should expose the primitives the repo already has: AgentRecipe, Policy Artifact,
+          EvalPack, RegressionSuite, and RecipeScorecard. It does not let admins
           bypass deterministic engines; it lets them configure and prove them.
         </p>
       </DocsSection>
@@ -1630,7 +1630,7 @@ function AiStudioPage() {
       <DataTable
         columns={[
           { key: "recipe", label: "Recipe" },
-          { key: "rulepack", label: "RulePack" },
+          { key: "rulepack", label: "Policy Artifact" },
           { key: "evalpack", label: "EvalPack" },
         ]}
         rows={recipes.map((recipe) => ({
@@ -1666,7 +1666,7 @@ function VerticalsPage() {
       >
         <p>
           Vertical expansion is not three agents. It is one set of primitives with different
-          recipes, rulepacks, eval packs, evidence requirements, and approval rules.
+          recipes, policy artifacts, eval packs, evidence requirements, and approval rules.
         </p>
         <p>
           Finance proves authority thresholds and calculation checks. Legal proves verified
@@ -1707,7 +1707,7 @@ function VerticalsPage() {
 
       <Callout title="Expansion rule">
         <p>
-          Add a vertical by authoring an AgentRecipe, RulePack, and EvalPack. Do not fork the
+          Add a vertical by authoring an AgentRecipe, Policy Artifact, and EvalPack. Do not fork the
           context assembler, verifier, action engine, lifecycle engine, or telemetry model.
         </p>
       </Callout>

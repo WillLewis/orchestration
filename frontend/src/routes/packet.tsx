@@ -188,7 +188,8 @@ function RulepackFooter({ id, version }: { id: string; version: number }) {
     <div className="mt-3 flex items-center gap-1.5 border-t border-border pt-2 text-[10.5px] leading-snug text-[var(--muted-fg)]">
       <ShieldCheck className="h-3 w-3 shrink-0 text-primary" />
       <span>
-        Decided by RulePack <span className="font-mono text-foreground">{id}</span> · v{version} —
+        Decided by Policy Artifact <span className="font-mono text-foreground">{id}</span> · v
+        {version} —
         not the model
       </span>
     </div>
@@ -614,7 +615,8 @@ function PacketWorkspace() {
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
                   <ShieldCheck className="h-3 w-3 text-primary" />
-                  Rulepack <span className="font-mono">{rulepack_id}</span> · v{rulepack_version}
+                  Policy Artifact <span className="font-mono">{rulepack_id}</span> · v
+                  {rulepack_version}
                 </span>
               </div>
             </div>

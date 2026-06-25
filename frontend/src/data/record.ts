@@ -16,7 +16,7 @@ export const governance_certificate = {
 
   governance: {
     schema_name: "DecisionBrief",
-    recipe_id: "finance_credit_committee",
+    recipe_id: "finance_credit_v1",
     vertical: "finance",
     rulepack_id: "finance_credit_v1",
     rulepack_version: 1,

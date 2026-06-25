@@ -253,7 +253,7 @@ export const sources: Array<{
 export const source_count = sources.length;
 
 // The deterministic authority behind the gates — stamped on the brief/packet so the UI can show
-// "decided by RulePack finance_credit_v1, not the model". Live mode overlays the same from /api/brief.
+// "decided by Policy Artifact finance_credit_v1, not the model". Live mode overlays the same from /api/brief.
 export const rulepack_id = "finance_credit_v1";
 export const rulepack_version = 1;
 

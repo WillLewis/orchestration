@@ -15,19 +15,19 @@ export const recipes: AgentRecipe[] = [
   {
     id: "finance_credit_v1",
     vertical: "finance",
-    rulepack_id: "finance_credit",
+    rulepack_id: "finance_credit_v1",
     eval_pack_id: "ep_finance",
   },
   {
     id: "legal_contract_v1",
     vertical: "legal",
-    rulepack_id: "legal_contract",
+    rulepack_id: "legal_contract_v1",
     eval_pack_id: "ep_legal",
   },
   {
     id: "health_protocol_v1",
     vertical: "health",
-    rulepack_id: "health_protocol",
+    rulepack_id: "health_protocol_v1",
     eval_pack_id: "ep_health",
   },
 ];
