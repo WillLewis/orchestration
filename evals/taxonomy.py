@@ -45,6 +45,11 @@ REASON_CODES: dict[str, FeedbackReasonCode] = {
         label="Claims were not supported by sources",
         category="accuracy",
     ),
+    "capability_gap": FeedbackReasonCode(
+        code="capability_not_yet_scored",
+        label="A declared quality dimension is not yet scored by the substrate",
+        category="other",
+    ),
     "schema_validity": FeedbackReasonCode(
         code="schema_invalid",
         label="Output failed schema validation",

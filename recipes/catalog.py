@@ -332,9 +332,10 @@ def eval_packs() -> list[EvalPack]:
                     expected={
                         "intent_class": "clarify_ambiguous_followup",
                         "rulepack_id": "finance_credit_v1",
-                        # Honest demo failure: the current substrate does not yet score
-                        # UX clarification quality, so this case stays visible as a gap.
-                        "min_claim_support": 1.01,
+                        # Honest, declared capability gap: the substrate does not yet score
+                        # clarification-routing quality, so this case fails deterministically
+                        # and stays visible as a named gap — not a numeric trick.
+                        "known_gap": "clarification_routing_quality",
                     },
                     note="Flagged for review — clarification prompt under-specified.",
                 ),
@@ -502,6 +503,7 @@ _SIGNAL_KEYS = (
     "missing_evidence_codes",
     "conflict_min",
     "min_claim_support",
+    "known_gap",
 )
 
 
@@ -516,6 +518,10 @@ def _expected_signal(expected: Mapping[str, Any]) -> str | None:
 
 
 def _observed_signal(scored: ScoredCase) -> str | None:
+    gap = scored.case.expected.get("known_gap")
+    if gap is not None:
+        # Honest capability gap: the dimension is declared but not yet scored by the substrate.
+        return f"passed={scored.passed}; {gap}=not_yet_scored (declared capability gap)"
     parts = [f"passed={scored.passed}"]
     if scored.scores:
         parts.append(

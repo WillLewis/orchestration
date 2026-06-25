@@ -77,6 +77,13 @@ def _claim_support(view: ScoringView, expected: dict) -> float:
     return view.claim_support
 
 
+def _capability_gap(view: ScoringView, expected: dict) -> float:
+    """0.0 by construction: a declared `known_gap` names a quality dimension the substrate
+    does not yet score, so the case fails honestly until that capability is built — never a
+    numeric trick (no threshold set above a perfect score)."""
+    return 0.0
+
+
 def _schema_validity(view: ScoringView, expected: dict) -> float:
     return 1.0 if view.schema_valid else 0.0
 
@@ -117,6 +124,15 @@ SCORERS: list[Scorer] = [
         applies=lambda e: "min_claim_support" in e,
         score=_claim_support,
         threshold=lambda e: float(e["min_claim_support"]),
+    ),
+    # A declared capability gap: the case names a quality dimension (`known_gap`) the substrate
+    # does not yet score. Scores 0.0 against a 1.0 threshold, so it fails deterministically and
+    # honestly — the gap is visible, not engineered with a bar set above a perfect score.
+    Scorer(
+        name="capability_gap",
+        applies=lambda e: "known_gap" in e,
+        score=_capability_gap,
+        threshold=lambda e: 1.0,
     ),
     # schema_validity always applies — every output must validate against its schema.
     Scorer(

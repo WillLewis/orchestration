@@ -22,8 +22,12 @@ def test_eval_rows_carry_content_free_trace_signals():
     ambiguous = rows["fin_ambig_01"]
     assert ambiguous.passed is False
     assert ambiguous.input_class == "clarify_ambiguous_followup"
-    assert ambiguous.expected_signal and "min_claim_support" in ambiguous.expected_signal
+    # Honest declared-gap signals (no numeric trick, no fabricated behavioral signal).
+    assert ambiguous.expected_signal and (
+        "known_gap=clarification_routing_quality" in ambiguous.expected_signal
+    )
     assert ambiguous.observed_signal and ambiguous.observed_signal.startswith("passed=False")
+    assert "not_yet_scored" in ambiguous.observed_signal
 
     thresh = rows["fin_thresh_01"]
     assert thresh.input_class == "check_approval_readiness"

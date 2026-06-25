@@ -304,7 +304,7 @@
     <div class="matt">
       <div class="c">
         <div class="k">★ The "rock star" bar</div>
-        <p>Most candidates will show three feature mockups and a roadmap. I'll show a <b>running governed system</b> and let the panel <b>type into it live</b> — block a discount, route it, watch it revalidate, then fan the follow-ups across four owners — and prove the platform generalizes across three regulated verticals on one substrate. The artifact <i>is</i> the differentiation.</p>
+        <p>Most candidates will show three feature mockups and a roadmap. I'll show a <b>running governed system</b> and let the panel <b>type into it live</b> — block a discount, route it, watch it revalidate, then fan the follow-ups across four owners — and run the SAME harness, primitives, and content-free trace schema unmodified across three regulated verticals — an existence proof plus one honest, visible gap. The artifact <i>is</i> the differentiation.</p>
       </div>
       <div class="c">
         <div class="k">Flipping the "customer-sense" read</div>
@@ -472,9 +472,9 @@
           <div class="scrn"><span class="ts">01:08</span>
             <div class="mcard">
               <div class="mini" style="font-weight:700">Agent Ops · 3-vertical scorecard</div>
-              <div class="mrow">Financial <span class="mr-st" style="font-weight:700">47/48</span></div>
-              <div class="mrow">Legal <span class="mr-st" style="font-weight:700">31/32</span></div>
-              <div class="mrow">Healthcare <span class="mr-st" style="font-weight:700">28/29</span></div>
+              <div class="mrow">Financial <span class="mr-st" style="font-weight:700">5/6</span></div>
+              <div class="mrow">Legal <span class="mr-st" style="font-weight:700">2/2</span></div>
+              <div class="mrow">Healthcare <span class="mr-st" style="font-weight:700">2/2</span></div>
               <div class="mini" style="color:var(--danger);margin-top:4px;font-weight:600">▸ 1 honest failure — content-free trace</div>
             </div>
           </div>
@@ -547,7 +547,7 @@
         </div>
         <div class="notes">
           <div class="label">Say</div>
-          <div class="say">"It's 1:30. At 2:00 Dana defends a pricing exception for Acme. The facts are scattered across a credit memo, an updated model, a deal-room chat, an approval workflow — and a Legal memo she may not even be allowed to open. And after the meeting, six follow-ups have to reach a Credit Officer, Legal, and an analyst. Her options today: spend 30 minutes hand-reconciling, then another hour chasing people. And if the agent 'helps' by hallucinating one figure, that's not a bad summary — <em>that's a sanctioned credit decision.</em> So her real job isn't 'summarize the meeting.' It's <em>close the loop, safely.</em>"</div>
+          <div class="say">"What you just saw rests on three enhancements — permission-aware grounding across meetings, docs, metadata and workflows; safe action with previewable diffs and approval gates; and governed records that revalidate when sources change. Grounding is Phase 0, underneath everything; I'm spending our live time on the harder part: acting on it safely." "It's 1:30. At 2:00 Dana defends a pricing exception for Acme. The facts are scattered across a credit memo, an updated model, a deal-room chat, an approval workflow — and a Legal memo she may not even be allowed to open. And after the meeting, six follow-ups have to reach a Credit Officer, Legal, and an analyst. Her options today: spend 30 minutes hand-reconciling, then another hour chasing people. And if the agent 'helps' by hallucinating one figure, that's not a bad summary — <em>that's a sanctioned credit decision.</em> So her real job isn't 'summarize the meeting.' It's <em>close the loop, safely.</em>"</div>
           <div class="label" style="margin-top:13px">Why it lands</div>
           <div class="lands"><span class="chip tint">Product design</span><span class="chip dang">★ Customer sense (the Matt flip)</span><span class="chip ghost">Buyer's risk = user's risk</span></div>
         </div>
@@ -781,9 +781,9 @@
               <table class="vt">
                 <thead><tr><th>Vertical</th><th>Recipe</th><th>Eval pass</th><th>Signature gate</th></tr></thead>
                 <tbody>
-                  <tr><td>Financial</td><td>finance_credit_v1</td><td><b>47/48</b></td><td>approval matrix · MNPI</td></tr>
-                  <tr><td>Legal</td><td>legal_contract_v1</td><td><b>31/32</b></td><td>privilege · hallucinated-cite</td></tr>
-                  <tr><td>Healthcare</td><td>health_protocol_v1</td><td><b>28/29</b></td><td>PHI minimum-necessary</td></tr>
+                  <tr><td>Financial</td><td>finance_credit_v1</td><td><b>5/6</b></td><td>approval matrix · MNPI</td></tr>
+                  <tr><td>Legal</td><td>legal_contract_v1</td><td><b>2/2</b></td><td>privilege · hallucinated-cite</td></tr>
+                  <tr><td>Healthcare</td><td>health_protocol_v1</td><td><b>2/2</b></td><td>PHI minimum-necessary</td></tr>
                   <tr class="evalrow" onclick="toggleTrace()"><td colspan="4" style="color:var(--danger);font-weight:600">▸ 1 honest failure — click to drill in (content-free)</td></tr>
                 </tbody>
               </table>
@@ -791,9 +791,8 @@
                 <div class="k">Eval trace · fin_ambig_01 · typed signals only</div>
                 <div class="g">
                   <span class="lab">input_class</span><span>clarify_ambiguous_followup</span>
-                  <span class="lab">expected_signal</span><span>route_to_clarification</span>
-                  <span class="lab">observed_signal</span><span>answered_directly</span>
-                  <span class="lab">citation_coverage</span><span>0.97</span>
+                  <span class="lab">expected_signal</span><span>known_gap=clarification_routing_quality</span>
+                  <span class="lab">observed_signal</span><span>passed=False; clarification_routing_quality=not_yet_scored (declared capability gap)</span>
                   <span class="lab">latency / cost</span><span>2–4s / $</span>
                   <span class="lab">raw content</span><span>— none captured (schema forbids it) —</span>
                 </div>
@@ -804,7 +803,7 @@
         </div>
         <div class="notes">
           <div class="label">Say</div>
-          <div class="say">"Same ContextBundle, RulePack, ActionDiff, the same batch loop, the same EvalTrace — three verticals, three eval packs. And I'll show you our <em>own failure</em>: an ambiguous 'follow up on that' that we answered instead of routing to clarification. I drill in — and notice there's <em>no prompt or document text anywhere</em>. As an enterprise vendor we can't inspect customer content, so the eval loop runs on typed signals, tenant-local runs, and differential-privacy aggregates. Showing the failure is the credibility."</div>
+          <div class="say">"Same ContextBundle, RulePack, ActionDiff, the same batch loop, the same EvalTrace — I swap only the RulePack and eval pack per vertical, nothing else. That's not 'it generalizes' hand-waving; it's an <em>existence proof</em> — one substrate running finance, legal, and healthcare, with one honest gap left visible. This row is an ambiguous 'follow up on that,' and we don't yet <em>score</em> clarification-routing quality — so rather than wave a perfect number through, we mark the case red against a <em>declared</em> gap. I drill in: <em>no prompt, response, or document text anywhere</em> — only typed signals, the expected against the observed 'not yet scored.' As an enterprise vendor we can't inspect customer content, so the eval loop runs on typed signals, tenant-local runs, and differential-privacy aggregates. Marking our own gap red instead of gaming it green <em>is</em> the credibility."</div>
           <div class="money"><div class="k">Money line</div>"<b>Finance is the wedge, not the architecture.</b> This is the platform: shared primitives, measured by typed signals — exactly the orchestration layer this role owns."</div>
           <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip info">Eval frameworks + privacy (JD)</span><span class="chip ghost">Honesty as a flex</span></div>
         </div>
