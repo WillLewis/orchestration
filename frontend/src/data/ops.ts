@@ -2,6 +2,8 @@
 // (AgentRecipe, EvalPack, EvalCase, EvalResult, TelemetryEvent) so the
 // live eval runner can drop in without remapping.
 
+import { policyArtifacts } from "@/data/acme";
+
 export type Vertical = "finance" | "legal" | "health";
 
 export type AgentRecipe = {
@@ -13,22 +15,22 @@ export type AgentRecipe = {
 
 export const recipes: AgentRecipe[] = [
   {
-    id: "finance_credit_v1",
+    id: policyArtifacts.finance.id,
     vertical: "finance",
-    rulepack_id: "finance_credit_v1",
-    eval_pack_id: "ep_finance",
+    rulepack_id: policyArtifacts.finance.id,
+    eval_pack_id: policyArtifacts.finance.evalPackId,
   },
   {
-    id: "legal_contract_v1",
+    id: policyArtifacts.legal.id,
     vertical: "legal",
-    rulepack_id: "legal_contract_v1",
-    eval_pack_id: "ep_legal",
+    rulepack_id: policyArtifacts.legal.id,
+    eval_pack_id: policyArtifacts.legal.evalPackId,
   },
   {
-    id: "health_protocol_v1",
+    id: policyArtifacts.health.id,
     vertical: "health",
-    rulepack_id: "health_protocol_v1",
-    eval_pack_id: "ep_health",
+    rulepack_id: policyArtifacts.health.id,
+    eval_pack_id: policyArtifacts.health.evalPackId,
   },
 ];
 
@@ -42,7 +44,7 @@ export type VerticalScore = {
 
 export const vertical_scores: Record<Vertical, VerticalScore> = {
   finance: {
-    recipe: "finance_credit_v1",
+    recipe: policyArtifacts.finance.id,
     passed: 47,
     total: 48,
     metrics: {
@@ -55,7 +57,7 @@ export const vertical_scores: Record<Vertical, VerticalScore> = {
     proves: "High-value financial decisions with auditable controls.",
   },
   legal: {
-    recipe: "legal_contract_v1",
+    recipe: policyArtifacts.legal.id,
     passed: 31,
     total: 32,
     metrics: {
@@ -68,7 +70,7 @@ export const vertical_scores: Record<Vertical, VerticalScore> = {
     proves: "Same primitives where sanctions make AI over-trust dangerous.",
   },
   health: {
-    recipe: "health_protocol_v1",
+    recipe: policyArtifacts.health.id,
     passed: 28,
     total: 29,
     metrics: {
@@ -191,7 +193,7 @@ export const eval_rows: EvalRow[] = [
 // (enforced server-side by `extra="forbid"`).
 export const telemetry_sample = {
   intent_class: "prepare_decision_brief",
-  recipe_id: "finance_credit_v1",
+  recipe_id: policyArtifacts.finance.id,
   source_type_counts: { meeting: 2, document: 6, chat: 1, workflow: 1 },
   permission_denial_count: 1,
   missing_evidence_code: "missing_covenant_tracker",

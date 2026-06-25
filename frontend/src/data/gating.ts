@@ -1,3 +1,5 @@
+import { policyArtifacts } from "@/data/acme";
+
 export type GatingVertical = "finance" | "legal" | "health";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -30,16 +32,21 @@ export type GatingExample = {
   };
 };
 
+// Gating renders the canonical facts; they originate in @/data/acme.
+const fin = policyArtifacts.finance;
+const leg = policyArtifacts.legal;
+const hea = policyArtifacts.health;
+
 export const gatingExamples: Record<GatingVertical, GatingExample> = {
   finance: {
     policyArtifact: {
-      id: "finance_credit_v1",
+      id: fin.id,
       object: "policy_artifact",
       vertical: "finance",
-      version: 1,
+      version: fin.version,
       status: "active",
       owner: "RevOps Policy Admin",
-      evalpack_id: "ep_finance",
+      evalpack_id: fin.evalPackId,
       runtime_mode: "advisory_hitl_writes",
       rules: [
         {
@@ -87,7 +94,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       ],
     },
     evaluateRequest: {
-      policy_artifact_id: "finance_credit_v1",
+      policy_artifact_id: fin.id,
       actor: { user: "dana", role: "relationship_manager" },
       work_product: {
         type: "deal_brief",
@@ -100,8 +107,8 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
     },
     evaluateResponse: {
       object: "compliance_trace",
-      policy_artifact_id: "finance_credit_v1",
-      policy_artifact_version: 1,
+      policy_artifact_id: fin.id,
+      policy_artifact_version: fin.version,
       approval_ready: false,
       firings: [
         {
@@ -128,14 +135,14 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       ],
     },
     replayRequest: {
-      policy_artifact_id: "finance_credit_v1",
+      policy_artifact_id: fin.id,
       corpus_ref: "finance/acme_renewals_2025",
       sample_size: 500,
     },
     replayResponse: {
       object: "readiness_report",
-      policy_artifact_id: "finance_credit_v1",
-      policy_artifact_version: 1,
+      policy_artifact_id: fin.id,
+      policy_artifact_version: fin.version,
       cases_evaluated: 500,
       projected_block_rate: 0.114,
       policy_violations_caught: 57,
@@ -164,7 +171,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       },
     },
     trace: {
-      title: "ComplianceTrace - finance_credit_v1",
+      title: `ComplianceTrace - ${fin.id}`,
       firstLine: "Discount 22% > delegated 15%",
       firstBadge: "BLOCK",
       secondLine: "Legal approval pending",
@@ -174,13 +181,13 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
   },
   legal: {
     policyArtifact: {
-      id: "legal_contract_v1",
+      id: leg.id,
       object: "policy_artifact",
       vertical: "legal",
-      version: 2,
+      version: leg.version,
       status: "active",
       owner: "Legal Ops Admin",
-      evalpack_id: "ep_legal",
+      evalpack_id: leg.evalPackId,
       runtime_mode: "advisory_hitl_writes",
       rules: [
         {
@@ -227,7 +234,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       ],
     },
     evaluateRequest: {
-      policy_artifact_id: "legal_contract_v1",
+      policy_artifact_id: leg.id,
       actor: { user: "marcus", role: "associate" },
       work_product: {
         type: "contract_issue_list",
@@ -238,8 +245,8 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
     },
     evaluateResponse: {
       object: "compliance_trace",
-      policy_artifact_id: "legal_contract_v1",
-      policy_artifact_version: 2,
+      policy_artifact_id: leg.id,
+      policy_artifact_version: leg.version,
       approval_ready: false,
       firings: [
         {
@@ -267,14 +274,14 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       ],
     },
     replayRequest: {
-      policy_artifact_id: "legal_contract_v1",
+      policy_artifact_id: leg.id,
       corpus_ref: "legal/closed_matters_2025",
       sample_size: 320,
     },
     replayResponse: {
       object: "readiness_report",
-      policy_artifact_id: "legal_contract_v1",
-      policy_artifact_version: 2,
+      policy_artifact_id: leg.id,
+      policy_artifact_version: leg.version,
       cases_evaluated: 320,
       projected_block_rate: 0.16,
       policy_violations_caught: 51,
@@ -303,7 +310,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       },
     },
     trace: {
-      title: "ComplianceTrace - legal_contract_v1",
+      title: `ComplianceTrace - ${leg.id}`,
       firstLine: "Liability cap 3.0x > playbook 1.5x",
       firstBadge: "BLOCK",
       secondLine: "Verified citation missing on Issue #4",
@@ -313,13 +320,13 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
   },
   health: {
     policyArtifact: {
-      id: "health_protocol_v1",
+      id: hea.id,
       object: "policy_artifact",
       vertical: "health",
-      version: 1,
+      version: hea.version,
       status: "active",
       owner: "Clinical Governance Admin",
-      evalpack_id: "ep_health",
+      evalpack_id: hea.evalPackId,
       runtime_mode: "advisory_hitl_writes",
       rules: [
         {
@@ -363,7 +370,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       ],
     },
     evaluateRequest: {
-      policy_artifact_id: "health_protocol_v1",
+      policy_artifact_id: hea.id,
       actor: { user: "priya", role: "clinical_coordinator" },
       work_product: {
         type: "clinical_protocol_packet",
@@ -373,8 +380,8 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
     },
     evaluateResponse: {
       object: "compliance_trace",
-      policy_artifact_id: "health_protocol_v1",
-      policy_artifact_version: 1,
+      policy_artifact_id: hea.id,
+      policy_artifact_version: hea.version,
       approval_ready: false,
       firings: [
         {
@@ -401,14 +408,14 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       ],
     },
     replayRequest: {
-      policy_artifact_id: "health_protocol_v1",
+      policy_artifact_id: hea.id,
       corpus_ref: "health/closed_protocols_2025",
       sample_size: 280,
     },
     replayResponse: {
       object: "readiness_report",
-      policy_artifact_id: "health_protocol_v1",
-      policy_artifact_version: 1,
+      policy_artifact_id: hea.id,
+      policy_artifact_version: hea.version,
       cases_evaluated: 280,
       projected_block_rate: 0.21,
       policy_violations_caught: 59,
@@ -437,7 +444,7 @@ export const gatingExamples: Record<GatingVertical, GatingExample> = {
       },
     },
     trace: {
-      title: "ComplianceTrace - health_protocol_v1",
+      title: `ComplianceTrace - ${hea.id}`,
       firstLine: "PHI fields 14 > minimum 6",
       firstBadge: "BLOCK",
       secondLine: "Clinical reviewer missing",

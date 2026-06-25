@@ -44,7 +44,6 @@ type PageDefinition = {
   eyebrow: string;
   title: string;
   description: ReactNode;
-  descriptionMeta: string;
   related: RelatedLink[];
   content: () => ReactNode;
 };
@@ -56,6 +55,7 @@ const approvalBurden = financeReplay.approval_burden as {
   by_approver: Record<string, number>;
 };
 const topFailureModes = financeReplay.top_failure_modes as Array<{ mode: string; count: number }>;
+const regressionStats = financeReplay.regression as { passed: number; total: number };
 const dscr = decision_brief.policy_gates.calculations[0];
 const routeApprovalAction = action_plan.actions.find((action) => action.tool === "route_approval");
 const blockedAction = action_plan.actions.find((action) => action.blocked_reason);
@@ -116,8 +116,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         citation support, approval burden, freshness, latency, and cost.
       </p>
     ),
-    descriptionMeta:
-      "Success metrics for the governed ConnectWork agent: cycle time, trust guardrails, eval scores, replay metrics, approval burden, and cost.",
     related: [
       {
         label: "Roadmap",
@@ -142,8 +140,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         deterministic, and reviewable before anything commits.
       </p>
     ),
-    descriptionMeta:
-      "Risk register and mitigations for permission leakage, hallucination, gate bypass, stale records, approval fatigue, prompt injection, raw telemetry, and vertical drift.",
     related: [
       {
         label: "Context Assembly",
@@ -168,8 +164,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         evidence, conflicts, and a source graph over only the objects the user may use.
       </p>
     ),
-    descriptionMeta:
-      "Permission-aware context assembly: WorkspaceObject to SourceGraph, ClaimMap, PermissionBoundary, MissingEvidenceState, ConflictState, and ContextBundle.",
     related: [
       {
         label: "RAG",
@@ -194,8 +188,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         fields that would change.
       </p>
     ),
-    descriptionMeta:
-      "Action Diff documentation for ActionPlan, ActionDiff, DryRunResult, preview-before-commit, and gated execution.",
     related: [
       {
         label: "Decision Brief",
@@ -220,8 +212,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         documents, transcripts, or responses.
       </p>
     ),
-    descriptionMeta:
-      "Eval Trace documentation for EvalPack, EvalTrace, RegressionSuite, privacy telemetry, replay, and /ops/evals.",
     related: [
       {
         label: "Success Metrics",
@@ -246,8 +236,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         artifact id and version.
       </p>
     ),
-    descriptionMeta:
-      "Compliance Trace documentation for DeterministicDecision, RuleFiring, ApprovalMatrix, CalculationCheck, SchemaValidation, and /verify.",
     related: [
       {
         label: "Deterministic Gating",
@@ -272,8 +260,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         to summarize restricted material.
       </p>
     ),
-    descriptionMeta:
-      "Permission-aware RAG documentation for grounded retrieval, source citations, missing evidence, and restricted-source behavior.",
     related: [
       {
         label: "Context Assembly",
@@ -298,8 +284,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         steps.
       </p>
     ),
-    descriptionMeta:
-      "Decision Brief documentation for the typed /brief work product, gate pass-through, source map, confidence, and limitations.",
     related: [
       {
         label: "RAG",
@@ -324,8 +308,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         asks.
       </p>
     ),
-    descriptionMeta:
-      "Insight Cards documentation for proactive read-only cards derived from context, readiness, actions, and revalidation state.",
     related: [
       {
         label: "Decision Brief",
@@ -350,8 +332,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         decides whether each action can run.
       </p>
     ),
-    descriptionMeta:
-      "Action Packets documentation for ToolCard, ApprovalPolicy, SafeActionComposer, gated action packets, human approval, rollback, and blocked actions.",
     related: [
       {
         label: "Action Diff",
@@ -376,8 +356,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         resolved.
       </p>
     ),
-    descriptionMeta:
-      "Orchestration documentation for ControlledWorkLoop, LoopState, assignments, replies, escalations, scheduled work, and closed semantics.",
     related: [
       {
         label: "Action Packets",
@@ -401,8 +379,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         skipped, who acted, and the details needed to build a rollback plan or a governed record.
       </p>
     ),
-    descriptionMeta:
-      "Audit log documentation for AuditEvent, approved execution, blocked action skipping, rollback provenance, and governed records.",
     related: [
       {
         label: "Action Packets",
@@ -427,8 +403,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         seal.
       </p>
     ),
-    descriptionMeta:
-      "Sealed records documentation for WorkProductContract, governed records, source-version snapshots, permission omissions, and /workproducts/mint.",
     related: [
       {
         label: "Audit log",
@@ -452,8 +426,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         affected sections, stale states, gate changes, and reapproval routes.
       </p>
     ),
-    descriptionMeta:
-      "Revalidation documentation for SourceDependencyGraph, stale sections, reapproval routes, legal_needs_review, financials_v2, /revalidate, and record verification.",
     related: [
       {
         label: "Sealed records",
@@ -478,8 +450,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         monitor, and roll back.
       </p>
     ),
-    descriptionMeta:
-      "AI Studio documentation for admin authoring of recipes, policy artifacts, eval packs, replay, activation, and rollback.",
     related: [
       {
         label: "Deterministic Gating",
@@ -504,8 +474,6 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         privacy-preserving evals.
       </p>
     ),
-    descriptionMeta:
-      "Verticals documentation for finance, legal, and healthcare recipes, policy artifacts, eval packs, and the shared substrate proof.",
     related: [
       {
         label: "AI Studio",
@@ -557,7 +525,7 @@ function MetricsPage() {
           },
           {
             label: "Regression",
-            value: "42 / 42",
+            value: `${regressionStats.passed} / ${regressionStats.total}`,
             detail: "Regression checks passing for the finance policy replay.",
           },
           {
@@ -1374,7 +1342,7 @@ function OrchestrationPage() {
         <p>
           <code>LoopState.closed</code> mirrors the backend: the loop cycle finished. The UI derives
           "open" status from escalations and unresolved prerequisites. In the Acme mock,{" "}
-          {escalationsInFlightLabel(loop_state)} remains in flight.
+          {escalationsInFlightLabel(loop_state)} keeps the loop open.
         </p>
       </DocsSection>
     </>

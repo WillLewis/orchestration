@@ -4,6 +4,8 @@
 // when the live API lands, swap the literal export for a fetch and both
 // surfaces update with no remap.
 
+import { financePolicyArtifact } from "@/data/acme";
+
 export type ApprovalStatus = "approved" | "missing" | "pending";
 export type SourceStatus = "used" | "restricted" | "conflicting" | "missing";
 export type SourceType = "meeting" | "chat" | "document" | "workflow" | "task";
@@ -254,8 +256,8 @@ export const source_count = sources.length;
 
 // The deterministic authority behind the gates — stamped on the brief/packet so the UI can show
 // "decided by Policy Artifact finance_credit_v1, not the model". Live mode overlays the same from /api/brief.
-export const rulepack_id = "finance_credit_v1";
-export const rulepack_version = 1;
+export const rulepack_id = financePolicyArtifact.id;
+export const rulepack_version = financePolicyArtifact.version;
 
 export const approval_role_labels: Record<string, string> = {
   relationship_manager: "Relationship Mgr",

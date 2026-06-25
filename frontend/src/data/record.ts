@@ -1,3 +1,4 @@
+import { financePolicyArtifact } from "@/data/acme";
 import { decision_brief, sources } from "@/data/brief";
 
 type DecisionBriefSnapshot = typeof decision_brief;
@@ -16,10 +17,10 @@ export const governance_certificate = {
 
   governance: {
     schema_name: "DecisionBrief",
-    recipe_id: "finance_credit_v1",
+    recipe_id: financePolicyArtifact.id,
     vertical: "finance",
-    rulepack_id: "finance_credit_v1",
-    rulepack_version: 1,
+    rulepack_id: financePolicyArtifact.id,
+    rulepack_version: financePolicyArtifact.version,
 
     approval_ready: false,
     approval_stamp: "NOT APPROVAL-READY",
