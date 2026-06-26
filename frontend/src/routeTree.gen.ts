@@ -17,6 +17,9 @@ import { Route as DevelopersIndexRouteImport } from './routes/developers/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
 import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
 import { Route as DevelopersVerticalsRouteImport } from './routes/developers/verticals'
+import { Route as DevelopersUiMeetingsRouteImport } from './routes/developers/ui-meetings'
+import { Route as DevelopersUiDecisionBriefRouteImport } from './routes/developers/ui-decision-brief'
+import { Route as DevelopersUiChatRouteImport } from './routes/developers/ui-chat'
 import { Route as DevelopersSealedRecordsRouteImport } from './routes/developers/sealed-records'
 import { Route as DevelopersRoadmapRouteImport } from './routes/developers/roadmap'
 import { Route as DevelopersRisksRouteImport } from './routes/developers/risks'
@@ -75,6 +78,22 @@ const DevelopersVisionRoute = DevelopersVisionRouteImport.update({
 const DevelopersVerticalsRoute = DevelopersVerticalsRouteImport.update({
   id: '/developers/verticals',
   path: '/developers/verticals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersUiMeetingsRoute = DevelopersUiMeetingsRouteImport.update({
+  id: '/developers/ui-meetings',
+  path: '/developers/ui-meetings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersUiDecisionBriefRoute =
+  DevelopersUiDecisionBriefRouteImport.update({
+    id: '/developers/ui-decision-brief',
+    path: '/developers/ui-decision-brief',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DevelopersUiChatRoute = DevelopersUiChatRouteImport.update({
+  id: '/developers/ui-chat',
+  path: '/developers/ui-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevelopersSealedRecordsRoute = DevelopersSealedRecordsRouteImport.update({
@@ -200,6 +219,9 @@ export interface FileRoutesByFullPath {
   '/developers/risks': typeof DevelopersRisksRoute
   '/developers/roadmap': typeof DevelopersRoadmapRoute
   '/developers/sealed-records': typeof DevelopersSealedRecordsRoute
+  '/developers/ui-chat': typeof DevelopersUiChatRoute
+  '/developers/ui-decision-brief': typeof DevelopersUiDecisionBriefRoute
+  '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
@@ -229,6 +251,9 @@ export interface FileRoutesByTo {
   '/developers/risks': typeof DevelopersRisksRoute
   '/developers/roadmap': typeof DevelopersRoadmapRoute
   '/developers/sealed-records': typeof DevelopersSealedRecordsRoute
+  '/developers/ui-chat': typeof DevelopersUiChatRoute
+  '/developers/ui-decision-brief': typeof DevelopersUiDecisionBriefRoute
+  '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
@@ -259,6 +284,9 @@ export interface FileRoutesById {
   '/developers/risks': typeof DevelopersRisksRoute
   '/developers/roadmap': typeof DevelopersRoadmapRoute
   '/developers/sealed-records': typeof DevelopersSealedRecordsRoute
+  '/developers/ui-chat': typeof DevelopersUiChatRoute
+  '/developers/ui-decision-brief': typeof DevelopersUiDecisionBriefRoute
+  '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
@@ -290,6 +318,9 @@ export interface FileRouteTypes {
     | '/developers/risks'
     | '/developers/roadmap'
     | '/developers/sealed-records'
+    | '/developers/ui-chat'
+    | '/developers/ui-decision-brief'
+    | '/developers/ui-meetings'
     | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
@@ -319,6 +350,9 @@ export interface FileRouteTypes {
     | '/developers/risks'
     | '/developers/roadmap'
     | '/developers/sealed-records'
+    | '/developers/ui-chat'
+    | '/developers/ui-decision-brief'
+    | '/developers/ui-meetings'
     | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
@@ -348,6 +382,9 @@ export interface FileRouteTypes {
     | '/developers/risks'
     | '/developers/roadmap'
     | '/developers/sealed-records'
+    | '/developers/ui-chat'
+    | '/developers/ui-decision-brief'
+    | '/developers/ui-meetings'
     | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
@@ -378,6 +415,9 @@ export interface RootRouteChildren {
   DevelopersRisksRoute: typeof DevelopersRisksRoute
   DevelopersRoadmapRoute: typeof DevelopersRoadmapRoute
   DevelopersSealedRecordsRoute: typeof DevelopersSealedRecordsRoute
+  DevelopersUiChatRoute: typeof DevelopersUiChatRoute
+  DevelopersUiDecisionBriefRoute: typeof DevelopersUiDecisionBriefRoute
+  DevelopersUiMeetingsRoute: typeof DevelopersUiMeetingsRoute
   DevelopersVerticalsRoute: typeof DevelopersVerticalsRoute
   DevelopersVisionRoute: typeof DevelopersVisionRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
@@ -440,6 +480,27 @@ declare module '@tanstack/react-router' {
       path: '/developers/verticals'
       fullPath: '/developers/verticals'
       preLoaderRoute: typeof DevelopersVerticalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/ui-meetings': {
+      id: '/developers/ui-meetings'
+      path: '/developers/ui-meetings'
+      fullPath: '/developers/ui-meetings'
+      preLoaderRoute: typeof DevelopersUiMeetingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/ui-decision-brief': {
+      id: '/developers/ui-decision-brief'
+      path: '/developers/ui-decision-brief'
+      fullPath: '/developers/ui-decision-brief'
+      preLoaderRoute: typeof DevelopersUiDecisionBriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/ui-chat': {
+      id: '/developers/ui-chat'
+      path: '/developers/ui-chat'
+      fullPath: '/developers/ui-chat'
+      preLoaderRoute: typeof DevelopersUiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/developers/sealed-records': {
@@ -602,6 +663,9 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersRisksRoute: DevelopersRisksRoute,
   DevelopersRoadmapRoute: DevelopersRoadmapRoute,
   DevelopersSealedRecordsRoute: DevelopersSealedRecordsRoute,
+  DevelopersUiChatRoute: DevelopersUiChatRoute,
+  DevelopersUiDecisionBriefRoute: DevelopersUiDecisionBriefRoute,
+  DevelopersUiMeetingsRoute: DevelopersUiMeetingsRoute,
   DevelopersVerticalsRoute: DevelopersVerticalsRoute,
   DevelopersVisionRoute: DevelopersVisionRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
