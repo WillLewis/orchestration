@@ -45,7 +45,7 @@ function UiMeetingsDocsPage() {
           <p>
             The meetings surface keeps responses in the asker&apos;s rail, next to the shared
             document and participant context. Open, sealed, and locked citations behave exactly as
-            they do on the Chat surface, backed by the same live docs retrieval.
+            they do on the Chat surface, backed by the same structured docs retrieval seam.
           </p>
           <p>
             See{" "}

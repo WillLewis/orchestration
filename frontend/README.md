@@ -48,9 +48,9 @@ remapping. UI-only fields (`status`, `SourceStatus`, `SourceType`) are derived c
 **not** part of the frozen `core.schemas` contract.
 
 The `/developers/ui-chat`, `/developers/ui-meetings`, and
-`/developers/ui-decision-brief` docs insets are live by default against `POST /docs/chat`; if the
-gateway is unavailable, the inset falls back to its bundled demo-safe mocks. Set
-`VITE_DOCS_CHAT_MOCKS=true` to pin those docs insets to mocks while preserving the same UI path.
+`/developers/ui-decision-brief` docs insets are mock-driven by default through the same structured
+adapter used for `POST /docs/chat`. Set `VITE_DOCS_CHAT_LIVE=true` to point that seam at the
+backend when the live Docs RAG endpoint is ready.
 
 ## Demo runbook
 
