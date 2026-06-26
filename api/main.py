@@ -36,10 +36,13 @@ from evals import build_scorecard
 from lifecycle.revalidation import RevalidationResult
 
 from api.chat import answer as chat_answer
+from api.docs_chat import answer as docs_chat_answer
 from api.models import (
     BriefRequest,
     ChatRequest,
     ChatResponse,
+    DocsChatRequest,
+    DocsChatResponse,
     ExecuteRequest,
     GovernedRecord,
     LoopRequest,
@@ -124,6 +127,17 @@ def post_chat(req: ChatRequest) -> ChatResponse:
     validated against the bundle, and missing evidence is surfaced honestly. Offline/deterministic
     by default (no API key); history is untrusted context, never evidence."""
     return chat_answer(req.user_id, req.intent, req.message, req.history)
+
+
+@app.post("/docs/chat", response_model=DocsChatResponse)
+def post_docs_chat(req: DocsChatRequest) -> DocsChatResponse:
+    """Answer over the documentation corpus with ACL enforced before drafting.
+
+    Tier-3 raw bodies and sealed raw bodies never reach the model view. The wrapper validates every
+    citation, emits sealed `cleared_derivative` text only, and returns locked-source access metadata
+    without revealing restricted content.
+    """
+    return docs_chat_answer(req.surface, req.message, req.history)
 
 
 # --------------------------------------------------------------------------- #

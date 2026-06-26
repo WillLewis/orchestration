@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 from core.schemas import AgentRecipe, DecisionBrief, SourceRef, StaleSectionState, TelemetryEvent
 from lifecycle.revalidation import ReapprovalRoute
@@ -62,6 +62,14 @@ class DocsCitation(BaseModel):
     snippet: Optional[str] = None
     access: DocsAccess = "open"
     tier: DocsCitationTier
+
+    @model_serializer(mode="wrap")
+    def _serialize_optional_fields(self, handler):
+        data = handler(self)
+        for key in ("title", "section", "snippet"):
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
 
 
 class DocsChatResponse(BaseModel):
