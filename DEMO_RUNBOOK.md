@@ -68,6 +68,45 @@ Pre-flight this from the repo root before the panel.
    Also click `Agent Actions` from the app top bar or Decision Packet to confirm the action diff
    drawer opens.
 
+## LLM Toggle Smoke Matrix
+
+Use this matrix to decide which docs-chat questions to ask live. The goal is not for every prompt
+to return LLM prose; the goal is to prove the toggle is real, governed fields stay deterministic,
+guard fallback works, and no-results stays honest.
+
+Prerequisites: backend running on `:8000`, `ANTHROPIC_API_KEY` set, and `CHAT_MODEL` configured
+either in the shell or `.env`. The backend may report a model even if the shell has
+`CHAT_MODEL=unset`, because `api/docs_chat.py` loads `.env` at import time.
+
+| Question | Use in demo? | Expected current result | Purpose |
+|---|---:|---|---|
+| `When does the agent refuse to act?` | Optional | `effective_mode=deterministic`, `fallback_reason=grounding_guard` | Shows discard-on-drift safety; governed fields must still match deterministic mode. |
+| `What happens after a record is sealed?` | Optional | `effective_mode=deterministic`, `fallback_reason=grounding_guard` | Shows guard fallback on sealed-record wording; governed fields must still match deterministic mode. |
+| `How does the agent handle restricted source material?` | Yes | `effective_mode=llm`, `fallback_reason=null` | Main visible LLM-toggle proof: prose changes while governed fields remain fixed. |
+| `What is the cafeteria menu for next Tuesday?` | Yes | `status=no_results`, `effective_mode=deterministic`, `fallback_reason=null` | Shows honest no-results behavior. |
+
+Manual probe for a single question:
+
+```bash
+curl -sS localhost:8000/docs/chat \
+  -X POST \
+  -H 'content-type: application/json' \
+  -d '{"surface":"chat","message":"How does the agent handle restricted source material?","mode":"llm"}' \
+  | jq '{status, phrasing, citations, confidence, missing, response}'
+```
+
+Real demo failures:
+
+- Q3 returns `not_configured` or `client_error`: live LLM path is not proven.
+- Any question changes governed fields between deterministic and LLM mode:
+  `status`, `citations`, `confidence`, or `missing`.
+- Q4 returns citations or `status!="no_results"`.
+
+Acceptable safety behavior:
+
+- Q1 or Q2 returning `grounding_guard` is not a demo failure when governed fields match. It proves
+  the wrapper discarded prose it did not trust and kept the deterministic answer surface stable.
+
 ## Optional Go Live
 
 Use this only when you want the frontend to fetch from the FastAPI gateway instead of bundled
