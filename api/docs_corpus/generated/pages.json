@@ -296,7 +296,7 @@
       {
         "heading": "Meetings",
         "anchor": "meetings",
-        "text": "A meeting rail for asking ConnectAgent about the documentation corpus while the shared source discussion stays in view. The meetings surface keeps responses in the asker's rail, next to the shared document and participant context. Open, sealed, and locked citations behave exactly as they do on the Chat surface, backed by the same live docs retrieval. See how RAG works for the full pipeline."
+        "text": "A meeting rail for asking ConnectAgent about the documentation corpus while the shared source discussion stays in view. The meetings surface keeps responses in the asker's rail, next to the shared document and participant context. Open, sealed, and locked citations behave exactly as they do on the Chat surface, backed by the same structured docs retrieval seam. See how RAG works for the full pipeline."
       }
     ]
   },
