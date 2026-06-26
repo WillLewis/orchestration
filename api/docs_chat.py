@@ -9,18 +9,18 @@ tier, or locked/sealed disposition.
 """
 from __future__ import annotations
 
+import math
 import os
 import re
-import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-from api.docs_corpus import load_docs
-from api.docs_corpus.models import DocsDoc
-from api.models import DocsChatMessage, DocsChatResponse, DocsCitation, DocsSurface
+from api.docs_corpus import load_chunks
+from api.docs_corpus.models import DocsChunk
+from api.models import DocsChatMessage, DocsChatResponse, DocsCitation, DocsConfidence, DocsSurface
 
 
 class DocsChatDraft(BaseModel):
@@ -35,8 +35,11 @@ class DocsEvidenceDoc:
     """Permission-safe document projection handed to a `DocsChatLLMClient`."""
 
     doc_id: str
+    chunk_id: str
     title: str | None
     route: str | None
+    anchor: str | None
+    section: str | None
     access: str
     tier: int | str
     safe_text: str
@@ -55,6 +58,24 @@ class DocsChatEvidenceView:
     history: tuple[DocsChatMessage, ...]
     docs: tuple[DocsEvidenceDoc, ...]
     locked: tuple[DocsEvidenceDoc, ...]
+
+
+@dataclass(frozen=True)
+class _ConfidenceSignals:
+    """Deterministic confidence inputs; no model output participates."""
+
+    margin: float
+    query_aspect_coverage: float
+    threshold_cleared: bool
+    missing_empty: bool
+    support_count: int
+
+
+@dataclass(frozen=True)
+class _Retrieval:
+    candidates: tuple[DocsChunk, ...]
+    signals: _ConfidenceSignals
+    missing: tuple[str, ...]
 
 
 @runtime_checkable
@@ -103,7 +124,11 @@ class LLMDocsChatClient:
             "docs": [
                 {
                     "doc_id": doc.doc_id,
+                    "chunk_id": doc.chunk_id,
                     "title": doc.title,
+                    "route": doc.route,
+                    "anchor": doc.anchor,
+                    "section": doc.section,
                     "access": doc.access,
                     "tier": doc.tier,
                     "safe_text": doc.safe_text,
@@ -113,7 +138,11 @@ class LLMDocsChatClient:
             "locked": [
                 {
                     "doc_id": doc.doc_id,
+                    "chunk_id": doc.chunk_id,
                     "title": doc.title,
+                    "route": doc.route,
+                    "anchor": doc.anchor,
+                    "section": doc.section,
                     "access": doc.access,
                     "tier": doc.tier,
                 }
@@ -163,17 +192,19 @@ def answer(
     client: DocsChatLLMClient | None = None,
 ) -> DocsChatResponse:
     """Answer a docs question with ACL enforced at retrieval and citations rebuilt by wrapper."""
-    docs = load_docs()
-    candidates = _retrieve(message, docs)
-    if not candidates:
+    chunks = load_chunks()
+    retrieval = _retrieve(message, chunks)
+    if not retrieval.candidates:
         return DocsChatResponse(
-            reply="I couldn't find matching documentation for that question.",
+            response="I couldn't find matching documentation for that question.",
             citations=[],
+            confidence=_confidence(retrieval.signals),
+            missing=list(retrieval.missing),
             status="no_results",
             suggested_questions=_suggested_questions(),
         )
 
-    view = _build_view(surface, message, history, candidates)
+    view = _build_view(surface, message, history, retrieval.candidates)
     chat_client = client or _default_client()
     try:
         draft = chat_client.draft(_build_system_prompt(), view)
@@ -184,9 +215,9 @@ def answer(
         )
         draft = DeterministicDocsChatClient().draft(_build_system_prompt(), view)
 
-    locked = [doc for doc in candidates if doc.access == "locked"]
-    sealed = [doc for doc in candidates if doc.access == "sealed"]
-    open_docs = [doc for doc in candidates if doc.access == "open"]
+    locked = [chunk for chunk in retrieval.candidates if chunk.access == "locked"]
+    sealed = [chunk for chunk in retrieval.candidates if chunk.access == "sealed"]
+    open_docs = [chunk for chunk in retrieval.candidates if chunk.access == "open"]
 
     if surface == "decision_brief":
         reply = _decision_brief_reply(open_docs, sealed, locked, draft.reply)
@@ -194,11 +225,13 @@ def answer(
         reply = _qa_reply(open_docs, sealed, locked, draft.reply)
 
     citations = _citations_for_candidates(
-        _ordered_candidate_ids(candidates, draft.citation_ids), candidates
+        _ordered_candidate_ids(retrieval.candidates, draft.citation_ids), retrieval.candidates
     )
     return DocsChatResponse(
-        reply=reply,
+        response=reply,
         citations=citations,
+        confidence=_confidence(retrieval.signals),
+        missing=list(retrieval.missing),
         status="answered",
         suggested_questions=_suggested_questions(),
     )
@@ -208,17 +241,15 @@ def _build_view(
     surface: DocsSurface,
     message: str,
     history: list[DocsChatMessage] | None,
-    candidates: Sequence[DocsDoc],
+    candidates: Sequence[DocsChunk],
 ) -> DocsChatEvidenceView:
     safe_docs: list[DocsEvidenceDoc] = []
     locked_docs: list[DocsEvidenceDoc] = []
-    for doc in candidates:
-        if doc.access == "locked":
-            locked_docs.append(_evidence_doc(doc, safe_text=""))
-        elif doc.access == "sealed":
-            safe_docs.append(_evidence_doc(doc, safe_text=doc.cleared_derivative or ""))
+    for chunk in candidates:
+        if chunk.access == "locked":
+            locked_docs.append(_evidence_doc(chunk, safe_text=""))
         else:
-            safe_docs.append(_evidence_doc(doc, safe_text=doc.body))
+            safe_docs.append(_evidence_doc(chunk, safe_text=chunk.text))
     return DocsChatEvidenceView(
         surface=surface,
         message=message,
@@ -228,13 +259,16 @@ def _build_view(
     )
 
 
-def _evidence_doc(doc: DocsDoc, safe_text: str) -> DocsEvidenceDoc:
+def _evidence_doc(chunk: DocsChunk, safe_text: str) -> DocsEvidenceDoc:
     return DocsEvidenceDoc(
-        doc_id=doc.id,
-        title=_visible_title(doc),
-        route=doc.route,
-        access=doc.access,
-        tier=doc.tier,
+        doc_id=chunk.doc_id,
+        chunk_id=chunk.chunk_id,
+        title=_visible_title(chunk),
+        route=chunk.route,
+        anchor=chunk.anchor,
+        section=chunk.section,
+        access=chunk.access,
+        tier=chunk.tier,
         safe_text=safe_text,
     )
 
@@ -254,69 +288,173 @@ def _build_system_prompt() -> str:
     )
 
 
-_NAME_WEIGHT = 5.0      # id/title is curated, high-signal text
-_SEALED_BONUS = 12.0    # a query about override/survive/attempt is specifically the sealed eval's topic
+_NAME_WEIGHT = 5.0      # id/title/section is curated, high-signal text
+_SEALED_BONUS = 12.0    # override/survive/attempt queries are the sealed eval's topic
 _PHRASE_BONUS = 6.0
+_RELEVANCE_THRESHOLD = 0.25
+_MAX_DOC_GROUPS = 3
+_MAX_CHUNKS_PER_DOC = 2
+_MAX_CITATIONS = 3
 
 
-def _retrieve(message: str, docs: Sequence[DocsDoc]) -> list[DocsDoc]:
-    """Rank docs using only the current message and ACL-safe text.
+def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
+    """Rank chunks using only the current message and ACL-safe text.
 
-    Name (id/title/owner) matches are weighted high because that text is short and curated. Body
+    Name (id/title/section) matches are weighted high because that text is short and curated. Body
     matches are length-normalized (``hits / (1 + ln(1 + tokens))``) so a long, broad doc can't
     outscore a short, focused one on raw token volume — the bug that let `design-rationale` win
-    gating/revenue/override prompts. Only docs tied at the top score are returned.
+    gating/revenue/override prompts. Top doc groups are retained; each group contributes a capped
+    number of chunks for coverage while citations stay capped by `doc_id`.
     """
     query = list(dict.fromkeys(_tokens(message)))
+    aspects = tuple(_query_aspects(message))
     if not query:
-        return []
+        signals = _signals(
+            message=message,
+            selected=(),
+            threshold_cleared=False,
+            top_score=0.0,
+            next_score=0.0,
+            aspects=aspects,
+        )
+        return _Retrieval(candidates=(), signals=signals, missing=aspects)
     norm_message = _normalized(message)
-    scored: list[tuple[float, int, DocsDoc]] = []
-    for idx, doc in enumerate(docs):
-        name = _name_text(doc)
-        body_tokens = set(_tokens(_body_text(doc)))
-        name_hits = sum(1 for token in query if token in name)
-        body_hits = sum(1 for token in query if token in body_tokens)
-        body_score = body_hits / (1.0 + math.log(1 + len(body_tokens))) if body_tokens else 0.0
-        score = _NAME_WEIGHT * name_hits + body_score
-        if doc.access == "sealed" and {"override", "attempt", "survive"} & set(query):
-            score += _SEALED_BONUS
-        if norm_message and norm_message in _search_text(doc):
-            score += _PHRASE_BONUS
+    scored: list[tuple[float, int, DocsChunk]] = []
+    for idx, chunk in enumerate(chunks):
+        score = _score_chunk(chunk, query, norm_message)
         if score > 1e-9:
-            scored.append((score, -idx, doc))
+            scored.append((score, -idx, chunk))
     if not scored:
-        return []
+        signals = _signals(
+            message=message,
+            selected=(),
+            threshold_cleared=False,
+            top_score=0.0,
+            next_score=0.0,
+            aspects=aspects,
+        )
+        return _Retrieval(candidates=(), signals=signals, missing=aspects)
     scored.sort(key=lambda item: item[:2], reverse=True)
-    top_score = scored[0][0]
-    return [doc for score, _, doc in scored if score >= top_score - 1e-9][:3]
+    cleared = [item for item in scored if item[0] >= _RELEVANCE_THRESHOLD]
+    if not cleared:
+        signals = _signals(
+            message=message,
+            selected=(),
+            threshold_cleared=False,
+            top_score=scored[0][0],
+            next_score=0.0,
+            aspects=aspects,
+        )
+        return _Retrieval(candidates=(), signals=signals, missing=aspects)
+
+    top_score = cleared[0][0]
+    top_doc_ids: list[str] = []
+    for score, _, chunk in cleared:
+        if score < top_score - 1e-9:
+            break
+        if chunk.doc_id not in top_doc_ids:
+            top_doc_ids.append(chunk.doc_id)
+        if len(top_doc_ids) >= _MAX_DOC_GROUPS:
+            break
+
+    selected: list[DocsChunk] = []
+    per_doc_counts = dict.fromkeys(top_doc_ids, 0)
+    for _, _, chunk in cleared:
+        if chunk.doc_id not in per_doc_counts:
+            continue
+        if per_doc_counts[chunk.doc_id] >= _MAX_CHUNKS_PER_DOC:
+            continue
+        selected.append(chunk)
+        per_doc_counts[chunk.doc_id] += 1
+
+    next_score = next((score for score, _, chunk in scored if chunk.doc_id not in top_doc_ids), 0.0)
+    signals = _signals(
+        message=message,
+        selected=tuple(selected),
+        threshold_cleared=True,
+        top_score=top_score,
+        next_score=next_score,
+        aspects=aspects,
+    )
+    return _Retrieval(candidates=tuple(selected), signals=signals, missing=_missing(aspects, selected))
 
 
-def _search_text(doc: DocsDoc) -> str:
-    fields = [doc.id.replace("-", " "), _visible_title(doc) or "", doc.owner]
-    if doc.access == "open":
-        fields.append(doc.body)
-    elif doc.access == "sealed":
-        fields.append(doc.cleared_derivative or "")
-    if doc.request_access_to:
-        fields.append(doc.request_access_to)
+def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> float:
+    name = _name_text(chunk)
+    body_tokens = set(_tokens(_body_text(chunk)))
+    name_hits = sum(1 for token in query if token in name)
+    body_hits = sum(1 for token in query if token in body_tokens)
+    body_score = body_hits / (1.0 + math.log(1 + len(body_tokens))) if body_tokens else 0.0
+    score = _NAME_WEIGHT * name_hits + body_score
+    if chunk.access == "sealed" and {"override", "attempt", "survive"} & set(query):
+        score += _SEALED_BONUS
+    if len(query) > 1 and norm_message and norm_message in _search_text(chunk):
+        score += _PHRASE_BONUS
+    return score
+
+
+def _signals(
+    *,
+    message: str,
+    selected: Sequence[DocsChunk],
+    threshold_cleared: bool,
+    top_score: float,
+    next_score: float,
+    aspects: Sequence[str] | None = None,
+) -> _ConfidenceSignals:
+    query_aspects = tuple(aspects if aspects is not None else _query_aspects(message))
+    missing = _missing(query_aspects, selected)
+    coverage = 1.0 if not query_aspects else (len(query_aspects) - len(missing)) / len(query_aspects)
+    support_count = sum(1 for chunk in selected if _body_text(chunk))
+    return _ConfidenceSignals(
+        margin=max(top_score - next_score, 0.0),
+        query_aspect_coverage=coverage,
+        threshold_cleared=threshold_cleared,
+        missing_empty=not missing,
+        support_count=support_count,
+    )
+
+
+def _confidence(signals: _ConfidenceSignals) -> DocsConfidence:
+    if not signals.threshold_cleared or signals.support_count <= 0:
+        return "weak"
+    if (
+        signals.missing_empty
+        and signals.query_aspect_coverage >= 0.8
+        and (signals.support_count >= 2 or signals.margin >= 1.0)
+    ):
+        return "grounded"
+    if signals.query_aspect_coverage >= 0.5 and signals.support_count >= 1:
+        return "partial"
+    return "weak"
+
+
+def _search_text(chunk: DocsChunk) -> str:
+    fields = [
+        chunk.doc_id.replace("-", " "),
+        _visible_title(chunk) or "",
+        chunk.section or "",
+        chunk.owner,
+    ]
+    if chunk.access in {"open", "sealed"}:
+        fields.append(chunk.text)
+    if chunk.request_access_to:
+        fields.append(chunk.request_access_to)
     return _normalized(" ".join(fields))
 
 
-def _name_text(doc: DocsDoc) -> str:
-    """Curated, high-signal *topical* identifiers: id + title only. Owner is deliberately excluded
-    — it's metadata ('Docs', 'Finance'), and matching it lets noise tokens (e.g. an injection
-    string saying 'all docs') spuriously favor an unrelated doc. Short enough that substring
-    matching is intended (query 'gate' matching the 'Deterministic Gating' title)."""
-    return _normalized(" ".join([doc.id.replace("-", " "), _visible_title(doc) or ""]))
+def _name_text(chunk: DocsChunk) -> str:
+    """Curated, high-signal *topical* identifiers. Owner is deliberately excluded because it is
+    metadata and can spuriously favor unrelated docs."""
+    return _normalized(
+        " ".join([chunk.doc_id.replace("-", " "), _visible_title(chunk) or "", chunk.section or ""])
+    )
 
 
-def _body_text(doc: DocsDoc) -> str:
-    """ACL-safe body only: open bodies and sealed cleared-derivatives; locked exposes no body."""
-    if doc.access == "open":
-        return _normalized(doc.body)
-    if doc.access == "sealed":
-        return _normalized(doc.cleared_derivative or "")
+def _body_text(chunk: DocsChunk) -> str:
+    """ACL-safe text only: open text and sealed derivatives; locked exposes no body."""
+    if chunk.access in {"open", "sealed"}:
+        return _normalized(chunk.text)
     return ""
 
 
@@ -333,10 +471,14 @@ _STOPWORDS: frozenset[str] = frozenset(
         "but",
         "can",
         "did",
+        "decide",
         "do",
         "does",
+        "explain",
         "for",
         "from",
+        "happen",
+        "happens",
         "how",
         "i",
         "in",
@@ -345,7 +487,9 @@ _STOPWORDS: frozenset[str] = frozenset(
         "me",
         "of",
         "or",
+        "show",
         "the",
+        "tell",
         "to",
         "what",
         "why",
@@ -366,71 +510,100 @@ def _tokens(text: str) -> list[str]:
     return tokens
 
 
+def _query_aspects(text: str) -> list[str]:
+    aspects: list[str] = []
+    for token in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(token) <= 2 or token in _STOPWORDS:
+            continue
+        aspect = token[:-1] if token.endswith("s") and len(token) > 4 else token
+        if aspect not in aspects:
+            aspects.append(aspect)
+    return aspects
+
+
+def _missing(aspects: Sequence[str], chunks: Sequence[DocsChunk]) -> tuple[str, ...]:
+    support_text = _normalized(" ".join(_search_text(chunk) for chunk in chunks))
+    return tuple(aspect for aspect in aspects if aspect not in support_text)
+
+
 def _normalized(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
 
 
-def _ordered_candidate_ids(candidates: Sequence[DocsDoc], proposed_ids: Sequence[str]) -> list[str]:
-    allowed = {doc.id for doc in candidates}
+def _ordered_candidate_ids(candidates: Sequence[DocsChunk], proposed_ids: Sequence[str]) -> list[str]:
+    allowed = {chunk.doc_id for chunk in candidates}
     ordered: list[str] = []
     for doc_id in proposed_ids:
         if doc_id in allowed and doc_id not in ordered:
             ordered.append(doc_id)
-    for doc in candidates:
-        if doc.id not in ordered:
-            ordered.append(doc.id)
+    for chunk in candidates:
+        if chunk.doc_id not in ordered:
+            ordered.append(chunk.doc_id)
     return ordered
 
 
-def _citations_for_candidates(doc_ids: Sequence[str], candidates: Sequence[DocsDoc]) -> list[DocsCitation]:
-    by_id = {doc.id: doc for doc in candidates}
+def _citations_for_candidates(
+    doc_ids: Sequence[str],
+    candidates: Sequence[DocsChunk],
+) -> list[DocsCitation]:
+    by_id: dict[str, DocsChunk] = {}
+    for chunk in candidates:
+        by_id.setdefault(chunk.doc_id, chunk)
     citations: list[DocsCitation] = []
     for doc_id in doc_ids:
-        doc = by_id.get(doc_id)
-        if doc is None:
+        chunk = by_id.get(doc_id)
+        if chunk is None:
             continue
-        citations.append(_citation(doc))
+        citations.append(_citation(chunk))
+        if len(citations) >= _MAX_CITATIONS:
+            break
     return citations
 
 
-def _citation(doc: DocsDoc) -> DocsCitation:
-    if doc.access == "locked":
+def _citation(chunk: DocsChunk) -> DocsCitation:
+    if chunk.access == "locked":
         return DocsCitation(
-            doc_id=doc.id,
-            title=_visible_title(doc),
+            doc_id=chunk.doc_id,
+            title=_visible_title(chunk),
             route=None,
+            anchor=chunk.anchor,
+            section=chunk.section,
             access="locked",
             tier=3,
         )
-    if doc.access == "sealed":
+    if chunk.access == "sealed":
         return DocsCitation(
-            doc_id=doc.id,
-            title=_visible_title(doc),
+            doc_id=chunk.doc_id,
+            title=_visible_title(chunk),
             route=None,
+            anchor=chunk.anchor,
+            section=chunk.section,
             access="sealed",
             tier="sealed",
         )
     return DocsCitation(
-        doc_id=doc.id,
-        title=_visible_title(doc),
-        route=doc.route,
-        snippet=_first_sentence(doc.body),
+        doc_id=chunk.doc_id,
+        title=_visible_title(chunk),
+        route=chunk.route,
+        anchor=chunk.anchor,
+        section=chunk.section,
+        snippet=_first_sentence(chunk.text),
         access="open",
-        tier=doc.tier,
+        tier=chunk.tier,
     )
 
 
-def _visible_title(doc: DocsDoc) -> str | None:
-    return doc.title if doc.title_visibility == "reveal" else None
+def _visible_title(chunk: DocsChunk) -> str | None:
+    return chunk.title if chunk.title_visibility == "reveal" else None
 
 
-def _guard_open_reply(reply: str, docs: Sequence[DocsDoc]) -> str:
+def _guard_open_reply(reply: str, chunks: Sequence[DocsChunk]) -> str:
     """Use a clean draft only if it does not contain locked/sealed control language."""
     body = (reply or "").strip()
     if not body:
-        body = " ".join(_first_sentence(doc.body) for doc in docs).strip()
+        body = " ".join(_first_sentence(chunk.text) for chunk in chunks).strip()
     if _contains_forbidden_control_claim(body):
-        return " ".join(_first_sentence(doc.body) for doc in docs).strip()
+        return " ".join(_first_sentence(chunk.text) for chunk in chunks).strip()
     return body
 
 
@@ -451,9 +624,9 @@ def _contains_forbidden_control_claim(text: str) -> bool:
 
 
 def _qa_reply(
-    open_docs: Sequence[DocsDoc],
-    sealed_docs: Sequence[DocsDoc],
-    locked_docs: Sequence[DocsDoc],
+    open_docs: Sequence[DocsChunk],
+    sealed_docs: Sequence[DocsChunk],
+    locked_docs: Sequence[DocsChunk],
     draft_reply: str,
 ) -> str:
     reply_parts: list[str] = []
@@ -467,26 +640,33 @@ def _qa_reply(
 
 
 def _decision_brief_reply(
-    open_docs: Sequence[DocsDoc],
-    sealed_docs: Sequence[DocsDoc],
-    locked_docs: Sequence[DocsDoc],
+    open_docs: Sequence[DocsChunk],
+    sealed_docs: Sequence[DocsChunk],
+    locked_docs: Sequence[DocsChunk],
     draft_reply: str,
 ) -> str:
     sections = ["Decision Brief Draft"]
     if open_docs or sealed_docs:
+        findings = _brief_findings(open_docs, sealed_docs, draft_reply)
         sections.append(
             "Grounded findings:\n"
-            + "\n".join(_brief_bullet(text) for text in _brief_findings(open_docs, sealed_docs, draft_reply))
+            + "\n".join(_brief_bullet(text) for text in findings)
         )
     if locked_docs:
-        sections.append("Access constraints:\n" + "\n".join(_brief_bullet(_locked_reply([doc])) for doc in locked_docs))
-    sections.append("Governance note: source access, sealed derivatives, and locked metadata were applied before generation.")
+        sections.append(
+            "Access constraints:\n"
+            + "\n".join(_brief_bullet(_locked_reply([chunk])) for chunk in locked_docs)
+        )
+    sections.append(
+        "Governance note: source access, sealed derivatives, and locked metadata were applied "
+        "before generation."
+    )
     return "\n\n".join(section for section in sections if section).strip()
 
 
 def _brief_findings(
-    open_docs: Sequence[DocsDoc],
-    sealed_docs: Sequence[DocsDoc],
+    open_docs: Sequence[DocsChunk],
+    sealed_docs: Sequence[DocsChunk],
     draft_reply: str,
 ) -> list[str]:
     findings: list[str] = []
@@ -494,7 +674,7 @@ def _brief_findings(
         guarded = _guard_open_reply(draft_reply, open_docs)
         if guarded:
             findings.append(guarded)
-    findings.extend(doc.cleared_derivative for doc in sealed_docs if doc.cleared_derivative)
+    findings.extend(chunk.text for chunk in sealed_docs if chunk.text)
     return findings
 
 
@@ -503,26 +683,27 @@ def _brief_bullet(text: str) -> str:
     return f"- {clean}" if clean else ""
 
 
-def _sealed_reply(docs: Sequence[DocsDoc]) -> str:
-    derivatives = [doc.cleared_derivative for doc in docs if doc.cleared_derivative]
+def _sealed_reply(chunks: Sequence[DocsChunk]) -> str:
+    derivatives = [chunk.text for chunk in chunks if chunk.text]
     if derivatives:
         return " ".join(text.rstrip(".") + "." for text in derivatives)
     return "A sealed source was found, but no cleared derivative is available."
 
 
-def _locked_reply(docs: Sequence[DocsDoc]) -> str:
-    if len(docs) == 1:
-        doc = docs[0]
-        title = _visible_title(doc) or "1 restricted source (title hidden)"
-        owner = doc.owner or "the document owner"
-        contact = doc.request_access_to or "the document owner"
+def _locked_reply(chunks: Sequence[DocsChunk]) -> str:
+    doc_ids = list(dict.fromkeys(chunk.doc_id for chunk in chunks))
+    if len(doc_ids) == 1:
+        chunk = chunks[0]
+        title = _visible_title(chunk) or "1 restricted source (title hidden)"
+        owner = chunk.owner or "the document owner"
+        contact = chunk.request_access_to or "the document owner"
         return (
             f"Restricted - {title}. You don't have access to this document. Owned by "
             f"{owner}. To request access, contact {contact}. I can reference that this source "
             "exists, but can't show its contents."
         )
     return (
-        f"{len(docs)} restricted sources matched. I can reference that they exist, but can't show "
+        f"{len(doc_ids)} restricted sources matched. I can reference that they exist, but can't show "
         "their contents."
     )
 
