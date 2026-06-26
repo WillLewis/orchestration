@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { DocsPageShell } from "@/components/docs/DocsPage";
 import { DocsChatInset } from "@/components/docs/DocsChatInset";
 import { ProductFrame } from "@/components/docs/ProductFrame";
+import { DOCS_CHAT_LIVE } from "@/lib/docs-chat-live";
 
 export const Route = createFileRoute("/developers/ui-chat")({
   head: () => ({
@@ -36,7 +37,7 @@ function UiChatDocsPage() {
         subtitle="Mention @Agent in the channel, receive a permission-scoped answer privately, then decide whether it should be shared."
         variant="fullBleed"
       >
-        <DocsChatInset surface="chat" />
+        <DocsChatInset surface="chat" live={DOCS_CHAT_LIVE} />
       </ProductFrame>
 
       <section className="space-y-3 border-t border-zinc-900 pt-7">

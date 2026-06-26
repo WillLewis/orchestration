@@ -62,7 +62,7 @@ class DocsDoc(BaseModel):
         return "open"
 
 
-DocsChunkSource = Literal["curated", "page_fixture"]
+DocsChunkSource = Literal["curated", "generated_page"]
 
 
 class DocsChunk(BaseModel):

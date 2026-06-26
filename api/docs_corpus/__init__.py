@@ -9,7 +9,7 @@ from typing import Any
 from api.docs_corpus.models import DocsChunk, DocsDoc
 
 _ROOT = Path(__file__).parent
-_PAGES_FIXTURE = _ROOT / "generated" / "pages.fixture.json"
+_PAGES = _ROOT / "generated" / "pages.json"
 
 
 def _scalar(value: str) -> str | bool | None:
@@ -48,7 +48,7 @@ def load_chunks(pages_path: Path | None = None) -> list[DocsChunk]:
     chunks: list[DocsChunk] = []
     for doc in load_docs():
         chunks.extend(_chunks_for_doc(doc))
-    chunks.extend(_page_fixture_chunks(pages_path or _PAGES_FIXTURE))
+    chunks.extend(_page_chunks(pages_path or _PAGES))
     return chunks
 
 
@@ -110,7 +110,7 @@ def _chunk(
     )
 
 
-def _page_fixture_chunks(path: Path) -> list[DocsChunk]:
+def _page_chunks(path: Path) -> list[DocsChunk]:
     if not path.exists():
         return []
     records = json.loads(path.read_text())
@@ -163,7 +163,7 @@ def _page_section_chunk(
         text=text,
         access="open",
         tier=1,
-        source="page_fixture",
+        source="generated_page",
     )
 
 

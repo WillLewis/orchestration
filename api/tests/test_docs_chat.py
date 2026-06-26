@@ -81,8 +81,8 @@ def test_tier_1_grounded_answer_is_cited_and_open(surface):
     assert citation["access"] == "open"
     assert citation["tier"] == 1
     assert citation["route"] == "/developers/gating"
-    assert citation["anchor"] == "policy-gate"
-    assert citation["section"] == "Policy gate"
+    assert citation["anchor"] == "errors-blocked-commits"
+    assert citation["section"] == "Errors - blocked commits"
     assert "snippet" in citation
 
 
@@ -227,14 +227,13 @@ def test_no_results_disposition_has_no_citations(surface):
 
 @pytest.mark.parametrize("surface", SURFACES)
 def test_chunk_retrieval_cites_right_section_anchor(surface):
-    body = _post(surface, "What happens at the permission boundary?")
+    body = _post(surface, "How does RAG read the ContextBundle?")
 
     assert body["status"] == "answered"
-    assert "denied sources stay in the permission boundary" in body["reply"].lower()
-    citation = _citation(body, "gating")
-    assert citation["section"] == "Permission boundary"
-    assert citation["anchor"] == "permission-boundary"
-    assert citation["route"] == "/developers/gating"
+    citation = _citation(body, "rag")
+    assert citation["section"] == "RAG reads the ContextBundle, not the whole workspace"
+    assert citation["anchor"] == "rag-reads-the-contextbundle-not-the-whole-workspace"
+    assert citation["route"] == "/developers/rag"
 
 
 @pytest.mark.parametrize("surface", SURFACES)

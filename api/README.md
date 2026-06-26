@@ -63,13 +63,14 @@ both `CHAT_MODEL` and `ANTHROPIC_API_KEY` are set (model name comes from env, ne
 ## Docs chat (`POST /docs/chat`)
 Answers over the documentation corpus with chunk-level retrieval. `api.docs_corpus.load_docs()`
 keeps the legacy document shape unchanged; `load_chunks()` adds ACL-safe retrieval units from the
-curated markdown files plus the Phase-0 `pages.fixture.json` section records. Public page sections
-return anchored citations, locked chunks carry metadata with empty text, and sealed chunks expose
-only their cleared derivative.
+curated markdown files plus the generated `api/docs_corpus/generated/pages.json` section records.
+Public page sections return anchored citations, locked chunks carry metadata with empty text, and
+sealed chunks expose only their cleared derivative.
 
 The `/docs/chat` ranker extends the #13 heuristic to chunks: curated name hits, length-normalized
-body hits, sealed-topic bonus, exact multi-token phrase bonus, and a relevance threshold. If no
-chunk clears the threshold, the endpoint returns `status="no_results"`. Answer confidence is a
+body hits, sealed-topic bonus, exact multi-token phrase bonus, and a real-corpus relevance
+threshold that filters stray single body-token hits. If no chunk clears the threshold, the endpoint
+returns `status="no_results"`. Answer confidence is a
 pure deterministic band (`grounded` / `partial` / `weak`) derived from ranking margin, query-aspect
 coverage, threshold status, missing coverage, and safe support count; model output never affects it.
 
