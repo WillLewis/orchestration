@@ -456,6 +456,50 @@ _MAX_DOC_GROUPS = 3
 _MAX_CHUNKS_PER_DOC = 2
 _MAX_CITATIONS = 3
 
+_WEAK_NAME_TOKENS: frozenset[str] = frozenset(
+    {
+        "agent",
+        "assistant",
+        "connectwork",
+        "doc",
+        "docs",
+        "document",
+        "documents",
+        "material",
+        "source",
+        "sources",
+    }
+)
+
+_TERM_ALIASES: dict[str, tuple[str, ...]] = {
+    "acknowledged": ("acknowledge",),
+    "blocks": ("block",),
+    "blocked": ("block",),
+    "commits": ("commit",),
+    "gating": ("gate",),
+    "governed": ("govern",),
+    "policies": ("policy",),
+    "summarized": ("summarize",),
+    "summarizes": ("summarize",),
+}
+
+_REFUSAL_ALIASES = (
+    "fail closed blocked action policy gate deterministic gate missing evidence restricted "
+    "content unavailable source approval write commit"
+)
+_RESTRICTED_SOURCE_ALIASES = (
+    "permission boundary permission scoped unavailable restricted content locked source access "
+    "never summarized missing evidence"
+)
+_SEALED_RECORD_ALIASES = (
+    "governed work product integrity seal source version snapshot freshness revalidation "
+    "permission omissions dependency map"
+)
+_POLICY_GATE_ALIASES = (
+    "gating deterministic policy gate blocks blocked commit policy_gate_failed compliance trace "
+    "rule firing"
+)
+
 
 def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
     """Rank chunks using only the current message and ACL-safe text.
@@ -466,7 +510,7 @@ def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
     gating/revenue/override prompts. Top doc groups are retained; each group contributes a capped
     number of chunks for coverage while citations stay capped by `doc_id`.
     """
-    query = list(dict.fromkeys(_tokens(message)))
+    query = _ranking_query_tokens(message)
     aspects = tuple(_query_aspects(message))
     if not query:
         signals = _signals(
@@ -540,9 +584,11 @@ def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
 
 
 def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> float:
-    name = _name_text(chunk)
-    body_tokens = set(_tokens(_body_text(chunk)))
-    name_hits = sum(1 for token in query if token in name)
+    name_tokens = _support_terms(_name_text(chunk))
+    body_tokens = _support_terms(_body_text(chunk))
+    name_hits = sum(
+        1 for token in query if token not in _WEAK_NAME_TOKENS and token in name_tokens
+    )
     body_hits = sum(1 for token in query if token in body_tokens)
     body_score = body_hits / (1.0 + math.log(1 + len(body_tokens))) if body_tokens else 0.0
     score = _NAME_WEIGHT * name_hits + body_score
@@ -551,6 +597,21 @@ def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> f
     if len(query) > 1 and norm_message and norm_message in _search_text(chunk):
         score += _PHRASE_BONUS
     return score
+
+
+def _ranking_query_tokens(message: str) -> list[str]:
+    base = _ordered_support_terms(message)
+    base_set = set(base)
+    aliases: list[str] = []
+    if "act" in base_set and {"refuse", "refuses", "refusal"} & base_set:
+        aliases.extend(_ordered_support_terms(_REFUSAL_ALIASES))
+    if {"restricted", "source"} <= base_set:
+        aliases.extend(_ordered_support_terms(_RESTRICTED_SOURCE_ALIASES))
+    if {"sealed", "record"} <= base_set:
+        aliases.extend(_ordered_support_terms(_SEALED_RECORD_ALIASES))
+    if {"policy", "gate"} <= base_set:
+        aliases.extend(_ordered_support_terms(_POLICY_GATE_ALIASES))
+    return list(dict.fromkeys([*base, *aliases]))
 
 
 def _signals(
@@ -665,9 +726,58 @@ def _tokens(text: str) -> list[str]:
         if len(token) <= 2 or token in _STOPWORDS:
             continue
         tokens.append(token)
-        if token.endswith("s") and len(token) > 4:
+        if token.endswith("s") and len(token) > 4 and not token.endswith("ss"):
             tokens.append(token[:-1])
     return tokens
+
+
+def _support_terms(text: str) -> set[str]:
+    """Terms used by the grounding guard. Includes lightweight morphology only."""
+    return set(_ordered_support_terms(text))
+
+
+def _ordered_support_terms(text: str) -> list[str]:
+    terms: set[str] = set()
+    ordered: list[str] = []
+    for token in _tokens(text):
+        if token not in terms:
+            ordered.append(token)
+            terms.add(token)
+        stem = _stem_token(token)
+        if len(stem) > 2 and stem not in terms:
+            ordered.append(stem)
+            terms.add(stem)
+        for alias in _TERM_ALIASES.get(token, ()):
+            if alias not in terms:
+                ordered.append(alias)
+                terms.add(alias)
+    return ordered
+
+
+def _stem_token(token: str) -> str:
+    if token.endswith("ies") and len(token) > 5:
+        return token[:-3] + "y"
+    if token.endswith("ing") and len(token) > 5:
+        stem = token[:-3]
+        if stem.endswith(("at", "ir", "iz", "dg", "rit")):
+            return stem + "e"
+        return _dedupe_trailing_consonant(stem)
+    if token.endswith("ed") and len(token) > 4:
+        stem = token[:-2]
+        if stem.endswith(("dg", "iz")):
+            return stem + "e"
+        return _dedupe_trailing_consonant(stem)
+    if token.endswith("es") and len(token) > 5:
+        return token[:-2]
+    if token.endswith("s") and len(token) > 4:
+        return token[:-1]
+    return token
+
+
+def _dedupe_trailing_consonant(value: str) -> str:
+    if len(value) >= 2 and value[-1] == value[-2] and value[-1] not in "aeiou":
+        return value[:-1]
+    return value
 
 
 def _query_aspects(text: str) -> list[str]:
@@ -701,9 +811,13 @@ _GROUNDING_GLUE_TOKENS: frozenset[str] = frozenset(
         "documentation",
         "documents",
         "found",
+        "only",
         "means",
+        "not",
+        "should",
         "source",
         "sources",
+        "when",
     }
 )
 
@@ -744,6 +858,16 @@ def _passes_grounding_guard(response: str, view: DocsChatEvidenceView) -> bool:
     if _contains_forbidden_control_claim(body):
         return False
 
+    safe_terms = _support_terms(_safe_context_for_guard(view))
+    message_terms = _support_terms(view.message)
+    allowed = safe_terms | message_terms | _GROUNDING_GLUE_TOKENS
+    for sentence in _claim_sentences(body):
+        if not _sentence_is_grounded(sentence, safe_terms=safe_terms, allowed=allowed):
+            return False
+    return True
+
+
+def _safe_context_for_guard(view: DocsChatEvidenceView) -> str:
     safe_context = " ".join(
         " ".join(
             part
@@ -759,7 +883,7 @@ def _passes_grounding_guard(response: str, view: DocsChatEvidenceView) -> bool:
         )
         for doc in view.docs
     )
-    safe_context += " " + " ".join(
+    return safe_context + " " + " ".join(
         " ".join(
             part
             for part in (
@@ -773,12 +897,36 @@ def _passes_grounding_guard(response: str, view: DocsChatEvidenceView) -> bool:
         )
         for doc in view.locked
     )
-    allowed = set(_tokens(safe_context)) | set(_tokens(view.message)) | _GROUNDING_GLUE_TOKENS
-    claim_tokens = list(dict.fromkeys(_tokens(body)))
-    unsupported = [token for token in claim_tokens if token not in allowed]
-    if not unsupported:
+
+
+def _claim_sentences(text: str) -> list[str]:
+    return [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+|[;\n]+", text)
+        if sentence.strip()
+    ]
+
+
+def _sentence_is_grounded(sentence: str, *, safe_terms: set[str], allowed: set[str]) -> bool:
+    terms = _support_terms(sentence)
+    if not terms:
         return True
-    return len(unsupported) < 2 and len(unsupported) / max(len(claim_tokens), 1) <= 0.2
+    unsupported = terms - allowed
+    if _contains_unsupported_sensitive_term(unsupported):
+        return False
+    supported = terms & safe_terms
+    if not supported:
+        return not unsupported
+    unsupported_ratio = len(unsupported) / max(len(terms), 1)
+    if len(supported) >= 3 and unsupported_ratio <= 0.45:
+        return True
+    if len(supported) >= 2 and not unsupported:
+        return True
+    return False
+
+
+def _contains_unsupported_sensitive_term(terms: set[str]) -> bool:
+    return any(any(char.isdigit() for char in term) for term in terms)
 
 
 def _ordered_candidate_ids(candidates: Sequence[DocsChunk]) -> list[str]:

@@ -17,6 +17,7 @@ from api.docs_chat import (
     _build_system_prompt,
     _ConfidenceSignals,
     _confidence,
+    _retrieve,
     answer,
 )
 from api.main import app
@@ -90,6 +91,16 @@ class _CapturesView:
         self.system_prompt = system_prompt
         self.view = view
         return DocsChatDraft(response="")
+
+
+class _Drafts:
+    model = "fake-docs-model"
+
+    def __init__(self, response: str):
+        self.response = response
+
+    def draft(self, system_prompt, view):
+        return DocsChatDraft(response=self.response)
 
 
 def _post(surface: str, message: str, **extra) -> dict:
@@ -205,6 +216,55 @@ def test_llm_mode_cannot_move_governed_fields(surface):
     assert llm.phrasing.fallback_reason is None
 
 
+def test_grounding_guard_accepts_refusal_paraphrase():
+    query = "When does the agent refuse to act?"
+    draft = (
+        "The agent fails closed when missing evidence, restricted content, stale records, or "
+        "deterministic policy gates block a write."
+    )
+
+    deterministic = answer("chat", query)
+    llm = answer("chat", query, client=_Drafts(draft), mode="llm")
+
+    assert _governed_payload(llm) == _governed_payload(deterministic)
+    assert llm.response == draft
+    assert llm.phrasing.effective_mode == "llm"
+    assert llm.phrasing.fallback_reason is None
+
+
+def test_grounding_guard_accepts_sealed_record_paraphrase():
+    query = "What happens after a record is sealed?"
+    draft = (
+        "After sealing, the decision packet becomes a governed work product with a "
+        "source-version snapshot, permission omissions, dependencies, and an integrity seal."
+    )
+
+    deterministic = answer("chat", query)
+    llm = answer("chat", query, client=_Drafts(draft), mode="llm")
+
+    assert _governed_payload(llm) == _governed_payload(deterministic)
+    assert llm.response == draft
+    assert llm.phrasing.effective_mode == "llm"
+    assert llm.phrasing.fallback_reason is None
+
+
+def test_grounding_guard_accepts_restricted_source_paraphrase():
+    query = "How does the agent handle restricted source material?"
+    draft = (
+        "The assistant can acknowledge restricted material only through allowed metadata and "
+        "should not summarize or infer the restricted body."
+    )
+
+    deterministic = answer("chat", query)
+    llm = answer("chat", query, client=_Drafts(draft), mode="llm")
+
+    assert _governed_payload(llm) == _governed_payload(deterministic)
+    assert llm.response == draft
+    assert RAW_LOCKED not in llm.response
+    assert llm.phrasing.effective_mode == "llm"
+    assert llm.phrasing.fallback_reason is None
+
+
 @pytest.mark.parametrize("surface", SURFACES)
 def test_injection_in_message_does_not_change_locked_disposition(surface):
     body = _post(
@@ -275,6 +335,22 @@ def test_chunk_retrieval_cites_right_section_anchor(surface):
     assert citation["section"] == "RAG reads the ContextBundle, not the whole workspace"
     assert citation["anchor"] == "rag-reads-the-contextbundle-not-the-whole-workspace"
     assert citation["route"] == "/developers/rag"
+
+
+def test_refusal_query_retrieves_policy_or_action_support_not_generic_vision():
+    retrieval = _retrieve("When does the agent refuse to act?", load_chunks())
+    doc_ids = {chunk.doc_id for chunk in retrieval.candidates}
+
+    assert doc_ids & {"action-packets", "context-assembly", "gating", "rag"}
+    assert doc_ids != {"vision"}
+
+
+def test_restricted_source_query_retrieves_permission_support_not_generic_vision():
+    retrieval = _retrieve("How does the agent handle restricted source material?", load_chunks())
+    doc_ids = {chunk.doc_id for chunk in retrieval.candidates}
+
+    assert doc_ids & {"design-rationale", "rag", "ui-chat"}
+    assert doc_ids != {"vision"}
 
 
 @pytest.mark.parametrize("surface", SURFACES)
