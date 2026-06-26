@@ -78,12 +78,23 @@ Prerequisites: backend running on `:8000`, `ANTHROPIC_API_KEY` set, and `CHAT_MO
 either in the shell or `.env`. The backend may report a model even if the shell has
 `CHAT_MODEL=unset`, because `api/docs_chat.py` loads `.env` at import time.
 
-| Question | Use in demo? | Expected current result | Purpose |
-|---|---:|---|---|
-| `When does the agent refuse to act?` | Optional | `effective_mode=deterministic`, `fallback_reason=grounding_guard` | Shows discard-on-drift safety; governed fields must still match deterministic mode. |
-| `What happens after a record is sealed?` | Optional | `effective_mode=deterministic`, `fallback_reason=grounding_guard` | Shows guard fallback on sealed-record wording; governed fields must still match deterministic mode. |
-| `How does the agent handle restricted source material?` | Yes | `effective_mode=llm`, `fallback_reason=null` | Main visible LLM-toggle proof: prose changes while governed fields remain fixed. |
-| `What is the cafeteria menu for next Tuesday?` | Yes | `status=no_results`, `effective_mode=deterministic`, `fallback_reason=null` | Shows honest no-results behavior. |
+Readiness labels:
+
+- **Safe for stage:** use this in the live demo when prerequisites are met.
+- **Works but not preferred:** useful backup or safety narration, but not the main toggle proof.
+- **Needs live approval:** do not run against the external LLM provider until explicitly approved in
+  the active thread.
+- **Blocked:** do not demo until the listed blocker is resolved.
+
+| Case | Question / Probe | Readiness | Expected current result | Purpose |
+|---|---|---|---|---|
+| Refusal / fail-closed | `When does the agent refuse to act?` | Works but not preferred; needs live approval for LLM mode | Safe fake-client paraphrases can return `effective_mode=llm`; live prose may also fall back with `fallback_reason=grounding_guard`. Either is acceptable only if governed fields match deterministic mode. | Shows fail-closed safety and discard-on-drift behavior. |
+| Sealed record | `What happens after a record is sealed?` | Works but not preferred; needs live approval for LLM mode | Safe fake-client paraphrases can return `effective_mode=llm`; live prose may also fall back with `fallback_reason=grounding_guard`. Raw sealed spans must never appear. | Shows sealed derivatives and stable governed fields. |
+| Restricted source | `How does the agent handle restricted source material?` | Safe for stage; needs live approval for LLM mode | With live LLM configured and approved: `effective_mode=llm`, `fallback_reason=null`. Without config: deterministic `not_configured`. | Main visible LLM-toggle proof: prose changes while governed fields remain fixed. |
+| Unrelated / no-results | `What is the cafeteria menu for next Tuesday?` | Safe for stage | `status=no_results`, `citations=[]`, `effective_mode=deterministic`. `fallback_reason` should stay null when the model is configured because no evidence is sent. | Shows honest no-results behavior. |
+| Unavailable path | Unset `CHAT_MODEL` and/or `ANTHROPIC_API_KEY`, then ask any grounded question with `mode="llm"` | Safe for stage | `effective_mode=deterministic`, `llm_available=false`, `fallback_reason=not_configured`. | Shows the backend fails closed when LLM phrasing is unavailable. |
+| Backend unreachable | Stop `make serve`, then use the frontend docs-chat UI | Works but not preferred | Frontend shows offline/backend fallback instead of claiming LLM prose. | Backup explanation for local demo setup failure. |
+| Full live smoke | Run the live LLM matrix against the configured provider | Blocked until explicit approval | Do not run from WS-L0 without approval. | Sends ACL-filtered docs context to the external provider. |
 
 Manual probe for a single question:
 
@@ -97,15 +108,19 @@ curl -sS localhost:8000/docs/chat \
 
 Real demo failures:
 
-- Q3 returns `not_configured` or `client_error`: live LLM path is not proven.
+- The restricted-source toggle question returns `not_configured` or `client_error`: live LLM path
+  is not proven.
 - Any question changes governed fields between deterministic and LLM mode:
   `status`, `citations`, `confidence`, or `missing`.
-- Q4 returns citations or `status!="no_results"`.
+- The unrelated/no-results question returns citations or `status!="no_results"`.
+- Any raw locked source body or raw sealed span appears in a response, prompt log, telemetry event,
+  or UI citation snippet.
 
 Acceptable safety behavior:
 
-- Q1 or Q2 returning `grounding_guard` is not a demo failure when governed fields match. It proves
-  the wrapper discarded prose it did not trust and kept the deterministic answer surface stable.
+- Refusal or sealed-record questions returning `grounding_guard` are not demo failures when
+  governed fields match. That proves the wrapper discarded prose it did not trust and kept the
+  deterministic answer surface stable.
 
 ## Optional Go Live
 
