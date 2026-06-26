@@ -4,15 +4,25 @@ This plan upgrades the `/docs/chat` LLM path without making the model authoritat
 draft prose, but deterministic code must continue to own retrieval selection, citations,
 confidence, missing evidence, response status, and fallback behavior.
 
-## Current Baseline
+## Current Repo Snapshot
 
-- Live LLM mode works for `/docs/chat` when `CHAT_MODEL` and `ANTHROPIC_API_KEY` are configured.
-- The demo-safe visible LLM question is:
-  `How does the agent handle restricted source material?`
-- The current demo matrix is documented in `DEMO_RUNBOOK.md`.
-- `When does the agent refuse to act?` and `What happens after a record is sealed?` currently
-  trigger `grounding_guard`; that is acceptable safety behavior if governed fields match.
-- `What is the cafeteria menu for next Tuesday?` returns honest `no_results`.
+As of the WS-L0 coordination pass on 2026-06-26:
+
+- Root coordination docs were missing from the repo and have been materialized from the attached
+  plan/workstreams context.
+- Live LLM mode is available for `/docs/chat` when `CHAT_MODEL` and `ANTHROPIC_API_KEY` are
+  configured.
+- `DEMO_RUNBOOK.md` exists and is the source of truth for live demo questions.
+- Static inspection shows existing docs-chat tests for:
+  - governed-field stability between deterministic and fake LLM clients
+  - `not_configured`, `client_error`, and `grounding_guard` fallbacks
+  - no-results behavior with no citations
+  - safe paraphrases for refusal, sealed-record, and restricted-source questions
+  - retrieval coverage for refusal and restricted-source questions
+- Static inspection does not show a separate `api/tests/test_docs_chat_eval.py` harness, structured
+  public guard categories, live-client timeout/retry coverage, or docs-chat aggregate telemetry.
+- No live LLM smoke has been run by WS-L0. Any live LLM smoke still requires explicit user
+  approval in the thread that runs it.
 
 ## Goals
 
@@ -30,7 +40,7 @@ confidence, missing evidence, response status, and fallback behavior.
 - Do not add embeddings or external retrieval services in the first pass.
 - Do not log raw prompts, raw documents, raw model responses, transcripts, secrets, or restricted
   content by default.
-- Do not weaken locked/sealed/raw-content protections to make demo questions pass.
+- Do not weaken locked, sealed, raw-content, or permission protections to make demo questions pass.
 
 ## Upgrade Phases
 
@@ -122,7 +132,7 @@ Useful counters:
 - fallback reason
 - response status
 - model configured yes/no
-- citation count
+- citation count buckets
 - no-results count
 - guard category counts, if available
 
@@ -150,10 +160,12 @@ The upgrade is ready when all of these are true:
 
 Use the demo matrix in `DEMO_RUNBOOK.md`.
 
-- Use Q3 as the visible LLM toggle proof.
-- Use Q4 as no-results proof.
-- Use Q1 or Q2 only if you want to explain discard-on-drift safety.
-- Do not present Q1/Q2 as evidence that the LLM toggle is broken; they are guard-fallback examples.
+- Use the restricted-source question as the visible LLM toggle proof.
+- Use the unrelated/no-results question as the no-results proof.
+- Use refusal and sealed-record questions only if you want to explain discard-on-drift or
+  fail-closed behavior. They are not the preferred proof that the live toggle works.
+- Do not present `grounding_guard` fallback as a broken toggle when governed fields match. It means
+  the wrapper discarded prose it did not trust and kept the deterministic answer surface stable.
 
 ## Coordination
 

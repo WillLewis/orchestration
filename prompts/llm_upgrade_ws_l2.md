@@ -6,66 +6,71 @@ You are working on WS-L2 from `LLM_UPGRADE_WORKSTREAMS.md`.
 
 - `AGENTS.md`
 - `README.md`
-- `api/README.md` if present
 - `LLM_UPGRADE_PLAN.md`
 - `LLM_UPGRADE_WORKSTREAMS.md`
+- `DEMO_RUNBOOK.md`
 - `api/docs_chat.py`
-- Existing docs-chat tests under `api/tests/`
-
-If a referenced file is missing, note it in your final handoff and continue with the available context.
+- `api/tests/test_docs_chat.py`
 
 ## Mission
 
-Improve deterministic docs-chat retrieval so the LLM receives the right grounded context for
-demo-critical questions. The goal is better source selection before model phrasing happens.
+Improve deterministic retrieval so natural governance questions retrieve the right docs before the
+LLM drafts prose.
 
 ## Scope
 
-- Improve retrieval, query normalization, aliases, synonyms, section matching, or reranking inside the docs-chat path.
-- Add or update tests for retrieval behavior.
-- Ensure the four demo questions route to the intended grounded material.
-- Keep no-results behavior honest for unrelated questions.
+- Refine lexical scoring and aliases in `api/docs_chat.py`.
+- Add domain aliases for:
+  - refusal / refuse to act
+  - fail closed
+  - blocked action
+  - sealed record
+  - permission boundary
+  - restricted source
+  - missing evidence
+  - stale record / revalidation
+- Down-weight generic terms that over-select broad docs.
+- Keep unrelated questions below the relevance threshold.
 
 ## Out Of Scope
 
-- Do not add embeddings, vector databases, external search services, or network dependencies.
-- Do not call a live LLM.
-- Do not modify `.env`.
+- No embeddings.
+- No external reranking services.
+- No LLM query rewriting.
+- No schema changes.
 - Do not edit `core/schemas.py` or `core/pipeline.py`.
-- Do not change frontend UI.
-- Do not weaken the grounding guard just to let prose through.
 
-## Demo Questions
+## Required Constraints
 
-1. `When does the agent refuse to act?`
-2. `What happens after a record is sealed?`
-3. `How does the agent handle restricted source material?`
-4. `What is the cafeteria menu for next Tuesday?`
+- Retrieval determines citations; model prose must not.
+- Keep governed fields deterministic: `status`, `citations`, `confidence`, and `missing`.
+- Do not loosen locked or sealed protections to improve retrieval.
 
-The fourth question should remain unrelated/no-results and should not accidentally match docs content.
+## Tasks
+
+1. Inspect the current repo state with `git status --short`.
+2. Add or refine retrieval tests for refusal, sealed records, restricted sources, and no-results.
+3. Update deterministic scoring/aliases with narrowly scoped changes.
+4. Coordinate with WS-L3 if changing shared guard/retrieval helpers in `api/docs_chat.py`.
+5. Update docs only if demo-safe behavior changes.
 
 ## Acceptance Criteria
 
-- Retrieval produces stable, deterministic results.
-- Citations are deterministic and ordered.
-- `status`, `citations`, `confidence`, and `missing` remain governed by deterministic code.
-- The first three questions retrieve relevant source material.
-- The unrelated cafeteria question returns honest no-results behavior.
-- Existing docs-chat tests remain green.
+- Refusal queries retrieve policy/gating/action support, not only `vision`.
+- Sealed-record queries retrieve sealed-record support.
+- Restricted-source queries retrieve permission/restricted-source support.
+- Unrelated/no-results queries remain `no_results`.
+- Existing sealed/locked permission tests still pass.
 
-## Suggested Verification
+## Verification
 
-Inspect available commands first, then run:
+Run:
 
 ```bash
+python -m pytest api/tests/test_docs_chat.py -q
 python -m pytest api/tests/test_docs_chat*.py -q
+make test
 make lint
 ```
 
-If WS-L1 tests are not present yet, add focused retrieval tests in the existing style and note that
-WS-L1 should absorb or extend them later.
-
-## Handoff
-
-Include retrieval changes, which question each change helps, remaining weak matches, and whether
-your branch touches `api/docs_chat.py` since WS-L3 and WS-L4 may conflict there.
+If any command is skipped, explain why in the final handoff.

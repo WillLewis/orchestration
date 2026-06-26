@@ -1,4 +1,4 @@
-# Prompt: WS-L3 Grounding Guard And Fallback Diagnostics
+# Prompt: WS-L3 Grounding Guard And Debuggability
 
 You are working on WS-L3 from `LLM_UPGRADE_WORKSTREAMS.md`.
 
@@ -6,62 +6,73 @@ You are working on WS-L3 from `LLM_UPGRADE_WORKSTREAMS.md`.
 
 - `AGENTS.md`
 - `README.md`
-- `api/README.md` if present
 - `LLM_UPGRADE_PLAN.md`
 - `LLM_UPGRADE_WORKSTREAMS.md`
+- `DEMO_RUNBOOK.md`
 - `api/docs_chat.py`
-- Existing docs-chat tests under `api/tests/`
-
-If a referenced file is missing, note it in your final handoff and continue with the available context.
+- `api/tests/test_docs_chat.py`
 
 ## Mission
 
-Make grounding guard behavior explainable, testable, and appropriately strict. The guard should
-block real drift while allowing safe grounded paraphrase.
+Reduce false `grounding_guard` fallbacks while keeping hard safety behavior intact and making
+rejected drafts diagnosable without exposing raw content.
 
 ## Scope
 
-- Refactor or extend grounding guard internals inside docs-chat code.
-- Add structured, local-only fallback diagnostics such as category, reason code, or summary metadata.
-- Add tests for accepted paraphrases, rejected drift, citation mismatches, missing required facts, and no-results behavior.
-- Preserve deterministic governed fields on every fallback path.
+- Refine `grounding_guard` support checks.
+- Preserve hard rejects for raw locked/sealed content and forbidden control claims.
+- Add local-only structured guard categories.
+- Add fake-client tests for safe paraphrases and hostile drift.
+
+Target categories:
+
+- `forbidden_control_claim`
+- `raw_locked_marker`
+- `raw_sealed_marker`
+- `unsupported_number`
+- `unsupported_identifier`
+- `low_source_overlap`
+- `empty_draft`
 
 ## Out Of Scope
 
-- Do not log raw prompt, raw model response, raw documents, or raw rejected drafts to normal telemetry.
-- Do not add external services.
-- Do not call a live LLM.
-- Do not modify `.env`.
+- No raw rejected drafts in normal API responses.
+- No raw rejected drafts in default logs.
+- No public response schema change unless WS-L0 explicitly coordinates it.
 - Do not edit `core/schemas.py` or `core/pipeline.py`.
-- Do not make the guard permissive just to improve demo phrasing.
 
-## Required Behavior
+## Required Constraints
 
-- If model prose drifts from grounded facts, fallback to deterministic prose.
-- If fallback reason is `grounding_guard`, governed fields must match the deterministic twin.
-- If model prose is a safe paraphrase over the same facts, it should be accepted.
-- `client_error` and `not_configured` must remain distinguishable from `grounding_guard`.
+- Public API may continue to expose only `fallback_reason`.
+- Guard diagnostics must not leak raw prompts, raw model responses, raw documents, transcripts, or
+  restricted content.
+- No model output may become an authority for governed fields.
+
+## Tasks
+
+1. Inspect the current repo state with `git status --short`.
+2. Add focused tests for safe paraphrases and hostile drift.
+3. Add structured guard-category logic that can be tested without exposing raw content.
+4. Preserve hard rejects for raw locked/sealed markers and forbidden control claims.
+5. Coordinate with WS-L2 if changing retrieval-dependent support thresholds.
+6. Update docs only if demo readiness changes.
 
 ## Acceptance Criteria
 
-- Tests show at least one safe paraphrase accepted.
-- Tests show at least one factual drift rejected.
-- Tests show citation or order drift rejected or normalized safely.
-- Tests show no-results questions do not invite hallucinated answers.
-- Fallback diagnostics are useful for demo debugging without exposing raw content.
+- Hostile raw sealed/locked drafts still fall back.
+- Unsupported outside claims still fall back.
+- Safe paraphrases pass when source support is adequate.
+- Debug category logic explains rejection causes without exposing raw content by default.
 
-## Suggested Verification
+## Verification
 
-Inspect available commands first, then run:
+Run:
 
 ```bash
+python -m pytest api/tests/test_docs_chat.py -q
 python -m pytest api/tests/test_docs_chat*.py -q
+make test
 make lint
 ```
 
-Coordinate with WS-L2 and WS-L4 because this work likely touches `api/docs_chat.py`.
-
-## Handoff
-
-Include guard changes, diagnostics added, accepted versus rejected fake LLM examples, and any known
-overblocking risk for live demo questions.
+Do not run live LLM smoke without explicit user approval.

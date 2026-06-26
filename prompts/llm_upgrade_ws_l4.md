@@ -6,62 +6,66 @@ You are working on WS-L4 from `LLM_UPGRADE_WORKSTREAMS.md`.
 
 - `AGENTS.md`
 - `README.md`
-- `api/README.md` if present
 - `LLM_UPGRADE_PLAN.md`
 - `LLM_UPGRADE_WORKSTREAMS.md`
+- `DEMO_RUNBOOK.md`
 - `api/docs_chat.py`
-- Existing docs-chat tests under `api/tests/`
-
-If a referenced file is missing, note it in your final handoff and continue with the available context.
+- `api/tests/test_docs_chat.py`
 
 ## Mission
 
-Improve the LLM prompt and runtime failure handling so accepted live prose is useful, grounded, and
-demo-safe.
+Make the live LLM draft more likely to pass the guard and make model failures deterministic and
+boring.
 
 ## Scope
 
-- Tune the docs-chat LLM prompt so the model writes concise grounded prose while preserving deterministic governed fields.
-- Improve timeout, retry, error classification, and redacted diagnostics around the LLM client.
-- Add fake-client tests for prompt assembly and failure handling.
-- Keep live-mode behavior honest: unavailable means `not_configured`; provider failure means `client_error`.
+- Tune prompt instructions for concise, source-close prose.
+- Ensure prompt tells the model not to invent examples, identifiers, numbers, citations, hidden
+  scoring details, or retrieval internals.
+- Add timeout and one safe retry for transient provider failures if appropriate.
+- Preserve deterministic fallback on client errors.
+- Use fake clients/tests for runtime behavior.
 
 ## Out Of Scope
 
-- Do not run a live LLM smoke test unless the user gives explicit approval in this thread.
-- Do not hardcode API keys, model names, or provider-specific secrets.
-- Do not modify `.env`.
+- No model-generated citations.
+- No model-generated confidence.
+- No model-generated missing fields.
+- No hardcoded provider secrets.
+- No live smoke without explicit approval.
 - Do not edit `core/schemas.py` or `core/pipeline.py`.
-- Do not change retrieval ranking except by coordinating with WS-L2.
-- Do not weaken WS-L3 guard semantics.
 
-## Required Behavior
+## Required Constraints
 
-- `.phrasing.effective_mode` tells the truth.
-- `.phrasing.llm_available` tells the truth.
-- `.phrasing.model` is present when configured and safe to display.
-- `.phrasing.fallback_reason` distinguishes `not_configured`, `client_error`, and `grounding_guard`.
-- Provider errors never mutate governed fields.
+- The prompt may request prose only.
+- ACL-safe context is the only content sent to the model.
+- Raw locked bodies and raw sealed spans must never enter the model view.
+- No model output may become an authority for governed fields.
+
+## Tasks
+
+1. Inspect the current repo state with `git status --short`.
+2. Review existing prompt and fake-client tests.
+3. Tighten prompt/runtime behavior with minimal changes.
+4. Add tests for timeout/error/retry behavior if implementation changes.
+5. Update demo docs only if user-visible fallback behavior changes.
 
 ## Acceptance Criteria
 
-- Fake-client tests cover successful LLM prose, timeout/error fallback, and prompt content boundaries.
-- Prompt includes grounded context and states that governed fields are not model-controlled.
-- Runtime diagnostics are compact and redacted.
-- No raw API keys, raw env dumps, or verbose provider logs are printed.
+- Fake Anthropic/client tests cover timeout/error/retry behavior.
+- `client_error` fallback preserves governed fields.
+- Prompt tests verify model receives prose-only instructions and ACL-safe context.
+- Live smoke remains gated by explicit approval.
 
-## Suggested Verification
+## Verification
 
-Inspect available commands first, then run:
+Run:
 
 ```bash
+python -m pytest api/tests/test_docs_chat.py -q
 python -m pytest api/tests/test_docs_chat*.py -q
+make test
 make lint
 ```
 
-Only with explicit user approval, run the live LLM smoke checks described in `LLM_UPGRADE_PLAN.md`.
-
-## Handoff
-
-Include prompt/runtime changes, failure modes covered by tests, whether live smoke was run, and if
-not, state that explicitly.
+Do not run live LLM smoke without explicit user approval.

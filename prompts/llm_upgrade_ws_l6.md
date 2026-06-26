@@ -6,71 +6,70 @@ You are working on WS-L6 from `LLM_UPGRADE_WORKSTREAMS.md`.
 
 - `AGENTS.md`
 - `README.md`
-- `api/README.md` if present
 - `LLM_UPGRADE_PLAN.md`
 - `LLM_UPGRADE_WORKSTREAMS.md`
-- Existing telemetry code and tests
+- `DEMO_RUNBOOK.md`
+- `telemetry/README.md`
+- `tests/test_privacy.py`
 - `api/docs_chat.py`
-
-If a referenced file is missing, note it in your final handoff and continue with the available context.
 
 ## Mission
 
-Add privacy-safe observability for docs-chat LLM behavior so the team can measure availability,
-fallback rates, and demo readiness without recording raw content.
+Add aggregate observability for docs-chat LLM behavior without raw content.
 
 ## Scope
 
-- Add or extend telemetry counters, aggregates, or local debug summaries for docs-chat LLM mode.
-- Track mode and fallback outcomes without raw text.
-- Add tests proving raw prompt, raw response, raw documents, and raw user messages are not emitted.
-- Preserve existing telemetry contracts.
+- Track aggregate counts for:
+  - requested mode
+  - effective mode
+  - fallback reason
+  - response status
+  - model configured yes/no
+  - citation count buckets
+  - guard category counts, if WS-L3 exposes them
+- Keep telemetry aggregate-only and privacy-safe.
 
 ## Out Of Scope
 
-- Do not add raw content fields to telemetry.
+- No raw prompts.
+- No raw responses.
+- No raw document text.
+- No transcript fields.
+- No changes to `TelemetryEvent` that violate existing no-extra-fields constraints.
 - Do not edit `core/schemas.py` or `core/pipeline.py`.
-- Do not modify `.env`.
-- Do not call a live LLM.
-- Do not change retrieval, guard, prompt, or frontend behavior except for minimal instrumentation hooks.
 
-## Allowed Telemetry Shape
+## Required Constraints
 
-Use aggregate or categorical fields only, such as:
+- `TelemetryEvent` forbids extra fields by construction; do not work around that.
+- Redact client-side where applicable.
+- Aggregate with k-anonymity thresholds.
+- Add differential-privacy noise to aggregates.
+- Do not log secrets or raw environment dumps.
 
-- Surface name
-- Requested mode
-- Effective mode
-- Fallback reason
-- Model configured yes/no
-- Provider family if already non-sensitive
-- Latency bucket
-- Citation count
-- Status category
+## Tasks
 
-Do not include raw prompt, raw response, raw retrieved documents, raw user question, secrets, or
-per-user trace content.
+1. Inspect the current repo state with `git status --short`.
+2. Identify the existing telemetry aggregation pattern.
+3. Add docs-chat aggregate counters without raw content fields.
+4. Add tests proving raw prompt/response/document/transcript fields are not emitted.
+5. Update `telemetry/README.md` with the privacy boundary and how to inspect aggregates.
+6. Coordinate with WS-L3 for guard-category names if available.
 
 ## Acceptance Criteria
 
-- Telemetry can answer how often LLM mode is requested, accepted, and falls back by reason.
-- Telemetry can count no-results outcomes.
-- Tests fail if raw content fields are added.
-- Existing telemetry tests remain green.
-- Documentation explains what is and is not captured.
+- It is possible to answer "how often did `grounding_guard` fire?" without exposing content.
+- Tests prove no raw prompt/response/document fields are emitted.
+- README explains privacy boundary.
 
-## Suggested Verification
+## Verification
 
-Inspect available commands first, then run focused telemetry/docs-chat tests, for example:
+Run:
 
 ```bash
-python -m pytest api/tests/test_docs_chat*.py -q
+python -m pytest tests/test_privacy.py -q
+python -m pytest telemetry tests -q
+make test
 make lint
 ```
 
-Adjust commands to match the repo layout and report exactly what was run.
-
-## Handoff
-
-Include metrics added, privacy guarantees tested, summaries enabled, and remaining observability
-blind spots.
+If any command is skipped, explain why in the final handoff.

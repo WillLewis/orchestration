@@ -6,66 +6,64 @@ You are working on WS-L5 from `LLM_UPGRADE_WORKSTREAMS.md`.
 
 - `AGENTS.md`
 - `README.md`
-- `frontend/README.md` if present
 - `LLM_UPGRADE_PLAN.md`
 - `LLM_UPGRADE_WORKSTREAMS.md`
 - `DEMO_RUNBOOK.md`
+- `frontend/README.md`
 - `frontend/src/components/docs/DocsChatInset/DocsChatInset.tsx`
-- Existing frontend tests related to docs chat
-
-If a referenced file is missing, note it in your final handoff and continue with the available context.
+- `frontend/tests/docs-chat-inset.test.tsx`
 
 ## Mission
 
-Make the live/off LLM toggle and fallback state clear enough for a stage demo without changing
-backend authority or the main demo narrative.
+Make the existing frontend LLM/deterministic toggle obvious and demo-safe.
 
 ## Scope
 
-- Improve docs-chat frontend controls and status labels.
-- Ensure deterministic versus LLM mode is obvious to the presenter.
-- Surface backend phrasing metadata in a concise, non-alarming way.
-- Add or update frontend tests where the repo already has a matching test pattern.
-- Update `DEMO_RUNBOOK.md` with presenter instructions if UI behavior changes.
+- Verify `/developers/ui-chat`, `/developers/ui-meetings`, and `/developers/ui-decision-brief`.
+- Improve labels/tooltips only if needed.
+- Ensure fallback states are clear:
+  - LLM phrasing
+  - deterministic
+  - grounding fallback
+  - LLM not configured
+  - backend unreachable
+- Keep `DEMO_RUNBOOK.md` aligned.
 
 ## Out Of Scope
 
-- Do not edit backend contracts unless the user redirects this thread.
+- No backend logic.
+- No changes to main interview mock flow unless explicitly coordinated.
 - Do not edit `core/schemas.py` or `core/pipeline.py`.
-- Do not change retrieval, guard, prompt, or telemetry behavior.
-- Do not add marketing-style UI or a new landing page.
-- Do not print raw prompts, raw LLM responses, raw documents, or secrets in the UI.
 
-## Required UI States
+## Required Constraints
 
-The presenter should be able to distinguish:
+- UI must distinguish requested mode from effective mode.
+- UI must not imply the model controls governed fields.
+- Do not expose raw locked or raw sealed content in snippets, panels, logs, or mocks.
 
-- Deterministic mode selected.
-- LLM mode selected and accepted.
-- LLM mode requested but `not_configured`.
-- LLM mode requested but `client_error`.
-- LLM mode requested but `grounding_guard` fallback.
+## Tasks
+
+1. Inspect the current repo state with `git status --short`.
+2. Review current docs-chat mocks, labels, and tests.
+3. Make narrowly scoped UI/test changes only if fallback states are unclear.
+4. Browser-check the three docs-chat surfaces when possible.
+5. Update `DEMO_RUNBOOK.md` if demo behavior changes.
 
 ## Acceptance Criteria
 
-- The live/off toggle is visible and understandable in the docs-chat demo surfaces.
-- Fallback state is visible without disrupting the main workflow.
-- Labels are accurate and driven by backend response metadata.
-- The UI does not imply the LLM controls governed fields.
-- Tests or manual verification cover the required UI states.
+- Restricted-source question visibly toggles between deterministic and LLM prose when backend is
+  configured.
+- Refusal/sealed-record fallback is labeled as safety fallback, not a broken toggle.
+- Offline fallback is explicit.
+- Frontend tests cover button labels and fallback-state copy.
 
-## Suggested Verification
+## Verification
 
-Inspect `frontend/package.json` and available scripts first. Then run the narrowest useful checks,
-for example:
+Run the relevant frontend test command from `frontend/README.md`, then:
 
 ```bash
-npm run build
+make test
+make lint
 ```
 
-If there are focused frontend tests for docs chat, run those too and report the exact command.
-
-## Handoff
-
-Include UI files changed, how to toggle live/off, fallback states tested, and any backend response
-shape assumption you relied on.
+If local browser verification or broader checks are skipped, explain why in the final handoff.
