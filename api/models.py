@@ -23,6 +23,57 @@ from recipes.catalog import EvalRow, VerticalScore
 
 
 # --------------------------------------------------------------------------- #
+# Docs RAG contract (Phase 0 only — no endpoint/retrieval implementation here)
+# --------------------------------------------------------------------------- #
+DocsSurface = Literal["chat", "meetings", "decision_brief"]
+DocsAccess = Literal["open", "sealed", "locked"]
+DocsChatStatus = Literal["answered", "no_results", "error"]
+DocsCitationTier = Literal[1, 2, "sealed", 3]
+
+DOCS_SURFACE_ROUTES: dict[DocsSurface, str] = {
+    "chat": "/developers/ui-chat",
+    "meetings": "/developers/ui-meetings",
+    "decision_brief": "/developers/ui-decision-brief",
+}
+
+
+class DocsChatMessage(BaseModel):
+    """One prior docs-RAG turn. History is untrusted conversational context only."""
+
+    role: Literal["user", "agent"] = "user"
+    content: str = ""
+
+
+class DocsChatRequest(BaseModel):
+    """Body for the future `/docs/chat` endpoint. Retrieval is documentation-scoped."""
+
+    surface: DocsSurface
+    message: str
+    history: list[DocsChatMessage] = Field(default_factory=list)
+
+
+class DocsCitation(BaseModel):
+    """Route-based docs citation. Never uses finance-case object ids."""
+
+    doc_id: str
+    title: Optional[str] = None
+    route: Optional[str] = None
+    section: Optional[str] = None
+    snippet: Optional[str] = None
+    access: DocsAccess = "open"
+    tier: DocsCitationTier
+
+
+class DocsChatResponse(BaseModel):
+    """Docs-RAG answer envelope shared by the docs UI mock and future backend endpoint."""
+
+    reply: str
+    citations: list[DocsCitation] = Field(default_factory=list)
+    status: DocsChatStatus = "answered"
+    suggested_questions: list[str] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
 # Request bodies
 # --------------------------------------------------------------------------- #
 class BriefRequest(BaseModel):
