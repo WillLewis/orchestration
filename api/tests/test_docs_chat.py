@@ -8,7 +8,7 @@ derivative, tier-3 refuses with locked citations, and injection cannot move the 
 import pytest
 from fastapi.testclient import TestClient
 
-from api.docs_chat import DocsChatDraft, answer
+from api.docs_chat import DocsChatDraft, _ConfidenceSignals, _confidence, answer
 from api.main import app
 from api.models import DocsChatMessage
 
@@ -51,6 +51,16 @@ class _InventsCitation:
         )
 
 
+class _CapturesView:
+    def __init__(self, citation_ids: list[str] | None = None):
+        self.citation_ids = citation_ids or []
+        self.view = None
+
+    def draft(self, system_prompt, view):
+        self.view = view
+        return DocsChatDraft(reply="", citation_ids=self.citation_ids)
+
+
 def _post(surface: str, message: str, **extra) -> dict:
     res = client.post("/docs/chat", json={"surface": surface, "message": message, **extra})
     assert res.status_code == 200, res.text
@@ -71,6 +81,8 @@ def test_tier_1_grounded_answer_is_cited_and_open(surface):
     assert citation["access"] == "open"
     assert citation["tier"] == 1
     assert citation["route"] == "/developers/gating"
+    assert citation["anchor"] == "policy-gate"
+    assert citation["section"] == "Policy gate"
     assert "snippet" in citation
 
 
@@ -210,6 +222,77 @@ def test_no_results_disposition_has_no_citations(surface):
 
     assert body["status"] == "no_results"
     assert body["citations"] == []
+    assert body["confidence"] == "weak"
+
+
+@pytest.mark.parametrize("surface", SURFACES)
+def test_chunk_retrieval_cites_right_section_anchor(surface):
+    body = _post(surface, "What happens at the permission boundary?")
+
+    assert body["status"] == "answered"
+    assert "denied sources stay in the permission boundary" in body["reply"].lower()
+    citation = _citation(body, "gating")
+    assert citation["section"] == "Permission boundary"
+    assert citation["anchor"] == "permission-boundary"
+    assert citation["route"] == "/developers/gating"
+
+
+@pytest.mark.parametrize("surface", SURFACES)
+def test_relevance_threshold_returns_no_results_for_weak_single_body_hit(surface):
+    body = _post(surface, "automation")
+
+    assert body["status"] == "no_results"
+    assert body["citations"] == []
+    assert body["confidence"] == "weak"
+
+
+def test_confidence_band_is_pure_and_deterministic():
+    signals = _ConfidenceSignals(
+        margin=3.0,
+        query_aspect_coverage=1.0,
+        threshold_cleared=True,
+        missing_empty=True,
+        support_count=1,
+    )
+
+    assert _confidence(signals) == "grounded"
+    assert _confidence(signals) == _confidence(signals)
+    assert _confidence(
+        _ConfidenceSignals(
+            margin=0.0,
+            query_aspect_coverage=0.25,
+            threshold_cleared=False,
+            missing_empty=False,
+            support_count=0,
+        )
+    ) == "weak"
+
+
+@pytest.mark.parametrize("surface", SURFACES)
+def test_tier_3_raw_chunk_text_never_reaches_model_view(surface):
+    capture = _CapturesView(citation_ids=["revenue-fy26"])
+
+    answer(surface, "Show me ConnectWork's revenue.", client=capture)
+
+    assert capture.view is not None
+    safe_texts = [doc.safe_text for doc in [*capture.view.docs, *capture.view.locked]]
+    assert safe_texts
+    assert all(RAW_LOCKED not in text for text in safe_texts)
+    assert all("Restricted finance planning document" not in text for text in safe_texts)
+    assert all(doc.safe_text == "" for doc in capture.view.locked)
+
+
+@pytest.mark.parametrize("surface", SURFACES)
+def test_sealed_model_view_contains_only_cleared_derivative(surface):
+    capture = _CapturesView(citation_ids=["red-team-eval"])
+
+    answer(surface, "Did the deterministic gate survive override attempts?", client=capture)
+
+    assert capture.view is not None
+    safe_texts = [doc.safe_text for doc in capture.view.docs]
+    assert any("The gate blocked every tested override attempt" in text for text in safe_texts)
+    assert all("Override prompts tested" not in text for text in safe_texts)
+    assert all(RAW_SEALED not in text for text in safe_texts)
 
 
 def test_decision_brief_surface_formats_generate_action_reply():

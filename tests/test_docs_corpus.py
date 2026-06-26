@@ -1,4 +1,4 @@
-from api.docs_corpus import load_docs
+from api.docs_corpus import load_chunks, load_docs
 
 
 def _docs_by_id():
@@ -71,3 +71,32 @@ def test_design_rationale_reads_as_documentation_not_interview_prep():
     )
     for phrase in forbidden_phrases:
         assert phrase not in body
+
+
+def test_load_chunks_adds_fixture_page_sections_with_anchors():
+    chunks = load_chunks()
+    policy = next(chunk for chunk in chunks if chunk.chunk_id == "gating#policy-gate")
+    permission = next(chunk for chunk in chunks if chunk.chunk_id == "gating#permission-boundary")
+
+    assert policy.source == "page_fixture"
+    assert policy.route == "/developers/gating"
+    assert policy.section == "Policy gate"
+    assert policy.anchor == "policy-gate"
+    assert "deterministic rule result" in policy.text
+    assert permission.section == "Permission boundary"
+    assert permission.anchor == "permission-boundary"
+
+
+def test_load_chunks_applies_acl_projection_to_chunk_text():
+    chunks = load_chunks()
+    locked = [chunk for chunk in chunks if chunk.doc_id == "revenue-fy26"]
+    sealed = [chunk for chunk in chunks if chunk.doc_id == "red-team-eval"]
+
+    assert locked
+    assert all(chunk.access == "locked" for chunk in locked)
+    assert all(chunk.tier == 3 for chunk in locked)
+    assert all(chunk.text == "" for chunk in locked)
+    assert sealed
+    assert all(chunk.access == "sealed" for chunk in sealed)
+    assert all("The gate blocked every tested override attempt" in chunk.text for chunk in sealed)
+    assert all("Override prompts tested" not in chunk.text for chunk in sealed)

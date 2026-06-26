@@ -60,6 +60,19 @@ The LLM client is injectable (`ChatLLMClient` protocol). The default `Determinis
 **offline** (no key), so the suite is reproducible; `LLMChatClient` is opt-in and used only when
 both `CHAT_MODEL` and `ANTHROPIC_API_KEY` are set (model name comes from env, never hardcoded).
 
+## Docs chat (`POST /docs/chat`)
+Answers over the documentation corpus with chunk-level retrieval. `api.docs_corpus.load_docs()`
+keeps the legacy document shape unchanged; `load_chunks()` adds ACL-safe retrieval units from the
+curated markdown files plus the Phase-0 `pages.fixture.json` section records. Public page sections
+return anchored citations, locked chunks carry metadata with empty text, and sealed chunks expose
+only their cleared derivative.
+
+The `/docs/chat` ranker extends the #13 heuristic to chunks: curated name hits, length-normalized
+body hits, sealed-topic bonus, exact multi-token phrase bonus, and a relevance threshold. If no
+chunk clears the threshold, the endpoint returns `status="no_results"`. Answer confidence is a
+pure deterministic band (`grounded` / `partial` / `weak`) derived from ranking margin, query-aspect
+coverage, threshold status, missing coverage, and safe support count; model output never affects it.
+
 ## Governed record (`POST /workproducts/mint` · `/verify`)
 Seals a decision packet into a **governed record** ([`workproducts.py`](workproducts.py)) — the
 governed work product, made literal. The record is a point-in-time artifact carrying the decision,

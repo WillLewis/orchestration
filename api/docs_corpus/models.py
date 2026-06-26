@@ -60,3 +60,31 @@ class DocsDoc(BaseModel):
         if not self.viewer_permitted:
             return "locked"
         return "open"
+
+
+DocsChunkSource = Literal["curated", "page_fixture"]
+
+
+class DocsChunk(BaseModel):
+    """ACL-safe retrieval unit.
+
+    `text` is the only body-like field the chat path may hand to a model. It is already permission
+    projected by the loader: open chunks contain source text, sealed chunks contain only the cleared
+    derivative, and locked chunks contain an empty string.
+    """
+
+    doc_id: str
+    chunk_id: str
+    title: str
+    route: Optional[str] = None
+    anchor: Optional[str] = None
+    section: Optional[str] = None
+    in_nav: bool = False
+    viewer_permitted: bool = False
+    title_visibility: DocsTitleVisibility = "reveal"
+    owner: str = ""
+    request_access_to: Optional[str] = None
+    text: str = ""
+    access: DocsAccess = "open"
+    tier: DocsDocTier
+    source: DocsChunkSource = "curated"
