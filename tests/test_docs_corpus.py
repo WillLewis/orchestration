@@ -10,8 +10,8 @@ def test_docs_corpus_loads_expected_seed_docs():
 
     assert set(docs) == {
         "employee-directory",
+        "design-rationale",
         "gating",
-        "orchestration-design-notes",
         "red-team-eval",
         "revenue-fy26",
     }
@@ -22,8 +22,8 @@ def test_docs_corpus_derives_expected_tiers_and_seals():
 
     assert docs["gating"].tier == 1
     assert docs["gating"].seal is False
-    assert docs["orchestration-design-notes"].tier == 2
-    assert docs["orchestration-design-notes"].seal is False
+    assert docs["design-rationale"].tier == 2
+    assert docs["design-rationale"].seal is False
     assert docs["red-team-eval"].tier == "sealed"
     assert docs["red-team-eval"].seal is True
     assert docs["revenue-fy26"].tier == 3
