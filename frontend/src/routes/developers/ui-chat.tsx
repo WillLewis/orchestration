@@ -34,6 +34,7 @@ function UiChatDocsPage() {
         surface="Channel chat"
         title="Docs answer in a team thread"
         subtitle="Mention @Agent in the channel, receive a permission-scoped answer privately, then decide whether it should be shared."
+        variant="fullBleed"
       >
         <DocsChatInset surface="chat" />
       </ProductFrame>

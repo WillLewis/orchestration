@@ -186,7 +186,7 @@ export function buildGovernanceCertificate(input: {
           ? "Discount exception approved at 22%; downstream customer success plan reconciliation was pending at seal time."
           : governance_certificate.governance.loop_summary,
     },
-  } as GovernanceCertificate;
+  } as unknown as GovernanceCertificate;
 }
 
 // POST /workproducts/{id}/verify   body: { "event": "legal_needs_review" | "financials_v2" }

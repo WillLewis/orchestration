@@ -91,6 +91,7 @@ def test_docs_chat_response_accepts_all_dispositions():
                     doc_id="gating",
                     title="Deterministic Gating",
                     route="/developers/gating",
+                    anchor="policy-gate",
                     section="Policy gate",
                     snippet="Gate detail.",
                     access="open",
@@ -150,6 +151,11 @@ def test_docs_chat_response_accepts_all_dispositions():
         "no_results",
         "error",
     ]
+    assert responses[0].response == "Open citation answer."
+    assert responses[0].reply == responses[0].response
+    assert responses[0].confidence == "grounded"
+    assert responses[0].missing == []
+    assert responses[0].citations[0].anchor == "policy-gate"
 
 
 def test_docs_surface_route_map_values():
