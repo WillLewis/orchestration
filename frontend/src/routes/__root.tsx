@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -147,6 +148,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  useEffect(() => {
+    if (pathname.startsWith("/developers")) return;
+    const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.sessionStorage.setItem("connectwork:lastNonDocsHref", href);
+  }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>

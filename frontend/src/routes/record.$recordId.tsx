@@ -1,8 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   Download,
   FileText,
@@ -21,6 +20,7 @@ import { toast } from "sonner";
 import { approval_role_labels, sources as packet_sources } from "@/data/brief";
 import { useRecordQuery, useVerification, useVerifyWorkProductMutation } from "@/hooks/queries";
 import type { VerifyResult } from "@/data/record";
+import { ConnectWorkHomeLink, MainRouteNav } from "@/components/navigation/MainRouteNav";
 
 export const Route = createFileRoute("/record/$recordId")({
   head: () => ({
@@ -157,14 +157,11 @@ function RecordPage() {
     <div className="flex min-h-screen flex-col bg-[var(--canvas)] text-foreground print:bg-white">
       {/* Top utility bar */}
       <div className="border-b border-border bg-background print:hidden">
-        <div className="mx-auto flex max-w-[1100px] items-center justify-between px-6 py-3 xl:px-10">
-          <Link
-            to="/packet"
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--secondary-text)] hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to packet
-          </Link>
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-3 px-6 py-3 xl:px-10">
+          <div className="flex min-w-0 items-center gap-2">
+            <ConnectWorkHomeLink />
+            <MainRouteNav />
+          </div>
           <div className="text-[11px] text-[var(--muted-fg)]">Record · {cert.record_id}</div>
         </div>
       </div>
