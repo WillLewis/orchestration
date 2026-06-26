@@ -9,7 +9,16 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.docs_corpus import load_chunks
-from api.docs_chat import DocsChatDraft, _ConfidenceSignals, _confidence, answer
+from api.docs_chat import (
+    DocsChatDraft,
+    DocsChatEvidenceView,
+    DocsEvidenceDoc,
+    LLMDocsChatClient,
+    _build_system_prompt,
+    _ConfidenceSignals,
+    _confidence,
+    answer,
+)
 from api.main import app
 from api.models import DocsChatMessage
 
@@ -399,6 +408,67 @@ def test_model_prompt_and_view_are_prose_only_and_acl_safe():
     assert '"response": <string>' in capture.system_prompt
     safe_texts = [doc.safe_text for doc in [*capture.view.docs, *capture.view.locked]]
     assert all(RAW_LOCKED not in text for text in safe_texts)
+
+
+def test_llm_client_sends_cached_stable_prefix(monkeypatch):
+    monkeypatch.setenv("CHAT_MODEL", "fake-docs-model")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    captured = {}
+
+    class _FakeMessages:
+        def create(self, **kwargs):
+            captured.update(kwargs)
+            return type("FakeResponse", (), {"content": [type("Text", (), {"text": "{}"})()]})()
+
+    class _FakeAnthropic:
+        def __init__(self):
+            self.messages = _FakeMessages()
+
+    monkeypatch.setattr("anthropic.Anthropic", _FakeAnthropic)
+    view = DocsChatEvidenceView(
+        surface="chat",
+        message="How does the policy gate decide blocks_commit?",
+        history=(),
+        docs=(
+            DocsEvidenceDoc(
+                doc_id="gating",
+                chunk_id="gating#errors-blocked-commits",
+                title="Deterministic Gating",
+                route="/developers/gating",
+                anchor="errors-blocked-commits",
+                section="Errors - blocked commits",
+                access="open",
+                tier=1,
+                safe_text="The policy gate reads deterministic rule results before writes.",
+            ),
+        ),
+        locked=(),
+    )
+
+    LLMDocsChatClient().draft(_build_system_prompt(), view)
+
+    system = captured["system"]
+    assert isinstance(system, list)
+    assert len(system) == 1
+    stable_prefix = system[0]
+    assert stable_prefix["type"] == "text"
+    assert stable_prefix["cache_control"] == {"type": "ephemeral"}
+    assert "FAQ-grounded few-shots" in stable_prefix["text"]
+    assert "How does the policy gate decide blocks_commit?" in stable_prefix["text"]
+    assert "TRUSTED DOCS CONTEXT" not in stable_prefix["text"]
+    assert "gating#errors-blocked-commits" not in stable_prefix["text"]
+
+    messages = captured["messages"]
+    assert messages == [
+        {
+            "role": "user",
+            "content": messages[0]["content"],
+        }
+    ]
+    assert "cache_control" not in messages[0]
+    assert "TRUSTED DOCS CONTEXT" in messages[0]["content"]
+    assert "gating#errors-blocked-commits" in messages[0]["content"]
+    assert "How does the policy gate decide blocks_commit?" in messages[0]["content"]
 
 
 def test_injection_in_chunk_text_cannot_move_governed_fields(monkeypatch):
