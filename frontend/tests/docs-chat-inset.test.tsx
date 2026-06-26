@@ -47,14 +47,14 @@ function renderInset(surface: (typeof surfaces)[number], disposition: (typeof di
   );
 }
 
-function renderLiveInset(surface: (typeof surfaces)[number]) {
+function renderEmptyInset(surface: (typeof surfaces)[number]) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
 
   return renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>
-      <DocsChatInset surface={surface} live />
+      <DocsChatInset surface={surface} />
     </QueryClientProvider>,
   );
 }
@@ -81,10 +81,20 @@ describe("DocsChatInset", () => {
     expect(html).toContain("/developers/gating#policy-gate");
   });
 
-  it("renders the live adapter state when enabled", () => {
-    const html = renderLiveInset("chat");
+  it("renders the runtime LLM phrasing toggle by default", () => {
+    const html = renderEmptyInset("chat");
 
-    expect(html).toContain("Live /docs/chat");
+    expect(html).toContain("LLM phrasing");
+    expect(html).toContain("requested");
+    expect(html).not.toContain("Phase-0 mocks");
+  });
+
+  it("renders phrasing model and fallback honesty states from response metadata", () => {
+    expect(renderInset("chat", "tier1Open")).toContain("docs-phrasing-mock");
+    expect(renderInset("chat", "tier2Open")).toContain("LLM not configured");
+    expect(renderInset("chat", "sealed")).toContain("Grounding fallback");
+    expect(renderInset("chat", "noResults")).toContain("Model error");
+    expect(renderInset("chat", "error")).toContain("Offline fallback");
   });
 
   it("keeps locked citations snippet-free", () => {

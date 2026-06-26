@@ -48,9 +48,9 @@ remapping. UI-only fields (`status`, `SourceStatus`, `SourceType`) are derived c
 **not** part of the frozen `core.schemas` contract.
 
 The `/developers/ui-chat`, `/developers/ui-meetings`, and
-`/developers/ui-decision-brief` docs insets are mock-driven by default through the same structured
-adapter used for `POST /docs/chat`. Set `VITE_DOCS_CHAT_LIVE=true` to point that seam at the
-backend when the live Docs RAG endpoint is ready.
+`/developers/ui-decision-brief` docs insets always post to `/docs/chat` and send a per-request
+`mode` of `llm` or `deterministic`. If the docs-chat backend is unreachable, the inset renders an
+explicit offline fallback/error state instead of relabeling that failure as deterministic mode.
 
 ## Demo runbook
 

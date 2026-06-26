@@ -31,6 +31,8 @@ import {
   type DocsCitation,
   type DocsChatMockKey,
   type DocsChatMessage,
+  type DocsPhrasingFallbackReason,
+  type DocsPhrasingMode,
   type DocsChatResponse,
   type DocsConfidence,
   type DocsSurface,
@@ -62,12 +64,13 @@ type RetryTarget = {
 
 type SurfaceController = {
   surface: DocsSurface;
-  live: boolean;
+  mode: DocsPhrasingMode;
   turns: DocsTurn[];
   pending: boolean;
   loadingStep: number;
   panel: PanelState;
   sharedTurnIds: Set<number>;
+  toggleMode: () => void;
   submitDocs: (text: string, forcedKey?: DocsChatMockKey) => void;
   reset: () => void;
   retry: () => void;
@@ -78,6 +81,7 @@ type SurfaceController = {
 
 const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "http://localhost:8000";
+const DOCS_CHAT_MODE_STORAGE_KEY = "connectwork.docsChat.mode";
 
 const LOADING_STEPS = [
   "Checking permissions",
@@ -202,37 +206,125 @@ const CONFIDENCE_META: Record<DocsConfidence, { label: string; className: string
   },
 };
 
-function mockKeyForPrompt(text: string): DocsChatMockKey {
-  const q = text.toLowerCase();
-  if (q.includes("unknown") || q.includes("no result")) return "noResults";
-  if (q.includes("error") || q.includes("retry")) return "error";
-  if (q.includes("override") || q.includes("sealed") || q.includes("red-team")) return "sealed";
-  if (q.includes("restricted") || q.includes("admin audit") || q.includes("locked")) {
-    return "tier3Locked";
-  }
-  if (q.includes("private-first") || q.includes("intersection") || q.includes("hidden")) {
-    return "tier2Open";
-  }
-  return "tier1Open";
-}
-
 function responseFor(key: DocsChatMockKey): DocsChatResponse {
   return docsChatMocks[key];
 }
 
-function fallbackResponseFor(text: string, forcedKey?: DocsChatMockKey): DocsChatResponse {
-  return responseFor(forcedKey ?? mockKeyForPrompt(text));
+function responseWithMode(response: DocsChatResponse, mode: DocsPhrasingMode): DocsChatResponse {
+  return {
+    ...response,
+    phrasing: {
+      ...response.phrasing,
+      requested_mode: mode,
+    },
+  };
+}
+
+function offlineFallbackResponse(mode: DocsPhrasingMode): DocsChatResponse {
+  return responseWithMode(responseFor("error"), mode);
+}
+
+function initialModeFrom(response: DocsChatResponse | undefined): DocsPhrasingMode {
+  return response?.phrasing.llm_available === false ? "deterministic" : "llm";
+}
+
+function readStoredMode(): DocsPhrasingMode | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(DOCS_CHAT_MODE_STORAGE_KEY);
+  return stored === "llm" || stored === "deterministic" ? stored : null;
+}
+
+function writeStoredMode(mode: DocsPhrasingMode) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DOCS_CHAT_MODE_STORAGE_KEY, mode);
+}
+
+function oppositeMode(mode: DocsPhrasingMode): DocsPhrasingMode {
+  return mode === "llm" ? "deterministic" : "llm";
+}
+
+function latestResponse(turns: DocsTurn[]): DocsChatResponse | undefined {
+  return turns.length > 0 ? turns[turns.length - 1].response : undefined;
+}
+
+function fallbackReasonLabel(reason: DocsPhrasingFallbackReason | null | undefined): string {
+  if (reason === "not_configured") return "LLM not configured";
+  if (reason === "client_error") return "Model error";
+  if (reason === "grounding_guard") return "Grounding fallback";
+  return "Fallback";
+}
+
+function fallbackReasonDetail(reason: DocsPhrasingFallbackReason | null | undefined): string {
+  if (reason === "not_configured") return "The backend reported LLM phrasing is unavailable.";
+  if (reason === "client_error") return "The backend discarded the LLM response after a client error.";
+  if (reason === "grounding_guard") {
+    return "The backend discarded the LLM response after the grounding guard fired.";
+  }
+  return "The backend changed the effective phrasing mode.";
+}
+
+function modeButtonLabel(mode: DocsPhrasingMode, response?: DocsChatResponse) {
+  if (response?.status === "error") {
+    return {
+      label: "Offline fallback",
+      detail: "Backend unreachable",
+      title: "The docs-chat backend did not respond. Retry the request or use static docs.",
+      tone: "danger" as const,
+    };
+  }
+
+  const phrasing = response?.phrasing;
+  if (phrasing && phrasing.effective_mode !== phrasing.requested_mode) {
+    return {
+      label: "Deterministic",
+      detail: fallbackReasonLabel(phrasing.fallback_reason),
+      title: fallbackReasonDetail(phrasing.fallback_reason),
+      tone: "warning" as const,
+    };
+  }
+
+  if ((phrasing?.effective_mode ?? mode) === "llm") {
+    return {
+      label: "LLM phrasing",
+      detail: phrasing?.model ?? "requested",
+      title: phrasing?.model
+        ? `Backend-reported model: ${phrasing.model}`
+        : "LLM phrasing requested; model appears after the backend responds.",
+      tone: "info" as const,
+    };
+  }
+
+  return {
+    label: "Deterministic",
+    detail: "Template phrasing",
+    title: "Backend deterministic phrasing mode.",
+    tone: "neutral" as const,
+  };
+}
+
+function modeButtonClass(tone: ReturnType<typeof modeButtonLabel>["tone"]) {
+  if (tone === "danger") {
+    return "border-[var(--danger)]/20 bg-[var(--danger-bg)] text-[var(--danger)]";
+  }
+  if (tone === "warning") {
+    return "border-[var(--warning)]/25 bg-[var(--warning-bg)] text-[var(--warning)]";
+  }
+  if (tone === "info") {
+    return "border-primary/20 bg-[var(--primary-tint)] text-primary";
+  }
+  return "border-border bg-card text-[var(--secondary-text)]";
 }
 
 async function postDocsChat(
   surface: DocsSurface,
   message: string,
   history: DocsChatMessage[],
+  mode: DocsPhrasingMode,
 ): Promise<DocsChatResponse> {
   const res = await fetch(`${API_BASE}/docs/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ surface, message, history }),
+    body: JSON.stringify({ surface, message, history, mode }),
   });
   if (!res.ok) throw new Error(`/docs/chat returned ${res.status}`);
   return (await res.json()) as DocsChatResponse;
@@ -260,30 +352,37 @@ function citationHref(citation: DocsCitation): string | null {
 function useSurfaceController({
   surface,
   initialMock,
-  live,
 }: {
   surface: DocsSurface;
   initialMock?: DocsChatMockKey;
-  live: boolean;
 }): SurfaceController {
+  const initialResponse = initialMock ? responseFor(initialMock) : undefined;
   const [pending, setPending] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [panel, setPanel] = useState<PanelState>(null);
   const [sharedTurnIds, setSharedTurnIds] = useState<Set<number>>(() => new Set());
   const [lastRetry, setLastRetry] = useState<RetryTarget | null>(null);
+  const [modePreference, setModePreference] = useState<{
+    mode: DocsPhrasingMode;
+    source: "default" | "stored";
+  }>(() => ({
+    mode: initialModeFrom(initialResponse),
+    source: "default",
+  }));
+  const [storageReady, setStorageReady] = useState(false);
   const [turns, setTurns] = useState<DocsTurn[]>(() => {
-    if (!initialMock) return [];
-    const response = responseFor(initialMock);
+    if (!initialMock || !initialResponse) return [];
     return [
       {
         prompt:
           EXAMPLES.find((example) => example.key === initialMock)?.label ??
           "Ask @Agent about the docs",
-        response,
+        response: initialResponse,
         privateFirst: surface === "chat",
       },
     ];
   });
+  const mode = modePreference.mode;
 
   useEffect(() => {
     if (!pending) {
@@ -297,6 +396,33 @@ function useSurfaceController({
 
     return () => window.clearInterval(id);
   }, [pending]);
+
+  useEffect(() => {
+    if (modePreference.source !== "default") return;
+    const response = latestResponse(turns);
+    if (!response) return;
+    const defaultMode = initialModeFrom(response);
+    if (defaultMode === modePreference.mode) return;
+    setModePreference({ mode: defaultMode, source: "default" });
+  }, [modePreference, turns]);
+
+  useEffect(() => {
+    const stored = readStoredMode();
+    if (stored) setModePreference({ mode: stored, source: "stored" });
+    setStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    writeStoredMode(mode);
+  }, [mode, storageReady]);
+
+  const toggleMode = useCallback(() => {
+    setModePreference((current) => ({
+      mode: oppositeMode(current.mode),
+      source: "stored",
+    }));
+  }, []);
 
   const appendTurn = useCallback(
     (prompt: string, response: DocsChatResponse) => {
@@ -323,26 +449,18 @@ function useSurfaceController({
       setPending(true);
       setPanel(null);
 
-      if (!live) {
-        window.setTimeout(() => {
-          appendTurn(prompt, fallbackResponseFor(clean, forcedKey));
-          setPending(false);
-        }, 1150);
-        return;
-      }
-
-      void postDocsChat(surface, clean, history)
+      void postDocsChat(surface, clean, history, mode)
         .then((response) => {
           appendTurn(prompt, response);
         })
         .catch(() => {
-          appendTurn(prompt, fallbackResponseFor(clean, forcedKey));
+          appendTurn(prompt, offlineFallbackResponse(mode));
         })
         .finally(() => {
           setPending(false);
         });
     },
-    [appendTurn, live, pending, surface, turns],
+    [appendTurn, mode, pending, surface, turns],
   );
 
   const retry = useCallback(() => {
@@ -382,12 +500,13 @@ function useSurfaceController({
 
   return {
     surface,
-    live,
+    mode,
     turns,
     pending,
     loadingStep,
     panel,
     sharedTurnIds,
+    toggleMode,
     submitDocs,
     reset,
     retry,
@@ -400,30 +519,53 @@ function useSurfaceController({
 export function DocsChatInset({
   surface,
   initialMock,
-  live = false,
 }: {
   surface: DocsSurface;
   initialMock?: DocsChatMockKey;
   live?: boolean;
 }) {
-  const controller = useSurfaceController({ surface, initialMock, live });
+  const controller = useSurfaceController({ surface, initialMock });
 
   if (surface === "meetings") return <MeetingSurface controller={controller} />;
   if (surface === "decision_brief") return <DecisionBriefSurface controller={controller} />;
   return <ChatSurface controller={controller} />;
 }
 
-function AppModeBadge({ live }: { live: boolean }) {
+function AppModeButton({
+  mode,
+  response,
+  onToggle,
+}: {
+  mode: DocsPhrasingMode;
+  response?: DocsChatResponse;
+  onToggle: () => void;
+}) {
+  const display = modeButtonLabel(mode, response);
+  const Icon = display.tone === "danger" ? AlertTriangle : mode === "llm" ? Sparkles : ShieldCheck;
+
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
-      <ShieldCheck className="h-3 w-3 text-primary" />
-      {live ? "Live /docs/chat" : "Phase-0 mocks"}
-    </span>
+    <button
+      type="button"
+      onClick={onToggle}
+      title={display.title}
+      className={[
+        "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        modeButtonClass(display.tone),
+      ].join(" ")}
+      aria-label={`Switch docs chat to ${mode === "llm" ? "Deterministic" : "LLM phrasing"}`}
+    >
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="truncate">{display.label}</span>
+      <span className="max-w-[130px] truncate text-[10.5px] font-medium opacity-80">
+        {display.detail}
+      </span>
+    </button>
   );
 }
 
 function ChatSurface({ controller }: { controller: SurfaceController }) {
   const { turns, pending, loadingStep, submitDocs, openCitation, reset, retry } = controller;
+  const response = latestResponse(turns);
 
   return (
     <section className="flex h-[780px] min-h-[700px] bg-background text-foreground">
@@ -442,7 +584,11 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AppModeBadge live={controller.live} />
+            <AppModeButton
+              mode={controller.mode}
+              response={response}
+              onToggle={controller.toggleMode}
+            />
             <button
               type="button"
               onClick={reset}
@@ -543,7 +689,9 @@ function MeetingSurface({ controller }: { controller: SurfaceController }) {
             title="ConnectAgent"
             subtitle="Private to you in this meeting"
             icon={<PanelRight className="h-4 w-4" />}
-            live={controller.live}
+            mode={controller.mode}
+            response={latestResponse(controller.turns)}
+            onToggleMode={controller.toggleMode}
             onReset={controller.reset}
           />
           <RailBody controller={controller} surface="meetings" />
@@ -711,7 +859,11 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AppModeBadge live={controller.live} />
+            <AppModeButton
+              mode={controller.mode}
+              response={latestResponse(controller.turns)}
+              onToggle={controller.toggleMode}
+            />
             <button
               type="button"
               onClick={() =>
@@ -740,7 +892,9 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
           title="Command rail"
           subtitle="Draft commands and docs questions"
           icon={<PenLine className="h-4 w-4" />}
-          live={controller.live}
+          mode={controller.mode}
+          response={latestResponse(controller.turns)}
+          onToggleMode={controller.toggleMode}
           onReset={controller.reset}
         />
         <RailBody
@@ -770,13 +924,17 @@ function RailHeader({
   title,
   subtitle,
   icon,
-  live,
+  mode,
+  response,
+  onToggleMode,
   onReset,
 }: {
   title: string;
   subtitle: string;
   icon: ReactNode;
-  live: boolean;
+  mode: DocsPhrasingMode;
+  response?: DocsChatResponse;
+  onToggleMode: () => void;
   onReset: () => void;
 }) {
   return (
@@ -807,7 +965,7 @@ function RailHeader({
           <Shield className="h-3 w-3" />
           Governed
         </span>
-        <AppModeBadge live={live} />
+        <AppModeButton mode={mode} response={response} onToggle={onToggleMode} />
       </div>
     </header>
   );
