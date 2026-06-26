@@ -3,24 +3,19 @@ import {
   AlertTriangle,
   AtSign,
   BookOpen,
-  Bot,
   Check,
   ClipboardList,
   Clock3,
   FileCheck2,
   FileText,
-  KeyRound,
-  Link as LinkIcon,
   Loader2,
   Lock,
   MessageCircle,
   MessageSquareShare,
-  PanelRight,
   PenLine,
   RefreshCw,
   Search,
   Send,
-  Shield,
   ShieldCheck,
   Sparkles,
   Users,
@@ -54,7 +49,6 @@ type PanelState =
 type ExamplePrompt = {
   key: DocsChatMockKey;
   label: string;
-  description: string;
 };
 
 type RetryTarget = {
@@ -83,11 +77,7 @@ const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "http://localhost:8000";
 const DOCS_CHAT_MODE_STORAGE_KEY = "connectwork.docsChat.mode";
 
-const LOADING_STEPS = [
-  "Checking permissions",
-  "Searching docs",
-  "Validating citations",
-] as const;
+const LOADING_STEPS = ["Checking permissions", "Searching docs", "Validating citations"] as const;
 
 const SURFACE_COPY: Record<
   DocsSurface,
@@ -108,50 +98,23 @@ const SURFACE_COPY: Record<
   meetings: {
     label: "Meeting rail",
     placeholder: "Ask @Agent about this meeting or the docs...",
-    emptyTitle: "Ask from the meeting rail",
+    emptyTitle: "Ask in the meeting chat",
     emptyBody:
-      "ConnectAgent answers in your rail while the shared document and participants stay visible.",
+      "Mention @Agent for a docs-grounded answer that only you can see until you share it.",
   },
   decision_brief: {
     label: "Decision brief",
     placeholder: "Ask @Agent about this draft or generate a brief...",
     emptyTitle: "Generate a docs-grounded brief",
-    emptyBody:
-      "Start with Generate Decision Brief or ask a docs question from the command rail.",
+    emptyBody: "Start with Generate Decision Brief or ask a docs question from the command rail.",
   },
 };
 
 const EXAMPLES: ExamplePrompt[] = [
-  {
-    key: "tier1Open",
-    label: "How does the policy gate decide blocks_commit?",
-    description: "Grounded answer with an open docs section.",
-  },
-  {
-    key: "tier2Open",
-    label: "Why private-first responses instead of intersection permissions?",
-    description: "Permitted source that is not in the public nav.",
-  },
-  {
-    key: "sealed",
-    label: "Did the deterministic gate survive override attempts?",
-    description: "Cleared derivative from a sealed evaluation.",
-  },
-  {
-    key: "tier3Locked",
-    label: "Show me a restricted-source behavior example.",
-    description: "Locked citation with no source snippet.",
-  },
-  {
-    key: "noResults",
-    label: "Ask about an unknown docs topic with no result.",
-    description: "No-results recovery state.",
-  },
-  {
-    key: "error",
-    label: "Simulate a docs RAG service error.",
-    description: "Retry and static-doc fallback state.",
-  },
+  { key: "tier1Open", label: "When does the agent refuse to act?" },
+  { key: "tier3Locked", label: "What happens with a restricted source?" },
+  { key: "sealed", label: "Can it use a sealed document?" },
+  { key: "noResults", label: "What if the docs don't cover this?" },
 ];
 
 const CITATION_DETAILS: Record<
@@ -256,7 +219,8 @@ function fallbackReasonLabel(reason: DocsPhrasingFallbackReason | null | undefin
 
 function fallbackReasonDetail(reason: DocsPhrasingFallbackReason | null | undefined): string {
   if (reason === "not_configured") return "The backend reported LLM phrasing is unavailable.";
-  if (reason === "client_error") return "The backend discarded the LLM response after a client error.";
+  if (reason === "client_error")
+    return "The backend discarded the LLM response after a client error.";
   if (reason === "grounding_guard") {
     return "The backend discarded the LLM response after the grounding guard fired.";
   }
@@ -569,15 +533,12 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
 
   return (
     <section className="flex h-[780px] min-h-[700px] bg-background text-foreground">
-      <main className="flex min-w-0 flex-1 flex-col border-r border-border">
+      <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4 text-primary" />
               <h2 className="truncate text-[15px] font-semibold"># docs-rag-fidelity</h2>
-              <span className="rounded bg-[var(--success-bg)] px-1.5 py-0.5 text-[10.5px] font-semibold text-[var(--success)]">
-                Private first
-              </span>
             </div>
             <p className="mt-0.5 text-[11.5px] text-[var(--secondary-text)]">
               Ask docs questions in-channel. ConnectAgent answers only to you until shared.
@@ -649,26 +610,6 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
         </div>
       </main>
 
-      <aside className="hidden w-[300px] shrink-0 bg-card px-4 py-4 lg:block">
-        <div className="rounded-lg border border-border bg-background p-3">
-          <div className="flex items-center gap-2 text-[12.5px] font-semibold">
-            <Bot className="h-4 w-4 text-primary" />
-            ConnectAgent controls
-          </div>
-          <div className="mt-3 space-y-2 text-[12px] text-[var(--secondary-text)]">
-            <InfoRow icon={<Shield className="h-3.5 w-3.5" />} label="Permission-scoped" />
-            <InfoRow icon={<KeyRound className="h-3.5 w-3.5" />} label="Locked snippets hidden" />
-            <InfoRow icon={<LinkIcon className="h-3.5 w-3.5" />} label="Anchored source chips" />
-          </div>
-        </div>
-        <div className="mt-3 rounded-lg border border-border bg-background p-3">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-            Prompt menu
-          </div>
-          <ExampleList onPick={(example) => submitDocs(example.label, example.key)} />
-        </div>
-      </aside>
-
       <CitationPanel panel={controller.panel} onClose={controller.closePanel} />
     </section>
   );
@@ -686,13 +627,14 @@ function MeetingSurface({ controller }: { controller: SurfaceController }) {
 
         <aside className="flex min-h-[640px] shrink-0 flex-col border-t border-border bg-background xl:w-[420px] xl:border-l xl:border-t-0">
           <RailHeader
-            title="ConnectAgent"
-            subtitle="Private to you in this meeting"
-            icon={<PanelRight className="h-4 w-4" />}
+            title="Meeting chat"
+            subtitle="Mention @Agent for a docs-grounded answer that stays private to you."
+            icon={<MessageCircle className="h-4 w-4" />}
             mode={controller.mode}
             response={latestResponse(controller.turns)}
             onToggleMode={controller.toggleMode}
             onReset={controller.reset}
+            showModeControl
           />
           <RailBody controller={controller} surface="meetings" />
         </aside>
@@ -793,10 +735,6 @@ function DocsMeetingDocument() {
                 Shared by Product Docs - updated 8 min ago
               </div>
             </div>
-            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--info-bg)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--info)]">
-              <ShieldCheck className="h-3 w-3" />
-              Governed
-            </span>
           </div>
           <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-[var(--secondary-text)]">
             Viewer
@@ -928,6 +866,7 @@ function RailHeader({
   response,
   onToggleMode,
   onReset,
+  showModeControl = false,
 }: {
   title: string;
   subtitle: string;
@@ -936,6 +875,7 @@ function RailHeader({
   response?: DocsChatResponse;
   onToggleMode: () => void;
   onReset: () => void;
+  showModeControl?: boolean;
 }) {
   return (
     <header className="shrink-0 border-b border-border bg-card px-4 py-3">
@@ -960,13 +900,11 @@ function RailHeader({
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--info-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--info)]">
-          <Shield className="h-3 w-3" />
-          Governed
-        </span>
-        <AppModeButton mode={mode} response={response} onToggle={onToggleMode} />
-      </div>
+      {showModeControl && (
+        <div className="mt-3">
+          <AppModeButton mode={mode} response={response} onToggle={onToggleMode} />
+        </div>
+      )}
     </header>
   );
 }
@@ -1094,7 +1032,11 @@ function ChatTurn({
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2.5 text-[11.5px] font-semibold text-foreground hover:bg-[var(--canvas)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label={`Share answer ${index + 1} to channel`}
               >
-                {shared ? <Check className="h-3 w-3" /> : <MessageSquareShare className="h-3 w-3" />}
+                {shared ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <MessageSquareShare className="h-3 w-3" />
+                )}
                 {shared ? "Shared" : "Share to channel"}
               </button>
             )}
@@ -1299,7 +1241,9 @@ function StateBanner({
         ? "bg-[var(--warning-bg)] text-[var(--warning)]"
         : "bg-[var(--danger-bg)] text-[var(--danger)]";
   return (
-    <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
+    <div
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}
+    >
       {icon}
       {label}
     </div>
@@ -1518,8 +1462,8 @@ function CitationPanel({ panel, onClose }: { panel: PanelState; onClose: () => v
         <div className="space-y-4 px-4 py-4 text-[13px] leading-relaxed text-[var(--secondary-text)]">
           {panel.kind === "sealed" && (
             <p>
-              Only the cleared derivative is shown. Raw sealed source content remains unavailable
-              at this access level.
+              Only the cleared derivative is shown. Raw sealed source content remains unavailable at
+              this access level.
             </p>
           )}
 
@@ -1644,9 +1588,6 @@ function ExampleList({
           ].join(" ")}
         >
           <span className="block font-semibold text-foreground">{example.label}</span>
-          <span className="mt-0.5 block text-[11.5px] text-[var(--secondary-text)]">
-            {example.description}
-          </span>
         </button>
       ))}
     </div>
@@ -1698,9 +1639,6 @@ function AgentComposer({
               <span className="min-w-0">
                 <span className="block text-[12.5px] font-semibold text-foreground">
                   {item.label}
-                </span>
-                <span className="mt-0.5 block text-[11.5px] leading-snug text-[var(--secondary-text)]">
-                  {item.description}
                 </span>
               </span>
             </button>
@@ -1883,15 +1821,6 @@ function DraftSlot({
       ) : (
         <div className="mt-1 text-[12px] text-[var(--secondary-text)]">{value}</div>
       )}
-    </div>
-  );
-}
-
-function InfoRow({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-primary">{icon}</span>
-      {label}
     </div>
   );
 }
