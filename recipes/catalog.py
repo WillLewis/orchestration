@@ -32,12 +32,12 @@ from core.schemas import (
     RuleSeverity,
     SourceRef,
     Vertical,
+    VerticalScore as CoreVerticalScore,
 )
 from corpus import load
 from evals.harness import StubHarness
 from evals.models import ScoredCase
 from evals.runner import EvalHarnessRunner
-from evals.scorecard import vertical_score
 from verification.engine import DeterministicVerifier
 
 EvalKind = Literal["synthetic", "regression", "tenant_local", "redacted"]
@@ -424,9 +424,9 @@ def run_three_vertical(runner: EvalHarnessRunner | None = None) -> RecipeScoreca
             rows.append(_eval_row(case, scored))
 
     core_rows = [
-        vertical_score("finance", scored_by_vertical["finance"]),
-        vertical_score("legal", scored_by_vertical["legal"]),
-        vertical_score("health", scored_by_vertical["health"]),
+        _core_vertical_score("finance", scored_by_vertical["finance"]),
+        _core_vertical_score("legal", scored_by_vertical["legal"]),
+        _core_vertical_score("health", scored_by_vertical["health"]),
     ]
     vertical_scores = {
         vertical: _ops_vertical_score(vertical, scored_by_vertical[vertical])
@@ -456,6 +456,25 @@ def _default_runner() -> EvalHarnessRunner:
 def _recipe_for(vertical: str) -> str:
     by_vertical = {recipe.vertical: recipe.id for recipe in recipes()}
     return by_vertical.get(vertical, f"{vertical}_v1")
+
+
+def _mean(scored_cases: list[ScoredCase], dimension: str) -> float:
+    values = [case.scores[dimension] for case in scored_cases if dimension in case.scores]
+    if not values:
+        return 0.0
+    return round(sum(values) / len(values), 4)
+
+
+def _core_vertical_score(vertical: str, scored_cases: list[ScoredCase]) -> CoreVerticalScore:
+    return CoreVerticalScore(
+        vertical=vertical,  # type: ignore[arg-type]  # Literal validated by Pydantic
+        deterministic_rule_pass=_mean(scored_cases, "deterministic_rule_pass"),
+        citation_correctness=_mean(scored_cases, "citation_correctness"),
+        permission_denial_pass=_mean(scored_cases, "permission_denial_pass"),
+        missing_evidence_honesty=_mean(scored_cases, "missing_evidence_honesty"),
+        cases_passed=sum(1 for case in scored_cases if case.passed),
+        cases_total=len(scored_cases),
+    )
 
 
 def _ops_vertical_score(vertical: str, scored_cases: list[ScoredCase]) -> VerticalScore:

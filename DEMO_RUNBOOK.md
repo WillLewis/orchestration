@@ -138,6 +138,9 @@ mocks.
    curl -sS http://localhost:8000/api/ops/scorecard | head -c 200
    ```
 
+   The Ops scorecard should report finance `5/6`, legal `2/2`, and health `2/2`;
+   `/ops/evals` should show `fin_ambig_01` as the single visible failed row.
+
 ## Fallback
 
 If anything breaks live, fall back to the 75-second recording + screenshots and keep narrating the

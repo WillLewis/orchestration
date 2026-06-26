@@ -39,6 +39,8 @@ def test_cli_three_vertical_exits_zero(capsys):
     out = capsys.readouterr().out
     assert "RecipeScorecard" in out
     assert "finance" in out and "legal" in out and "health" in out
+    assert "5/6" in out and "2/2" in out
+    assert "fin_ambig_01" in out and "[FAIL]" in out
 
 
 def test_cli_single_pack_json(capsys):

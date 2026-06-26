@@ -261,19 +261,6 @@ export function useActionPlanQuery() {
 
 /* --------------------------------- Agent Ops (surface 4) --------------------------------- */
 
-interface LiveScorecard {
-  pack_id: string;
-  scores: Array<{
-    vertical: Vertical;
-    deterministic_rule_pass: number;
-    citation_correctness: number;
-    permission_denial_pass: number;
-    missing_evidence_honesty: number;
-    cases_passed: number;
-    cases_total: number;
-  }>;
-}
-
 export function useOpsQuery() {
   return useQuery({
     queryKey: ["ops"],
@@ -281,26 +268,8 @@ export function useOpsQuery() {
     staleTime: STALE,
     queryFn: async (): Promise<Record<Vertical, VerticalScore>> => {
       if (!LIVE) return mockVerticalScores;
-      const sc = await getJSON<LiveScorecard>("/api/ops/scorecard");
-      // Overlay the real per-vertical pass counts + shared metrics onto the mock
-      // scaffold (keeps vertical-specific metric labels like privilege_gate / phi).
-      const next: Record<Vertical, VerticalScore> = { ...mockVerticalScores };
-      for (const s of sc.scores) {
-        const base = mockVerticalScores[s.vertical];
-        next[s.vertical] = {
-          ...base,
-          passed: s.cases_passed,
-          total: s.cases_total,
-          metrics: {
-            ...base.metrics,
-            deterministic_rule_pass: s.deterministic_rule_pass,
-            citation_correctness: s.citation_correctness,
-            permission_denial_pass: s.permission_denial_pass,
-            missing_evidence_honesty: s.missing_evidence_honesty,
-          },
-        };
-      }
-      return next;
+      const report = await getJSON<Partial<OpsReportData>>("/ops/evals");
+      return report.vertical_scores ?? mockVerticalScores;
     },
   });
 }
@@ -311,6 +280,7 @@ export function useOpsQuery() {
 // fetches the real run; mock is the bundled static data. Eval rows carry content-free trace signals
 // (input_class/expected_signal/observed_signal) for the failed-row drill-in.
 export interface OpsReportData {
+  vertical_scores: Record<Vertical, VerticalScore>;
   eval_rows: EvalRow[];
   telemetry_sample: Record<string, unknown>;
   eval_source_mix: { synthetic: number; tenant_local: number; redacted: number; aggregate: number };
@@ -318,6 +288,7 @@ export interface OpsReportData {
 }
 
 const opsReportData: OpsReportData = {
+  vertical_scores: mockVerticalScores,
   eval_rows: mockEvalRows,
   telemetry_sample: mockTelemetrySample,
   eval_source_mix: mockEvalSourceMix,
@@ -333,6 +304,7 @@ export function useOpsReportQuery() {
       if (!LIVE) return opsReportData;
       const r = await getJSON<Partial<OpsReportData>>("/ops/evals");
       return {
+        vertical_scores: r.vertical_scores ?? opsReportData.vertical_scores,
         eval_rows: r.eval_rows?.length ? r.eval_rows : opsReportData.eval_rows,
         telemetry_sample: r.telemetry_sample ?? opsReportData.telemetry_sample,
         eval_source_mix: r.eval_source_mix ?? opsReportData.eval_source_mix,

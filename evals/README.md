@@ -2,8 +2,8 @@
 
 **Status: ✅ implemented.** Offline-by-default, privacy-preserving eval loop over the WS-0
 stub pipeline. Implements `core.pipeline.EvalRunner` and produces the §14 three-vertical
-`RecipeScorecard`. `make test` (132 tests) and `make lint` green; `make eval` runs with **no
-network and no API keys**.
+`RecipeScorecard`. `make eval` runs with **no network and no API keys** and uses the same
+Ops-aligned three-vertical run as `/ops/evals` and `/api/ops/scorecard`.
 
 ## What this is
 
@@ -36,11 +36,17 @@ Sample `make eval` output:
 
 ```
 RecipeScorecard — three_vertical  (the same substrate, three verticals)
-vertical    det_rule  citation  perm_deny  miss_evid   passed
--------------------------------------------------------------
-finance         1.00      1.00       1.00       1.00    5/5
-legal           1.00      1.00       1.00       1.00    4/4
-health          1.00      1.00       1.00       1.00    4/4
+vertical   recipe                   passed   status
+---------------------------------------------------
+finance    finance_credit_v1           5/6    REVIEW
+  metrics[finance] deterministic_rule_pass=1.00 calculation_validation=1.00 permission_denial_pass=1.00 missing_evidence_honesty=1.00 citation_correctness=1.00
+legal      legal_contract_v1           2/2      PASS
+  metrics[legal] deterministic_rule_pass=1.00 hallucinated_citation_detection=1.00 privilege_gate=1.00 permission_denial_pass=1.00 citation_correctness=1.00
+health     health_protocol_v1          2/2      PASS
+  metrics[health] deterministic_rule_pass=1.00 phi_minimum_necessary=1.00 version_check=1.00 required_reviewer=1.00 citation_correctness=1.00
+
+failing cases
+  [FAIL] fin_ambig_01    finance UX ambiguity - Flagged for review — clarification prompt under-specified.
 ```
 
 ## Layout
@@ -55,7 +61,7 @@ health          1.00      1.00       1.00       1.00    4/4
 | `taxonomy.py` | Maps failing scorers → typed `FeedbackReasonCode` (feeds the `RegressionSuite`). |
 | `runner.py` | `EvalHarnessRunner` — satisfies `core.pipeline.EvalRunner` (`run(pack_id) -> list[EvalResult]`). |
 | `replay.py` | Persist `ReplayRecord`s (JSON) and recompute scores **without re-running the pipeline** — the regression/replay path. |
-| `scorecard.py` | Aggregates the three packs into one `RecipeScorecard` (§14). |
+| `scorecard.py` | Delegates the public `three_vertical` scorecard to the canonical WS-I/Ops run and projects it into one `RecipeScorecard` (§14). |
 | `telemetry_emit.py` | Privacy-safe emitter + `TelemetrySink` seam (Codex's `telemetry/` redaction/DP aggregator drops in behind it). |
 | `integrations.py` | Optional Braintrust / W&B export — env-gated, key-checked, no-op offline. |
 | `judge.py` | Optional LLM-judge seam (`JUDGE_MODEL` + provider key). Off by default; never runs in tests. |

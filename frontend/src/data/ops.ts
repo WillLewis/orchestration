@@ -45,40 +45,40 @@ export type VerticalScore = {
 export const vertical_scores: Record<Vertical, VerticalScore> = {
   finance: {
     recipe: policyArtifacts.finance.id,
-    passed: 47,
-    total: 48,
+    passed: 5,
+    total: 6,
     metrics: {
       deterministic_rule_pass: 1.0,
       calculation_validation: 1.0,
       permission_denial_pass: 1.0,
       missing_evidence_honesty: 1.0,
-      citation_correctness: 0.97,
+      citation_correctness: 1.0,
     },
     proves: "High-value financial decisions with auditable controls.",
   },
   legal: {
     recipe: policyArtifacts.legal.id,
-    passed: 31,
-    total: 32,
+    passed: 2,
+    total: 2,
     metrics: {
       deterministic_rule_pass: 1.0,
       hallucinated_citation_detection: 1.0,
       privilege_gate: 1.0,
       permission_denial_pass: 1.0,
-      citation_correctness: 0.96,
+      citation_correctness: 1.0,
     },
     proves: "Same primitives where sanctions make AI over-trust dangerous.",
   },
   health: {
     recipe: policyArtifacts.health.id,
-    passed: 28,
-    total: 29,
+    passed: 2,
+    total: 2,
     metrics: {
       deterministic_rule_pass: 1.0,
       phi_minimum_necessary: 1.0,
       version_check: 1.0,
       required_reviewer: 1.0,
-      citation_correctness: 0.98,
+      citation_correctness: 1.0,
     },
     proves: "Privacy, version control, and regulated approval beyond finance.",
   },
@@ -208,10 +208,10 @@ export const telemetry_sample = {
 };
 
 export const eval_source_mix = {
-  synthetic: 0.55,
-  tenant_local: 0.3,
-  redacted: 0.1,
-  aggregate: 0.05,
+  synthetic: 0.8,
+  tenant_local: 0,
+  redacted: 0,
+  aggregate: 0.2,
 };
 
 export const privacy = {
@@ -223,7 +223,7 @@ export const privacy = {
 export const failure_taxonomy = [
   { category: "retrieval_miss", count: 0 },
   { category: "permission_boundary", count: 0 },
-  { category: "unsupported_claim", count: 1 },
+  { category: "unsupported_claim", count: 0 },
   { category: "calculation_mismatch", count: 0 },
   { category: "policy_gate_failure", count: 0 },
   { category: "action_schema_failure", count: 0 },

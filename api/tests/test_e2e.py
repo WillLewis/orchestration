@@ -180,9 +180,10 @@ def test_ops_three_verticals_pass_and_honest_failure_visible():
     # Three verticals, each above the 0.8 pass threshold.
     scores = ops["vertical_scores"]
     assert set(scores) == {"finance", "legal", "health"}
-    for vertical in ("finance", "legal", "health"):
-        passed, total = scores[vertical]["passed"], scores[vertical]["total"]
-        assert passed / total >= 0.8
+    assert {
+        vertical: (scores[vertical]["passed"], scores[vertical]["total"])
+        for vertical in ("finance", "legal", "health")
+    } == {"finance": (5, 6), "legal": (2, 2), "health": (2, 2)}
     assert ops["overall_passed"] is True
 
     # The one intentional honest failure remains visible (not hidden to make the demo green).

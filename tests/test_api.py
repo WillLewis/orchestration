@@ -34,6 +34,29 @@ def test_ops_scorecard_is_three_vertical():
     assert {s["vertical"] for s in sc["scores"]} == {"finance", "legal", "health"}
 
 
+def test_ops_scorecard_and_report_do_not_drift():
+    scorecard = client.get("/api/ops/scorecard").json()
+    report = client.get("/ops/evals").json()
+
+    scorecard_counts = {
+        row["vertical"]: (row["cases_passed"], row["cases_total"])
+        for row in scorecard["scores"]
+    }
+    report_counts = {
+        vertical: (row["passed"], row["total"])
+        for vertical, row in report["vertical_scores"].items()
+    }
+
+    assert scorecard_counts == report_counts == {
+        "finance": (5, 6),
+        "legal": (2, 2),
+        "health": (2, 2),
+    }
+    assert [row["case_id"] for row in report["eval_rows"] if not row["passed"]] == [
+        "fin_ambig_01"
+    ]
+
+
 def test_meeting_metadata():
     body = client.get("/api/meeting").json()
     assert body["user_id"] == "u_rm"

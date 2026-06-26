@@ -30,7 +30,7 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 | POST | `/workproducts/{record_id}/verify` | `RecordVerification` | WS-F | Verify record (integrity/stale) |
 | GET | `/ops/evals` | `OpsReport` | WS-I + WS-G | Agent Ops ([ops.ts](../frontend/src/data/ops.ts)) |
 | GET | `/api/health` | `{ok}` | — | — |
-| GET | `/api/brief` · `/api/actions` · `/api/meeting` · `/api/ops/scorecard` | dict | real-backed | compat shims for the currently-wired `queries.ts` |
+| GET | `/api/brief` · `/api/actions` · `/api/meeting` · `/api/ops/scorecard` | dict | real-backed | compat shims; `/api/ops/scorecard` is a core-schema projection of `/ops/evals` |
 
 Workspace note: the brief assembles over the canonical `fixtures.acme` workspace (surfaces the
 missing covenant tracker, discount conflict, restricted legal-memo exclusion); action validation

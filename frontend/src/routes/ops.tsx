@@ -17,8 +17,9 @@ import {
   TAXONOMY_LABELS,
   VERTICAL_LABELS,
   type Vertical,
+  type VerticalScore,
 } from "@/data/ops";
-import { useOpsQuery, useOpsReportQuery } from "@/hooks/queries";
+import { useOpsReportQuery } from "@/hooks/queries";
 import { ConnectWorkHomeLink, MainRouteNav } from "@/components/navigation/MainRouteNav";
 
 export const Route = createFileRoute("/ops")({
@@ -132,15 +133,17 @@ function MetricBar({
 
 function ScorecardCard({
   vertical,
+  score,
   highlighted,
   progress,
 }: {
   vertical: Vertical;
+  score: VerticalScore;
   highlighted: boolean;
   progress: number; // 0..1 — multiplier on each metric's animated width
 }) {
-  const score = useOpsQuery().data[vertical];
-  const recipe = recipes.find((r) => r.id === score.recipe)!;
+  const recipe =
+    recipes.find((r) => r.id === score.recipe) ?? recipes.find((r) => r.vertical === vertical)!;
   const allPass = score.passed === score.total;
   return (
     <div
@@ -193,7 +196,8 @@ function ScorecardCard({
 
 function AgentOpsPage() {
   const opsReport = useOpsReportQuery();
-  const { eval_rows, telemetry_sample, eval_source_mix, failure_taxonomy } = opsReport.data;
+  const { vertical_scores, eval_rows, telemetry_sample, eval_source_mix, failure_taxonomy } =
+    opsReport.data;
   const [openTrace, setOpenTrace] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(1); // 0..1
@@ -338,6 +342,7 @@ function AgentOpsPage() {
               <ScorecardCard
                 key={v}
                 vertical={v}
+                score={vertical_scores[v]}
                 highlighted={hoveredVertical === v}
                 progress={progress}
               />
@@ -652,8 +657,8 @@ function AgentOpsPage() {
               })}
             </ul>
             <p className="mt-4 border-t border-border pt-3 text-[11.5px] text-[var(--muted-fg)]">
-              Two real issues currently tracked — not all-green theater. Each maps to an open eval
-              case under regression.
+              One real issue currently tracked — not all-green theater. It maps to an open eval case
+              under regression.
             </p>
           </div>
         </section>

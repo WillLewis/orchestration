@@ -9,10 +9,12 @@ dimensions over the cases that exercise them, plus cases_passed/total.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from core.schemas import RecipeScorecard, VerticalScore
 
 from .models import ScoredCase
-from .packs import THREE_VERTICAL, VERTICAL_PACK_IDS, get_pack
+from .packs import THREE_VERTICAL
 from .runner import EvalHarnessRunner
 from .scorers import SCORECARD_DIMENSIONS
 
@@ -42,17 +44,27 @@ def build_scorecard(
     pack_id: str = THREE_VERTICAL,
     runner: EvalHarnessRunner | None = None,
 ) -> RecipeScorecard:
-    """Run all three vertical packs and aggregate into one `RecipeScorecard`."""
-    runner = runner or EvalHarnessRunner()
-    rows: list[VerticalScore] = []
-    for vertical_pack_id in VERTICAL_PACK_IDS:
-        vertical = get_pack(vertical_pack_id).vertical
-        scored = runner.run_scored(vertical_pack_id)
-        rows.append(vertical_score(vertical, scored))
-    return RecipeScorecard(pack_id=pack_id, scores=rows)
+    """Return the canonical three-vertical `RecipeScorecard`.
+
+    The public scorecard is the Ops-aligned WS-I catalog evaluated through the WS-G runner. The
+    older concrete packs remain runnable as individual developer packs, but they no longer define
+    the `three_vertical` aggregate surfaced by the CLI, API, and Agent Ops.
+    """
+    report = build_ops_scorecard(runner=runner)
+    scorecard = report.core_scorecard
+    if pack_id != scorecard.pack_id:
+        return scorecard.model_copy(update={"pack_id": pack_id})
+    return scorecard
 
 
-def render_scorecard(scorecard: RecipeScorecard) -> str:
+def build_ops_scorecard(runner: EvalHarnessRunner | None = None) -> Any:
+    """Run the canonical Agent Ops scorecard and return the richer WS-I report shape."""
+    from recipes.catalog import run_three_vertical
+
+    return run_three_vertical(runner=runner)
+
+
+def render_scorecard(scorecard: RecipeScorecard, failed_rows: list[Any] | None = None) -> str:
     """A compact fixed-width table of the scorecard for the CLI."""
     header = (
         f"{'vertical':<10} {'det_rule':>9} {'citation':>9} "
@@ -77,4 +89,39 @@ def render_scorecard(scorecard: RecipeScorecard) -> str:
             len(scorecard.scores), 1
         )
         lines.append(f"  mean[{dim}] = {column_mean:.2f}")
+    if failed_rows:
+        lines.extend(["", "failing cases"])
+        for row in failed_rows:
+            note = f" - {row.note}" if row.note else ""
+            lines.append(
+                f"  [FAIL] {row.case_id:<16} {row.vertical:<7} {row.check}{note}"
+            )
+    return "\n".join(lines)
+
+
+def render_ops_scorecard(report: Any) -> str:
+    """Render the canonical Agent Ops scorecard plus its visible failed rows."""
+    header = f"{'vertical':<10} {'recipe':<22} {'passed':>8} {'status':>8}"
+    lines = [
+        f"RecipeScorecard — {report.pack_id}  (the same substrate, three verticals)",
+        header,
+        "-" * len(header),
+    ]
+    for vertical in ("finance", "legal", "health"):
+        row = report.vertical_scores[vertical]
+        status = "PASS" if row.passed == row.total else "REVIEW"
+        lines.append(
+            f"{vertical:<10} {row.recipe:<22} {row.passed:>4}/{row.total:<3} {status:>8}"
+        )
+        metrics = " ".join(f"{name}={value:.2f}" for name, value in row.metrics.items())
+        lines.append(f"  metrics[{vertical}] {metrics}")
+
+    failed_rows = [row for row in report.eval_rows if not row.passed]
+    if failed_rows:
+        lines.extend(["", "failing cases"])
+        for row in failed_rows:
+            note = f" - {row.note}" if row.note else ""
+            lines.append(
+                f"  [FAIL] {row.case_id:<16} {row.vertical:<7} {row.check}{note}"
+            )
     return "\n".join(lines)

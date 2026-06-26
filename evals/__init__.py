@@ -3,7 +3,7 @@ evals/ — WS-G eval harness (Claude lane).
 
 Offline-by-default, privacy-preserving eval loop over the WS-0 stub pipeline:
   - `EvalHarnessRunner` satisfies `core.pipeline.EvalRunner` (`run(pack_id) -> list[EvalResult]`)
-  - `build_scorecard()` produces the §14 three-vertical `RecipeScorecard`
+  - `build_scorecard()` produces the canonical §14 three-vertical `RecipeScorecard`
   - `ReplayRecorder`/`replay_scores` give the offline regression/replay path
   - `telemetry_emit` maps runs to the frozen, content-free `TelemetryEvent`/`RedactedFailurePacket`,
     behind a `TelemetrySink` seam that Codex's `telemetry/` redaction+DP aggregator drops into.
@@ -26,7 +26,13 @@ from .packs import (
 )
 from .replay import ReplayRecorder, load_records, replay_from_file, replay_scores
 from .runner import EvalHarnessRunner
-from .scorecard import build_scorecard, render_scorecard, vertical_score
+from .scorecard import (
+    build_ops_scorecard,
+    build_scorecard,
+    render_ops_scorecard,
+    render_scorecard,
+    vertical_score,
+)
 from .scorers import SCORECARD_DIMENSIONS, SCORERS, score_view
 from .taxonomy import failure_taxonomy, primary_failure_code
 from .telemetry_emit import (
@@ -41,7 +47,9 @@ __all__ = [
     "ActionAdversarialRunner",
     "ActionAdversarialRun",
     "EvalHarnessRunner",
+    "build_ops_scorecard",
     "build_scorecard",
+    "render_ops_scorecard",
     "render_scorecard",
     "vertical_score",
     "score_view",

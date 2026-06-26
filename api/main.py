@@ -261,5 +261,5 @@ def api_meeting(user_id: str = "u_rm", intent: str = "prepare_decision_brief") -
 
 @app.get("/api/ops/scorecard")
 def api_ops_scorecard() -> dict:
-    """The core WS-G three-vertical RecipeScorecard (finance + legal + health)."""
+    """Core-schema projection of the canonical Ops three-vertical scorecard."""
     return build_scorecard().model_dump(mode="json")

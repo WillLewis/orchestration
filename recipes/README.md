@@ -33,5 +33,6 @@ print(run_three_vertical().model_dump(mode="json"))
 PY
 ```
 
-Expected demo behavior: finance, legal, and health all pass the scorecard threshold,
-while `fin_ambig_01` remains visible as the single honest UX-ambiguity failure.
+Expected demo behavior: finance is `5/6`, legal is `2/2`, and health is `2/2`.
+All three verticals pass the scorecard threshold, while `fin_ambig_01` remains visible as
+the single honest UX-ambiguity failure.

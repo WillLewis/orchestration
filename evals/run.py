@@ -22,7 +22,7 @@ from .integrations import build_exporters
 from .packs import PACK_BUILDERS, THREE_VERTICAL, get_pack
 from .replay import ReplayRecorder
 from .runner import EvalHarnessRunner
-from .scorecard import build_scorecard, render_scorecard
+from .scorecard import build_ops_scorecard, render_ops_scorecard
 from .telemetry_emit import InMemorySink
 
 
@@ -64,11 +64,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
 
     if args.pack == THREE_VERTICAL:
-        scorecard = build_scorecard()
+        report = build_ops_scorecard()
         if args.json:
-            print(json.dumps(scorecard.model_dump(mode="json"), indent=2))
+            print(json.dumps(report.model_dump(mode="json"), indent=2))
         else:
-            print(render_scorecard(scorecard))
+            print(render_ops_scorecard(report))
         return 0
 
     # Single-pack run (validates the id eagerly so unknown packs fail clearly).
