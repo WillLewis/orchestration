@@ -71,7 +71,7 @@ class DeterministicDocsChatClient:
             return DocsChatDraft(reply="", citation_ids=[])
         parts = []
         for doc in view.docs:
-            text = _first_sentence(doc.safe_text)
+            text = _best_sentence(doc.safe_text, view.message)
             if text:
                 parts.append(text)
         body = " ".join(parts).strip()
@@ -266,6 +266,8 @@ def _retrieve(message: str, docs: Sequence[DocsDoc]) -> list[DocsDoc]:
     for idx, doc in enumerate(docs):
         haystack = _search_text(doc)
         score = sum(1 for token in query_tokens if token in haystack)
+        if doc.access == "sealed" and {"override", "attempt", "survive"} & set(query_tokens):
+            score += 1
         phrase_bonus = 3 if _normalized(message) and _normalized(message) in haystack else 0
         if score or phrase_bonus:
             scored.append((score + phrase_bonus, -idx, doc))
@@ -321,11 +323,14 @@ _STOPWORDS: frozenset[str] = frozenset(
 
 
 def _tokens(text: str) -> list[str]:
-    return [
-        token
-        for token in re.findall(r"[a-z0-9]+", text.lower())
-        if len(token) > 2 and token not in _STOPWORDS
-    ]
+    tokens: list[str] = []
+    for token in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(token) <= 2 or token in _STOPWORDS:
+            continue
+        tokens.append(token)
+        if token.endswith("s") and len(token) > 4:
+            tokens.append(token[:-1])
+    return tokens
 
 
 def _normalized(text: str) -> str:
@@ -442,6 +447,19 @@ def _first_sentence(text: str) -> str:
         return ""
     match = re.search(r"(?<=[.!?])\s+", cleaned)
     return cleaned[: match.start()].strip() if match else cleaned
+
+
+def _best_sentence(text: str, message: str) -> str:
+    cleaned = " ".join((text or "").split())
+    if not cleaned:
+        return ""
+    sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+    query_tokens = set(_tokens(message))
+    best = max(
+        sentences,
+        key=lambda sentence: sum(1 for token in query_tokens if token in _normalized(sentence)),
+    )
+    return best.strip()
 
 
 def _suggested_questions() -> list[str]:

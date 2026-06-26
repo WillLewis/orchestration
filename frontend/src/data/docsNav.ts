@@ -14,6 +14,9 @@ export type LiveDocsRoute =
   | "/developers/action-diff"
   | "/developers/eval-trace"
   | "/developers/compliance-trace"
+  | "/developers/ui-chat"
+  | "/developers/ui-meetings"
+  | "/developers/ui-decision-brief"
   | "/developers/rag"
   | "/developers/decision-brief"
   | "/developers/insight-cards"
@@ -62,6 +65,14 @@ export const docsNav: DocsNavSection[] = [
       { label: "Action Diff", to: "/developers/action-diff", live: true },
       { label: "Eval Trace", to: "/developers/eval-trace", live: true },
       { label: "Compliance Trace", to: "/developers/compliance-trace", live: true },
+    ],
+  },
+  {
+    label: "Interfaces",
+    items: [
+      { label: "Chat", to: "/developers/ui-chat", live: true },
+      { label: "Meetings", to: "/developers/ui-meetings", live: true },
+      { label: "Decision Brief UI", to: "/developers/ui-decision-brief", live: true },
     ],
   },
   {

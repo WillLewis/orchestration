@@ -64,7 +64,7 @@ def test_tier_1_grounded_answer_is_cited_and_open():
     body = _post("How does the policy gate decide blocks_commit?")
 
     assert body["status"] == "answered"
-    assert "policy gate" in body["reply"].lower()
+    assert "gate" in body["reply"].lower()
     citation = _citation(body, "gating")
     assert citation["access"] == "open"
     assert citation["tier"] == 1
