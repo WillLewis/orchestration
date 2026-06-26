@@ -188,20 +188,16 @@ def answer(
     sealed = [doc for doc in candidates if doc.access == "sealed"]
     open_docs = [doc for doc in candidates if doc.access == "open"]
 
-    if open_docs:
-        reply_parts = [_guard_open_reply(draft.reply, open_docs)]
+    if surface == "decision_brief":
+        reply = _decision_brief_reply(open_docs, sealed, locked, draft.reply)
     else:
-        reply_parts = []
-    if sealed:
-        reply_parts.append(_sealed_reply(sealed))
-    if locked:
-        reply_parts.append(_locked_reply(locked))
+        reply = _qa_reply(open_docs, sealed, locked, draft.reply)
 
     citations = _citations_for_candidates(
         _ordered_candidate_ids(candidates, draft.citation_ids), candidates
     )
     return DocsChatResponse(
-        reply=" ".join(part for part in reply_parts if part).strip(),
+        reply=reply,
         citations=citations,
         status="answered",
         suggested_questions=_suggested_questions(),
@@ -452,6 +448,59 @@ def _contains_forbidden_control_claim(text: str) -> bool:
             "raw_restricted",
         )
     )
+
+
+def _qa_reply(
+    open_docs: Sequence[DocsDoc],
+    sealed_docs: Sequence[DocsDoc],
+    locked_docs: Sequence[DocsDoc],
+    draft_reply: str,
+) -> str:
+    reply_parts: list[str] = []
+    if open_docs:
+        reply_parts.append(_guard_open_reply(draft_reply, open_docs))
+    if sealed_docs:
+        reply_parts.append(_sealed_reply(sealed_docs))
+    if locked_docs:
+        reply_parts.append(_locked_reply(locked_docs))
+    return " ".join(part for part in reply_parts if part).strip()
+
+
+def _decision_brief_reply(
+    open_docs: Sequence[DocsDoc],
+    sealed_docs: Sequence[DocsDoc],
+    locked_docs: Sequence[DocsDoc],
+    draft_reply: str,
+) -> str:
+    sections = ["Decision Brief Draft"]
+    if open_docs or sealed_docs:
+        sections.append(
+            "Grounded findings:\n"
+            + "\n".join(_brief_bullet(text) for text in _brief_findings(open_docs, sealed_docs, draft_reply))
+        )
+    if locked_docs:
+        sections.append("Access constraints:\n" + "\n".join(_brief_bullet(_locked_reply([doc])) for doc in locked_docs))
+    sections.append("Governance note: source access, sealed derivatives, and locked metadata were applied before generation.")
+    return "\n\n".join(section for section in sections if section).strip()
+
+
+def _brief_findings(
+    open_docs: Sequence[DocsDoc],
+    sealed_docs: Sequence[DocsDoc],
+    draft_reply: str,
+) -> list[str]:
+    findings: list[str] = []
+    if open_docs:
+        guarded = _guard_open_reply(draft_reply, open_docs)
+        if guarded:
+            findings.append(guarded)
+    findings.extend(doc.cleared_derivative for doc in sealed_docs if doc.cleared_derivative)
+    return findings
+
+
+def _brief_bullet(text: str) -> str:
+    clean = " ".join((text or "").split()).strip()
+    return f"- {clean}" if clean else ""
 
 
 def _sealed_reply(docs: Sequence[DocsDoc]) -> str:

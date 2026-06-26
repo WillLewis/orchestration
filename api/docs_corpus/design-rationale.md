@@ -66,7 +66,7 @@ body: |
 
   Private-first responses answer in the asker's permission context and keep the result ephemeral to that asker by default. The agent can cite permitted sources, name held-out sources where policy allows, and explain blockers without broadcasting sensitive details to the room. The user can then choose whether to share a cleared summary or action packet back to the thread. Sharing is an explicit step that re-runs the permission and mosaic checks against the target audience.
 
-  This design preserves utility without weakening confidentiality. It avoids the false choice between "answer only what everyone can see" and "risk leaking what only the asker can see." Private-first is the default for Slack-like channels, meeting rails, and any shared surface where a response may include permission-scoped evidence. Intersection permissions remain useful for public broadcasts and shared artifacts, but they are too blunt for the initial agent response.
+  This design preserves utility without weakening confidentiality. It avoids the false choice between "answer only what everyone can see" and "risk leaking what only the asker can see." Private-first is the default for channel-style collaboration, meeting rails, and any shared surface where a response may include permission-scoped evidence. Intersection permissions remain useful for public broadcasts and shared artifacts, but they are too blunt for the initial agent response.
 
   ## Deterministic gates and action safety
 
@@ -133,7 +133,7 @@ body: |
 
   ## Durable advantage
 
-  ConnectWork's durable advantage is not a smarter model or a larger context window. Model capability is becoming more interchangeable, and ConnectWork remains model-neutral across OpenAI, Anthropic, and Gemini. The defensible layer is the governance substrate around enterprise content: permission-inherited context, deterministic policy-as-data, auditable action diffs, sealed work products, active revalidation, and privacy-preserving evals.
+  ConnectWork's durable advantage is not a smarter model or a larger context window. Model capability is becoming more interchangeable, and ConnectWork remains model-neutral across supported model providers. The defensible layer is the governance substrate around enterprise content: permission-inherited context, deterministic policy-as-data, auditable action diffs, sealed work products, active revalidation, and privacy-preserving evals.
 
   Long context cannot enforce permissions, make policy decisions deterministic, prove approval state, diff side effects, roll back actions, or maintain a stale-state lifecycle. The substrate around the model is what lets a capable agent act safely on regulated work.
 ---
