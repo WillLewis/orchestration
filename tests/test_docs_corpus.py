@@ -51,3 +51,23 @@ def test_tier_3_docs_exist_and_are_restricted():
         assert doc.body
         assert doc.owner
         assert doc.request_access_to
+
+
+def test_design_rationale_reads_as_documentation_not_interview_prep():
+    body = _docs_by_id()["design-rationale"].body.lower()
+
+    forbidden_phrases = (
+        "i would",
+        "i'd",
+        "interview",
+        "panel",
+        "question bank",
+        "crib",
+        "slack",
+        "openai",
+        "anthropic",
+        "gemini",
+        "box",
+    )
+    for phrase in forbidden_phrases:
+        assert phrase not in body

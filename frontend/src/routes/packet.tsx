@@ -189,8 +189,7 @@ function RulepackFooter({ id, version }: { id: string; version: number }) {
       <ShieldCheck className="h-3 w-3 shrink-0 text-primary" />
       <span>
         Decided by Policy Artifact <span className="font-mono text-foreground">{id}</span> · v
-        {version} —
-        not the model
+        {version} — not the model
       </span>
     </div>
   );

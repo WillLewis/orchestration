@@ -1578,8 +1578,8 @@ function AiStudioPage() {
       >
         <p>
           AI Studio should expose the primitives the repo already has: AgentRecipe, Policy Artifact,
-          EvalPack, RegressionSuite, and RecipeScorecard. It does not let admins
-          bypass deterministic engines; it lets them configure and prove them.
+          EvalPack, RegressionSuite, and RecipeScorecard. It does not let admins bypass
+          deterministic engines; it lets them configure and prove them.
         </p>
       </DocsSection>
 

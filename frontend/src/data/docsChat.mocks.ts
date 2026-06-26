@@ -84,10 +84,7 @@ export const docsChatMocks = {
         tier: 1,
       },
     ],
-    suggested_questions: [
-      "What happens when a gate fails?",
-      "How are citations validated?",
-    ],
+    suggested_questions: ["What happens when a gate fails?", "How are citations validated?"],
   },
   tier2Open: {
     status: "answered",
