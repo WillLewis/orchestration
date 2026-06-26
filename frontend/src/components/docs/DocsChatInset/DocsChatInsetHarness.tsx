@@ -49,14 +49,14 @@ export function DocsChatInsetHarness() {
 
         <div className="grid gap-4 xl:grid-cols-2">
           <div className="xl:col-span-2">
-            <DocsChatInset surface={surface} />
+            <DocsChatInset surface={surface} live={false} />
           </div>
           {MOCK_KEYS.map((key) => (
             <div key={key} className="min-h-[640px]">
               <div className="mb-2 text-[11px] font-semibold uppercase text-[var(--muted-fg)]">
                 {key}
               </div>
-              <DocsChatInset surface={surface} initialMock={key} />
+              <DocsChatInset surface={surface} initialMock={key} live={false} />
             </div>
           ))}
         </div>
