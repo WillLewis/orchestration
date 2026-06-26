@@ -284,7 +284,7 @@
       {
         "heading": "Chat",
         "anchor": "chat",
-        "text": "A Slack-like surface for asking ConnectAgent about the documentation corpus from inside a live team thread. The chat surface keeps restricted retrieval private-first, so the asker can inspect sealed or locked citations before anything appears in a shared thread. Every answer remains grounded in the docs corpus and carries access-aware source chips. See how RAG works for the full pipeline."
+        "text": "Ask ConnectAgent about the docs from inside a live team thread — answers come back permission-scoped and private to you until you choose to share them. The chat surface keeps restricted retrieval private-first, so the asker can inspect sealed or locked citations before anything appears in a shared thread. Every answer remains grounded in the docs corpus and carries access-aware source chips. See how RAG works for the full pipeline."
       }
     ]
   },
@@ -296,7 +296,7 @@
       {
         "heading": "Meetings",
         "anchor": "meetings",
-        "text": "A meeting rail for asking ConnectAgent about the documentation corpus while the shared source discussion stays in view. The meetings surface keeps responses in the asker's rail, next to the shared document and participant context. Open, sealed, and locked citations behave exactly as they do on the Chat surface, backed by the same structured docs retrieval seam. See how RAG works for the full pipeline."
+        "text": "Ask ConnectAgent about the docs beside a live meeting — answers stay in your private rail while the shared document and participants stay in view. The meetings surface keeps responses in the asker's rail, next to the shared document and participant context. Open, sealed, and locked citations behave exactly as they do on the Chat surface, backed by the same structured docs retrieval seam. See how RAG works for the full pipeline."
       }
     ]
   },
