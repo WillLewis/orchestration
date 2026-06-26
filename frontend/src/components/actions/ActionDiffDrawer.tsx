@@ -57,6 +57,7 @@ import {
   LIVE,
   useActionPlanQuery,
   useExecuteActionsMutation,
+  useVerification,
   useVerifyWorkProductMutation,
   type ServerAuditEvent,
 } from "@/hooks/queries";
@@ -185,12 +186,14 @@ export function ActionDiffDrawer() {
   const { drawer, user_status, audit } = store;
   const reval = useRevalidation();
   const recordId = useLatestRecordId();
+  const { data: cachedVerification } = useVerification(recordId);
   const planActions = useActionPlanQuery().data.actions;
   const {
     data: verifyData,
     isPending: verifyPending,
     mutate: verifyMutate,
   } = useVerifyWorkProductMutation(recordId);
+  const verifyRequestKeyRef = useRef<string | null>(null);
   // Beat 6: once the Credit Officer has signed off, the route-to-CO follow-up is already done —
   // drop it so the plan proposes only the REMAINING work (tracker, Legal, schedule). The live
   // gateway proof below still submits the full plan to prove server-side re-gating.
@@ -208,10 +211,13 @@ export function ActionDiffDrawer() {
   const execute = useExecuteActionsMutation();
   const [execResult, setExecResult] = useState<ExecResult | null>(null);
   const isAfterSourceChange = drawer.mode === "revalidation_edit";
-  const verification =
+  const liveVerification =
     verifyData?.record_id === recordId
       ? verifyData
-      : { ...verify_result_financials, record_id: recordId };
+      : cachedVerification?.record_id === recordId
+        ? cachedVerification
+        : null;
+  const verification = liveVerification ?? { ...verify_result_financials, record_id: recordId };
 
   // Open directly to the useful tab for each scenario.
   useEffect(() => {
@@ -221,17 +227,22 @@ export function ActionDiffDrawer() {
     }
   }, [drawer.open, drawer.mode]);
 
-  // Live mode verifies through the backend; mock mode returns the pinned financials_v2 result.
+  // Live mode verifies through the backend once per drawer/record. The drawer renders the pinned
+  // deterministic snapshot immediately, so a slow or unavailable gateway cannot repaint/flicker the
+  // action cards while verification is pending.
   useEffect(() => {
+    const requestKey = `${recordId}:${drawer.mode}`;
     if (
       drawer.open &&
       drawer.mode === "revalidation_edit" &&
-      verifyData?.record_id !== recordId &&
+      liveVerification?.record_id !== recordId &&
+      verifyRequestKeyRef.current !== requestKey &&
       !verifyPending
     ) {
+      verifyRequestKeyRef.current = requestKey;
       verifyMutate({ event: "financials_v2" });
     }
-  }, [drawer.open, drawer.mode, recordId, verifyData, verifyPending, verifyMutate]);
+  }, [drawer.open, drawer.mode, liveVerification, recordId, verifyPending, verifyMutate]);
 
   // Scroll to focused card.
   useEffect(() => {
@@ -390,10 +401,10 @@ export function ActionDiffDrawer() {
       aria-label="Agent Actions"
     >
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
+        className="absolute inset-0 bg-black/30 animate-in fade-in-0 duration-150"
         onClick={closeDrawer}
       />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col border-l border-border bg-background shadow-panel animate-in slide-in-from-right duration-200 sm:w-[560px]">
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-[560px] transform-gpu flex-col border-l border-border bg-background shadow-panel will-change-transform animate-in slide-in-from-right duration-200 sm:w-[560px]">
         {/* Header */}
         <div className="shrink-0 border-b border-border px-5 pt-5 pb-3">
           <div className="flex items-start justify-between gap-3">
@@ -515,7 +526,7 @@ export function ActionDiffDrawer() {
             isAfterSourceChange ? (
               <RevalidationChanges
                 verification={verification}
-                pending={verifyPending}
+                pending={false}
                 showCascade={reval.cascadeAvailable}
                 cascadeAccepted={reval.csReconciled}
                 onAcceptCascade={() => {
@@ -1955,10 +1966,10 @@ function CascadeDrawer() {
       aria-label="Revalidation edit"
     >
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
+        className="absolute inset-0 bg-black/30 animate-in fade-in-0 duration-150"
         onClick={closeDrawer}
       />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col border-l border-border bg-background shadow-panel animate-in slide-in-from-right duration-200 sm:w-[560px]">
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-[560px] transform-gpu flex-col border-l border-border bg-background shadow-panel will-change-transform animate-in slide-in-from-right duration-200 sm:w-[560px]">
         {/* Header */}
         <div className="shrink-0 border-b border-border px-5 pt-5 pb-3">
           <div className="flex items-start justify-between gap-3">
