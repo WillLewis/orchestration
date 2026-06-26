@@ -33,7 +33,6 @@ export type DocsCitation = {
 
 export type DocsChatResponse = {
   response: string;
-  reply: string;
   citations: DocsCitation[];
   confidence: DocsConfidence;
   missing: string[];
@@ -71,14 +70,8 @@ export type DocsChatMockKey =
   | "noResults"
   | "error";
 
-function docsChatResponse(
-  response: Omit<DocsChatResponse, "reply">,
-): DocsChatResponse {
-  return { ...response, reply: response.response };
-}
-
 export const docsChatMocks = {
-  tier1Open: docsChatResponse({
+  tier1Open: {
     status: "answered",
     response:
       "The policy gate computes whether a proposed action can commit by reading the permitted " +
@@ -99,8 +92,8 @@ export const docsChatMocks = {
       },
     ],
     suggested_questions: ["What happens when a gate fails?", "How are citations validated?"],
-  }),
-  tier2Open: docsChatResponse({
+  },
+  tier2Open: {
     status: "answered",
     response:
       "Private-first responses keep sensitive agent findings visible to the asker before they are " +
@@ -121,8 +114,8 @@ export const docsChatMocks = {
       },
     ],
     suggested_questions: ["Why not auto-post locked findings?"],
-  }),
-  sealed: docsChatResponse({
+  },
+  sealed: {
     status: "answered",
     response:
       "The red-team evaluation is sealed. ConnectAgent can use the cleared derivative: the docs " +
@@ -142,8 +135,8 @@ export const docsChatMocks = {
       },
     ],
     suggested_questions: ["What does sealed mean here?"],
-  }),
-  tier3Locked: docsChatResponse({
+  },
+  tier3Locked: {
     status: "answered",
     response:
       "I found a matching document, but you do not have access to its contents. I can name the " +
@@ -161,8 +154,8 @@ export const docsChatMocks = {
       },
     ],
     suggested_questions: ["Who owns this document?", "Ask about public roadmap metrics"],
-  }),
-  noResults: docsChatResponse({
+  },
+  noResults: {
     status: "no_results",
     response:
       "I could not find documentation that answers that. Try asking about RAG grounding, policy " +
@@ -174,8 +167,8 @@ export const docsChatMocks = {
       "How does permission-aware RAG work?",
       "What does a locked citation mean?",
     ],
-  }),
-  error: docsChatResponse({
+  },
+  error: {
     status: "error",
     response:
       "The docs RAG service did not respond. Retry the question or continue with the static docs.",
@@ -183,5 +176,5 @@ export const docsChatMocks = {
     missing: ["A successful docs RAG service response."],
     citations: [],
     suggested_questions: ["Retry", "Open the RAG docs"],
-  }),
+  },
 } satisfies Record<DocsChatMockKey, DocsChatResponse>;

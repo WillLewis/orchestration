@@ -85,7 +85,7 @@ def test_docs_chat_response_accepts_all_dispositions():
     responses = [
         DocsChatResponse(
             status="answered",
-            reply="Open citation answer.",
+            response="Open citation answer.",
             citations=[
                 DocsCitation(
                     doc_id="gating",
@@ -101,7 +101,7 @@ def test_docs_chat_response_accepts_all_dispositions():
         ),
         DocsChatResponse(
             status="answered",
-            reply="Hidden permitted answer.",
+            response="Hidden permitted answer.",
             citations=[
                 DocsCitation(
                     doc_id="design-rationale",
@@ -115,7 +115,7 @@ def test_docs_chat_response_accepts_all_dispositions():
         ),
         DocsChatResponse(
             status="answered",
-            reply="Sealed derivative answer.",
+            response="Sealed derivative answer.",
             citations=[
                 DocsCitation(
                     doc_id="red-team-eval",
@@ -128,17 +128,17 @@ def test_docs_chat_response_accepts_all_dispositions():
         ),
         DocsChatResponse(
             status="answered",
-            reply="Restricted refusal.",
+            response="Restricted refusal.",
             citations=[DocsCitation(doc_id="revenue-fy26", access="locked", tier=3)],
         ),
         DocsChatResponse(
             status="no_results",
-            reply="No matching documentation.",
+            response="No matching documentation.",
             suggested_questions=["Ask about RAG grounding"],
         ),
         DocsChatResponse(
             status="error",
-            reply="Docs RAG service did not respond.",
+            response="Docs RAG service did not respond.",
             suggested_questions=["Retry"],
         ),
     ]
@@ -152,7 +152,6 @@ def test_docs_chat_response_accepts_all_dispositions():
         "error",
     ]
     assert responses[0].response == "Open citation answer."
-    assert responses[0].reply == responses[0].response
     assert responses[0].confidence == "grounded"
     assert responses[0].missing == []
     assert responses[0].citations[0].anchor == "policy-gate"
