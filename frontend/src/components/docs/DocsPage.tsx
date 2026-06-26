@@ -1,15 +1,73 @@
 import { Link } from "@tanstack/react-router";
 import { Check, Copy } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { DeveloperDocsHeader } from "@/components/docs/DeveloperDocsHeader";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
 import type { LiveDocsRoute } from "@/data/docsNav";
+import { slugify } from "@/lib/docs-slug";
 
 export type Endpoint = { method: "GET" | "POST"; path: string; note?: string };
 export type RelatedLink = { label: string; to: LiveDocsRoute; description: string };
 export type TableColumn = { key: string; label: string; align?: "left" | "right" };
 export type TableRow = Record<string, ReactNode>;
+
+type DocsHeadingIdFactory = (heading: string) => string;
+
+const DocsHeadingContext = createContext<DocsHeadingIdFactory | null>(null);
+
+export function DocsHeadingScope({ children }: { children: ReactNode }) {
+  const seen = new Set<string>();
+  const anchorForHeading = (heading: string) => slugify(heading, seen);
+
+  return (
+    <DocsHeadingContext.Provider value={anchorForHeading}>{children}</DocsHeadingContext.Provider>
+  );
+}
+
+function textFromNode(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textFromNode).join(" ");
+  return "";
+}
+
+export function DocsHeading({
+  level,
+  className,
+  children,
+  anchorText,
+}: {
+  level: 1 | 2 | 3;
+  className?: string;
+  children: ReactNode;
+  anchorText?: string;
+}) {
+  const anchorForHeading = useContext(DocsHeadingContext);
+  const heading = anchorText ?? textFromNode(children);
+  const id = anchorForHeading ? anchorForHeading(heading) : slugify(heading, new Set<string>());
+
+  if (level === 1) {
+    return (
+      <h1 id={id} className={className}>
+        {children}
+      </h1>
+    );
+  }
+
+  if (level === 2) {
+    return (
+      <h2 id={id} className={className}>
+        {children}
+      </h2>
+    );
+  }
+
+  return (
+    <h3 id={id} className={className}>
+      {children}
+    </h3>
+  );
+}
 
 export function DocsPageShell({
   eyebrow,
@@ -31,23 +89,28 @@ export function DocsPageShell({
       <div className="mx-auto block w-full max-w-[1320px] gap-8 px-4 py-8 sm:px-6 md:flex">
         <DocsSidebar />
 
-        <main className="w-full min-w-0 space-y-8 md:flex-1">
-          <section className="w-full min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
-              {eyebrow}
-            </div>
-            <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50">
-              {title}
-            </h1>
-            <div className="mt-3 max-w-[72ch] text-[14.5px] leading-relaxed text-zinc-400">
-              {description}
-            </div>
-          </section>
+        <DocsHeadingScope>
+          <main className="w-full min-w-0 space-y-8 md:flex-1">
+            <section className="w-full min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
+                {eyebrow}
+              </div>
+              <DocsHeading
+                level={1}
+                className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50"
+              >
+                {title}
+              </DocsHeading>
+              <div className="mt-3 max-w-[72ch] text-[14.5px] leading-relaxed text-zinc-400">
+                {description}
+              </div>
+            </section>
 
-          {children}
+            {children}
 
-          {related && related.length > 0 && <RelatedLinks links={related} />}
-        </main>
+            {related && related.length > 0 && <RelatedLinks links={related} />}
+          </main>
+        </DocsHeadingScope>
       </div>
 
       <DocsFooter />
@@ -117,8 +180,14 @@ export function DocsSection({
   return (
     <section className="grid min-w-0 grid-cols-1 gap-6 border-t border-zinc-900 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,480px)] lg:gap-10">
       <div className="min-w-0 space-y-3">
-        {label && <div className="font-mono text-[11px] text-zinc-500">§ {label}</div>}
-        <h2 className="text-[20px] font-semibold tracking-tight text-zinc-50">{title}</h2>
+        {label && (
+          <div className="font-mono text-[11px] text-zinc-500" data-docs-corpus-skip="true">
+            § {label}
+          </div>
+        )}
+        <DocsHeading level={2} className="text-[20px] font-semibold tracking-tight text-zinc-50">
+          {title}
+        </DocsHeading>
         <div className="max-w-[72ch] space-y-3 text-[13.5px] leading-relaxed text-zinc-400 [&_code]:font-mono [&_code]:text-zinc-300">
           {children}
         </div>
@@ -425,7 +494,7 @@ export function SignalList({
 
 export function RelatedLinks({ links }: { links: RelatedLink[] }) {
   return (
-    <section className="border-t border-zinc-900 pt-8">
+    <section className="border-t border-zinc-900 pt-8" data-docs-corpus-skip="true">
       <div className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
         Related
       </div>

@@ -16,16 +16,17 @@ export function ProductFrame({
 }) {
   if (variant === "fullBleed") {
     return (
-      <section className="overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-panel">
+      <section
+        className="overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-panel"
+        data-docs-corpus-skip="true"
+      >
         <header className="flex flex-col gap-3 border-b border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[var(--primary-tint)] text-primary">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[13px] font-semibold leading-tight text-foreground">
-                {title}
-              </div>
+              <div className="text-[13px] font-semibold leading-tight text-foreground">{title}</div>
               <div className="mt-0.5 max-w-[72ch] text-[11.5px] leading-snug text-[var(--secondary-text)]">
                 {subtitle}
               </div>
@@ -50,7 +51,10 @@ export function ProductFrame({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-panel">
+    <section
+      className="overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-panel"
+      data-docs-corpus-skip="true"
+    >
       <header className="flex flex-col gap-3 border-b border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[var(--primary-tint)] text-primary">

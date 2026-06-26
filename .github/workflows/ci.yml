@@ -6,6 +6,28 @@ on:
   pull_request:
 
 jobs:
+  docs-corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: bun install --frozen-lockfile
+
+      - name: Frontend docs tests
+        working-directory: frontend
+        run: bun test
+
+      - name: Generate docs corpus
+        working-directory: frontend
+        run: bun run scripts/extract-docs.ts
+
+      - name: Check docs corpus freshness
+        run: git diff --exit-code -- api/docs_corpus/generated/pages.json
+
   build:
     runs-on: ubuntu-latest
     strategy:
