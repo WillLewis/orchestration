@@ -6,6 +6,8 @@ export type DocsSurface = "chat" | "meetings" | "decision_brief";
 export type DocsAccess = "open" | "sealed" | "locked";
 export type DocsChatStatus = "answered" | "no_results" | "error";
 export type DocsConfidence = "grounded" | "partial" | "weak";
+export type DocsPhrasingMode = "llm" | "deterministic";
+export type DocsPhrasingFallbackReason = "not_configured" | "client_error" | "grounding_guard";
 export type DocsTitleVisibility = "reveal" | "redact";
 export type DocsTier = 1 | 2 | "sealed" | 3;
 
@@ -18,6 +20,7 @@ export type DocsChatRequest = {
   surface: DocsSurface;
   message: string;
   history?: DocsChatMessage[];
+  mode?: DocsPhrasingMode;
 };
 
 export type DocsCitation = {
@@ -36,8 +39,17 @@ export type DocsChatResponse = {
   citations: DocsCitation[];
   confidence: DocsConfidence;
   missing: string[];
+  phrasing: DocsChatPhrasing;
   status: DocsChatStatus;
   suggested_questions?: string[];
+};
+
+export type DocsChatPhrasing = {
+  requested_mode: DocsPhrasingMode;
+  effective_mode: DocsPhrasingMode;
+  llm_available: boolean;
+  model: string | null;
+  fallback_reason: DocsPhrasingFallbackReason | null;
 };
 
 export type DocsDoc = {
@@ -79,6 +91,13 @@ export const docsChatMocks = {
       "separate pass/fail layer, not model prose.",
     confidence: "grounded",
     missing: [],
+    phrasing: {
+      requested_mode: "llm",
+      effective_mode: "llm",
+      llm_available: true,
+      model: "docs-phrasing-mock",
+      fallback_reason: null,
+    },
     citations: [
       {
         doc_id: "gating",
@@ -101,6 +120,13 @@ export const docsChatMocks = {
       "docs navigation.",
     confidence: "partial",
     missing: ["Navigation-visible public docs page for the private-first design note."],
+    phrasing: {
+      requested_mode: "llm",
+      effective_mode: "deterministic",
+      llm_available: false,
+      model: null,
+      fallback_reason: "not_configured",
+    },
     citations: [
       {
         doc_id: "orchestration-design-notes",
@@ -123,6 +149,13 @@ export const docsChatMocks = {
       "a safe summary of the test intent.",
     confidence: "partial",
     missing: ["Raw sealed source text is intentionally unavailable."],
+    phrasing: {
+      requested_mode: "llm",
+      effective_mode: "deterministic",
+      llm_available: true,
+      model: "docs-phrasing-mock",
+      fallback_reason: "grounding_guard",
+    },
     citations: [
       {
         doc_id: "red-team-eval",
@@ -143,6 +176,13 @@ export const docsChatMocks = {
       "source if its title is revealable, but I cannot quote or summarize it.",
     confidence: "weak",
     missing: ["Permission to inspect the restricted source body."],
+    phrasing: {
+      requested_mode: "deterministic",
+      effective_mode: "deterministic",
+      llm_available: true,
+      model: null,
+      fallback_reason: null,
+    },
     citations: [
       {
         doc_id: "enterprise-admin-audit",
@@ -162,6 +202,13 @@ export const docsChatMocks = {
       "gates, private-first responses, sealed notes, or restricted-source behavior.",
     confidence: "weak",
     missing: ["A relevant docs section for the question."],
+    phrasing: {
+      requested_mode: "llm",
+      effective_mode: "deterministic",
+      llm_available: true,
+      model: "docs-phrasing-mock",
+      fallback_reason: "client_error",
+    },
     citations: [],
     suggested_questions: [
       "How does permission-aware RAG work?",
@@ -174,6 +221,13 @@ export const docsChatMocks = {
       "The docs RAG service did not respond. Retry the question or continue with the static docs.",
     confidence: "weak",
     missing: ["A successful docs RAG service response."],
+    phrasing: {
+      requested_mode: "deterministic",
+      effective_mode: "deterministic",
+      llm_available: false,
+      model: null,
+      fallback_reason: null,
+    },
     citations: [],
     suggested_questions: ["Retry", "Open the RAG docs"],
   },
