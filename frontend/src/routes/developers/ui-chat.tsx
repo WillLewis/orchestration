@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { DocsPageShell } from "@/components/docs/DocsPage";
 import { DocsChatInset } from "@/components/docs/DocsChatInset";
-import { ProductFrame } from "@/components/docs/ProductFrame";
 
 export const Route = createFileRoute("/developers/ui-chat")({
   head: () => ({
@@ -24,20 +23,18 @@ function UiChatDocsPage() {
       title="Chat"
       description={
         <p>
-          A Slack-like surface for asking ConnectAgent about the documentation corpus from inside a
-          live team thread.
+          Ask ConnectAgent about the docs from inside a live team thread — answers come back
+          permission-scoped and private to you until you choose to share them.
         </p>
       }
       related={[{ label: "RAG", to: "/developers/rag", description: "How retrieval is gated." }]}
     >
-      <ProductFrame
-        surface="Channel chat"
-        title="Docs answer in a team thread"
-        subtitle="Mention @Agent in the channel, receive a permission-scoped answer privately, then decide whether it should be shared."
-        variant="fullBleed"
+      <div
+        className="overflow-hidden rounded-lg border border-border bg-background shadow-panel"
+        data-docs-corpus-skip="true"
       >
         <DocsChatInset surface="chat" />
-      </ProductFrame>
+      </div>
 
       <section className="space-y-3 border-t border-zinc-900 pt-7">
         <div className="max-w-[72ch] space-y-3 text-[13.5px] leading-relaxed text-zinc-400">

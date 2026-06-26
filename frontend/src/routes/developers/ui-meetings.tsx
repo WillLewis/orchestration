@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { DocsPageShell } from "@/components/docs/DocsPage";
 import { DocsChatInset } from "@/components/docs/DocsChatInset";
-import { ProductFrame } from "@/components/docs/ProductFrame";
 
 export const Route = createFileRoute("/developers/ui-meetings")({
   head: () => ({
@@ -24,20 +23,18 @@ function UiMeetingsDocsPage() {
       title="Meetings"
       description={
         <p>
-          A meeting rail for asking ConnectAgent about the documentation corpus while the shared
-          source discussion stays in view.
+          Ask ConnectAgent about the docs beside a live meeting — answers stay in your private rail
+          while the shared document and participants stay in view.
         </p>
       }
       related={[{ label: "RAG", to: "/developers/rag", description: "How retrieval is gated." }]}
     >
-      <ProductFrame
-        surface="Meeting rail"
-        title="Docs answer beside a live meeting"
-        subtitle="A participant can ask in the rail and receive a permission-scoped docs answer that stays private to the asker."
-        variant="fullBleed"
+      <div
+        className="overflow-hidden rounded-lg border border-border bg-background shadow-panel"
+        data-docs-corpus-skip="true"
       >
         <DocsChatInset surface="meetings" />
-      </ProductFrame>
+      </div>
 
       <section className="space-y-3 border-t border-zinc-900 pt-7">
         <div className="max-w-[72ch] space-y-3 text-[13.5px] leading-relaxed text-zinc-400">

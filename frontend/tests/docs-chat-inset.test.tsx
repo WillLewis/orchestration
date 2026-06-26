@@ -35,7 +35,10 @@ const dispositions = [
   "error",
 ] as const;
 
-function renderInset(surface: (typeof surfaces)[number], disposition: (typeof dispositions)[number]) {
+function renderInset(
+  surface: (typeof surfaces)[number],
+  disposition: (typeof dispositions)[number],
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
