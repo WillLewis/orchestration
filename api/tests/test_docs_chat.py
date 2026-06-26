@@ -77,7 +77,7 @@ def test_tier_2_hidden_permitted_answer_is_cited_open_without_route():
 
     assert body["status"] == "answered"
     assert "private-first" in body["reply"].lower()
-    citation = _citation(body, "orchestration-design-notes")
+    citation = _citation(body, "design-rationale")
     assert citation["access"] == "open"
     assert citation["tier"] == 2
     assert citation["route"] is None

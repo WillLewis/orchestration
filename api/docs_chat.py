@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
@@ -257,23 +258,42 @@ def _build_system_prompt() -> str:
     )
 
 
+_NAME_WEIGHT = 5.0      # id/title is curated, high-signal text
+_SEALED_BONUS = 12.0    # a query about override/survive/attempt is specifically the sealed eval's topic
+_PHRASE_BONUS = 6.0
+
+
 def _retrieve(message: str, docs: Sequence[DocsDoc]) -> list[DocsDoc]:
-    """Rank docs using only the current message and ACL-safe searchable text."""
-    query_tokens = _tokens(message)
-    if not query_tokens:
+    """Rank docs using only the current message and ACL-safe text.
+
+    Name (id/title/owner) matches are weighted high because that text is short and curated. Body
+    matches are length-normalized (``hits / (1 + ln(1 + tokens))``) so a long, broad doc can't
+    outscore a short, focused one on raw token volume — the bug that let `design-rationale` win
+    gating/revenue/override prompts. Only docs tied at the top score are returned.
+    """
+    query = list(dict.fromkeys(_tokens(message)))
+    if not query:
         return []
-    scored: list[tuple[int, int, DocsDoc]] = []
+    norm_message = _normalized(message)
+    scored: list[tuple[float, int, DocsDoc]] = []
     for idx, doc in enumerate(docs):
-        haystack = _search_text(doc)
-        score = sum(1 for token in query_tokens if token in haystack)
-        if doc.access == "sealed" and {"override", "attempt", "survive"} & set(query_tokens):
-            score += 1
-        phrase_bonus = 3 if _normalized(message) and _normalized(message) in haystack else 0
-        if score or phrase_bonus:
-            scored.append((score + phrase_bonus, -idx, doc))
+        name = _name_text(doc)
+        body_tokens = set(_tokens(_body_text(doc)))
+        name_hits = sum(1 for token in query if token in name)
+        body_hits = sum(1 for token in query if token in body_tokens)
+        body_score = body_hits / (1.0 + math.log(1 + len(body_tokens))) if body_tokens else 0.0
+        score = _NAME_WEIGHT * name_hits + body_score
+        if doc.access == "sealed" and {"override", "attempt", "survive"} & set(query):
+            score += _SEALED_BONUS
+        if norm_message and norm_message in _search_text(doc):
+            score += _PHRASE_BONUS
+        if score > 1e-9:
+            scored.append((score, -idx, doc))
+    if not scored:
+        return []
     scored.sort(key=lambda item: item[:2], reverse=True)
     top_score = scored[0][0]
-    return [doc for score, _, doc in scored if score == top_score][:3]
+    return [doc for score, _, doc in scored if score >= top_score - 1e-9][:3]
 
 
 def _search_text(doc: DocsDoc) -> str:
@@ -285,6 +305,23 @@ def _search_text(doc: DocsDoc) -> str:
     if doc.request_access_to:
         fields.append(doc.request_access_to)
     return _normalized(" ".join(fields))
+
+
+def _name_text(doc: DocsDoc) -> str:
+    """Curated, high-signal *topical* identifiers: id + title only. Owner is deliberately excluded
+    — it's metadata ('Docs', 'Finance'), and matching it lets noise tokens (e.g. an injection
+    string saying 'all docs') spuriously favor an unrelated doc. Short enough that substring
+    matching is intended (query 'gate' matching the 'Deterministic Gating' title)."""
+    return _normalized(" ".join([doc.id.replace("-", " "), _visible_title(doc) or ""]))
+
+
+def _body_text(doc: DocsDoc) -> str:
+    """ACL-safe body only: open bodies and sealed cleared-derivatives; locked exposes no body."""
+    if doc.access == "open":
+        return _normalized(doc.body)
+    if doc.access == "sealed":
+        return _normalized(doc.cleared_derivative or "")
+    return ""
 
 
 _STOPWORDS: frozenset[str] = frozenset(

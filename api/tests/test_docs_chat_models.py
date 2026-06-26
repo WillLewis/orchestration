@@ -22,8 +22,8 @@ def test_docs_doc_tier_1_open_derivation():
 
 def test_docs_doc_tier_2_open_derivation():
     doc = DocsDoc(
-        id="orchestration-design-notes",
-        title="Orchestration Design Notes",
+        id="design-rationale",
+        title="Design Rationale",
         in_nav=False,
         viewer_permitted=True,
         body="Hidden but permitted body.",
@@ -103,8 +103,8 @@ def test_docs_chat_response_accepts_all_dispositions():
             reply="Hidden permitted answer.",
             citations=[
                 DocsCitation(
-                    doc_id="orchestration-design-notes",
-                    title="Orchestration Design Notes",
+                    doc_id="design-rationale",
+                    title="Design Rationale",
                     route=None,
                     snippet="Private-first detail.",
                     access="open",
