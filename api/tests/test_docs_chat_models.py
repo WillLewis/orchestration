@@ -79,6 +79,7 @@ def test_docs_chat_request_validates_history_and_surface():
 
     assert req.surface == "decision_brief"
     assert req.history[1].role == "agent"
+    assert req.mode == "deterministic"
 
 
 def test_docs_chat_response_accepts_all_dispositions():
@@ -155,6 +156,9 @@ def test_docs_chat_response_accepts_all_dispositions():
     assert responses[0].confidence == "grounded"
     assert responses[0].missing == []
     assert responses[0].citations[0].anchor == "policy-gate"
+    assert responses[0].phrasing.requested_mode == "deterministic"
+    assert responses[0].phrasing.effective_mode == "deterministic"
+    assert responses[0].phrasing.llm_available is False
 
 
 def test_docs_surface_route_map_values():

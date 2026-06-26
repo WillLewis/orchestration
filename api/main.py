@@ -137,7 +137,7 @@ def post_docs_chat(req: DocsChatRequest) -> DocsChatResponse:
     citation, emits sealed `cleared_derivative` text only, and returns locked-source access metadata
     without revealing restricted content.
     """
-    return docs_chat_answer(req.surface, req.message, req.history)
+    return docs_chat_answer(req.surface, req.message, req.history, mode=req.mode)
 
 
 # --------------------------------------------------------------------------- #
