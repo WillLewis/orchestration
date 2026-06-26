@@ -12,5 +12,8 @@ wandb/
 .braintrust/
 .gstack/
 
+# Local demo artifacts
+demo-walkthrough.html
+
 # Internal strategy doc — not for the public repo
 ConnectWork_Case_Plan_of_Attack.md
