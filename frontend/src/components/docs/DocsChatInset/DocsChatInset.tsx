@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   AtSign,
   BookOpen,
   Bot,
   Check,
-  ChevronDown,
   ClipboardList,
   Clock3,
   FileCheck2,
@@ -27,8 +26,6 @@ import {
   Users,
   X,
 } from "lucide-react";
-
-import { ParticipantRail } from "@/components/meeting/ParticipantRail";
 import {
   docsChatMocks,
   type DocsCitation,
@@ -173,15 +170,22 @@ const CITATION_DETAILS: Record<
     owner: "Security",
     requestAccessTo: "security@connectwork.example",
   },
-  "revenue-fy26": {
-    owner: "Finance",
-    requestAccessTo: "finance@connectwork.example",
+  "enterprise-admin-audit": {
+    owner: "Platform Governance",
+    requestAccessTo: "governance@connectwork.example",
   },
   "employee-directory": {
     owner: "People",
     requestAccessTo: "people@connectwork.example",
   },
 };
+
+const DOCS_MEETING_PARTICIPANTS = [
+  { initials: "NL", name: "Nia L.", role: "Product Ops", speaking: true },
+  { initials: "AR", name: "Ari R.", role: "Docs Engineering" },
+  { initials: "PK", name: "Priya K.", role: "Security Review" },
+  { initials: "JS", name: "Jon S.", role: "Solutions" },
+];
 
 const CONFIDENCE_META: Record<DocsConfidence, { label: string; className: string }> = {
   grounded: {
@@ -203,7 +207,7 @@ function mockKeyForPrompt(text: string): DocsChatMockKey {
   if (q.includes("unknown") || q.includes("no result")) return "noResults";
   if (q.includes("error") || q.includes("retry")) return "error";
   if (q.includes("override") || q.includes("sealed") || q.includes("red-team")) return "sealed";
-  if (q.includes("restricted") || q.includes("revenue") || q.includes("locked")) {
+  if (q.includes("restricted") || q.includes("admin audit") || q.includes("locked")) {
     return "tier3Locked";
   }
   if (q.includes("private-first") || q.includes("intersection") || q.includes("hidden")) {
@@ -434,7 +438,7 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
               </span>
             </div>
             <p className="mt-0.5 text-[11.5px] text-[var(--secondary-text)]">
-              Ask docs questions in-channel. ConnectAgent answers only you until shared.
+              Ask docs questions in-channel. ConnectAgent answers only to you until shared.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -530,7 +534,7 @@ function MeetingSurface({ controller }: { controller: SurfaceController }) {
       <DocsMeetingTopBar />
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
         <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--canvas)]">
-          <ParticipantRail />
+          <DocsParticipantRail />
           <DocsMeetingDocument />
         </main>
 
@@ -586,6 +590,41 @@ function DocsMeetingTopBar() {
         </button>
       </div>
     </header>
+  );
+}
+
+function DocsParticipantRail() {
+  return (
+    <div className="flex gap-3 px-6 pt-5">
+      {DOCS_MEETING_PARTICIPANTS.map((participant) => (
+        <div
+          key={participant.initials}
+          className={[
+            "flex min-w-0 flex-1 items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-shadow",
+            participant.speaking
+              ? "border-primary/40 ring-2 ring-[var(--primary-tint)]"
+              : "border-border",
+          ].join(" ")}
+        >
+          <div className="relative shrink-0">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-[var(--canvas)] text-[12px] font-semibold text-[var(--secondary-text)]">
+              {participant.initials}
+            </div>
+            {participant.speaking && (
+              <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-primary text-white shadow-card">
+                <MessageCircle className="h-2.5 w-2.5" />
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium text-foreground">
+              {participant.name}
+            </div>
+            <div className="truncate text-[11px] text-[var(--muted-fg)]">{participant.role}</div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1129,7 +1168,7 @@ function StructuredSlots({
         <div
           className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${confidence.className}`}
         >
-          {decisionStub ? "Slot reserved" : confidence.label}
+          {decisionStub ? <ReservedSlotValue /> : confidence.label}
         </div>
       </div>
       <div className="rounded-md border border-border bg-[var(--canvas)] px-3 py-2">
@@ -1137,9 +1176,7 @@ function StructuredSlots({
           Missing
         </div>
         {decisionStub ? (
-          <div className="mt-1 text-[11.5px] text-[var(--muted-fg)]">
-            Slot reserved for live brief scoring.
-          </div>
+          <ReservedSlotBlock />
         ) : response.missing.length > 0 ? (
           <ul className="mt-1 space-y-1 text-[11.5px] text-[var(--secondary-text)]">
             {response.missing.map((item) => (
@@ -1178,6 +1215,14 @@ function StructuredSlots({
       </div>
     </div>
   );
+}
+
+function ReservedSlotValue() {
+  return <span aria-label="Reserved structured field" className="block h-3 w-12" />;
+}
+
+function ReservedSlotBlock() {
+  return <div aria-label="Reserved structured field" className="mt-1 h-5 rounded-sm bg-card" />;
 }
 
 function RecoveryActions({
@@ -1618,19 +1663,13 @@ function DecisionDraft({
             <section className="grid gap-3 sm:grid-cols-2">
               <DraftSlot
                 label="Confidence slot"
-                value={
-                  response.status === "answered"
-                    ? "Reserved for live brief scoring"
-                    : "No draft confidence"
-                }
+                reserved={response.status === "answered"}
+                value={response.status === "answered" ? undefined : "No draft confidence"}
               />
               <DraftSlot
                 label="Missing slot"
-                value={
-                  response.status === "answered"
-                    ? "Reserved for live coverage gaps"
-                    : "No draft coverage"
-                }
+                reserved={response.status === "answered"}
+                value={response.status === "answered" ? undefined : "No draft coverage"}
               />
             </section>
 
@@ -1667,13 +1706,25 @@ function DraftPlaceholder({ title, body }: { title: string; body: string }) {
   );
 }
 
-function DraftSlot({ label, value }: { label: string; value: string }) {
+function DraftSlot({
+  label,
+  value,
+  reserved = false,
+}: {
+  label: string;
+  value?: string;
+  reserved?: boolean;
+}) {
   return (
     <div className="rounded-md border border-border bg-[var(--canvas)] px-3 py-2">
       <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
         {label}
       </div>
-      <div className="mt-1 text-[12px] text-[var(--secondary-text)]">{value}</div>
+      {reserved ? (
+        <ReservedSlotBlock />
+      ) : (
+        <div className="mt-1 text-[12px] text-[var(--secondary-text)]">{value}</div>
+      )}
     </div>
   );
 }

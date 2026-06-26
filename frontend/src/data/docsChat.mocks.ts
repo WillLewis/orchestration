@@ -145,8 +145,8 @@ export const docsChatMocks = {
     missing: ["Permission to inspect the restricted source body."],
     citations: [
       {
-        doc_id: "revenue-fy26",
-        title: "ConnectWork Revenue - FY26",
+        doc_id: "enterprise-admin-audit",
+        title: "Enterprise Admin Audit Notes",
         route: null,
         anchor: null,
         access: "locked",
