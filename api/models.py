@@ -30,6 +30,8 @@ DocsAccess = Literal["open", "sealed", "locked"]
 DocsChatStatus = Literal["answered", "no_results", "error"]
 DocsCitationTier = Literal[1, 2, "sealed", 3]
 DocsConfidence = Literal["grounded", "partial", "weak"]
+DocsPhrasingMode = Literal["llm", "deterministic"]
+DocsPhrasingFallbackReason = Literal["not_configured", "client_error", "grounding_guard"]
 
 DOCS_SURFACE_ROUTES: dict[DocsSurface, str] = {
     "chat": "/developers/ui-chat",
@@ -51,6 +53,7 @@ class DocsChatRequest(BaseModel):
     surface: DocsSurface
     message: str
     history: list[DocsChatMessage] = Field(default_factory=list)
+    mode: DocsPhrasingMode = "deterministic"
 
 
 class DocsCitation(BaseModel):
@@ -74,6 +77,16 @@ class DocsCitation(BaseModel):
         return data
 
 
+class DocsChatPhrasing(BaseModel):
+    """Mode metadata for docs-RAG prose generation. Governed fields stay outside this object."""
+
+    requested_mode: DocsPhrasingMode = "deterministic"
+    effective_mode: DocsPhrasingMode = "deterministic"
+    llm_available: bool = False
+    model: str | None = None
+    fallback_reason: DocsPhrasingFallbackReason | None = None
+
+
 class DocsChatResponse(BaseModel):
     """Docs-RAG answer envelope shared by the docs UI mock and future backend endpoint."""
 
@@ -81,6 +94,7 @@ class DocsChatResponse(BaseModel):
     citations: list[DocsCitation] = Field(default_factory=list)
     confidence: DocsConfidence = "grounded"
     missing: list[str] = Field(default_factory=list)
+    phrasing: DocsChatPhrasing = Field(default_factory=DocsChatPhrasing)
     status: DocsChatStatus = "answered"
     suggested_questions: list[str] = Field(default_factory=list)
 
