@@ -10,6 +10,8 @@ As of the WS-L0 coordination pass on 2026-06-26:
 
 - Root coordination docs were missing from the repo and have been materialized from the attached
   plan/workstreams context.
+- Live LLM mode is available for `/docs/chat` when `CHAT_MODEL` and `ANTHROPIC_API_KEY` are
+  configured.
 - `DEMO_RUNBOOK.md` exists and is the source of truth for live demo questions.
 - Static inspection shows existing docs-chat tests for:
   - governed-field stability between deterministic and fake LLM clients

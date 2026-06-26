@@ -10,6 +10,7 @@ The target system is `/docs/chat`.
 
 Current state:
 
+- Live LLM path works when configured.
 - Governed fields must remain deterministic:
   - `status`
   - `citations`
