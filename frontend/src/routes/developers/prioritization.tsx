@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
 
+import { DeveloperDocsHeader } from "@/components/docs/DeveloperDocsHeader";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
 
 export const Route = createFileRoute("/developers/prioritization")({
@@ -89,28 +89,7 @@ const ROWS: Row[] = [
 function PrioritizationDocsPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0a0c] text-zinc-200">
-      <header className="sticky top-0 z-30 border-b border-zinc-800/80 bg-[#0a0a0c]/85 backdrop-blur">
-        <div className="mx-auto flex h-12 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              to="/ops"
-              className="inline-flex h-7 items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-2 text-[11px] text-zinc-400 hover:text-zinc-200"
-            >
-              <ArrowLeft className="h-3 w-3" />
-              Agent Ops
-            </Link>
-            <span className="truncate text-[13px] font-semibold tracking-tight text-zinc-100">
-              ConnectWork Platform API
-            </span>
-            <span className="inline-flex h-5 items-center rounded border border-zinc-700 bg-zinc-900 px-1.5 font-mono text-[10.5px] text-zinc-300">
-              v2
-            </span>
-          </div>
-          <div className="hidden text-[11.5px] text-zinc-500 sm:block">
-            developers.connectwork.com
-          </div>
-        </div>
-      </header>
+      <DeveloperDocsHeader />
 
       <div className="mx-auto block w-full max-w-[1320px] gap-8 px-4 py-8 sm:px-6 md:flex">
         <DocsSidebar />

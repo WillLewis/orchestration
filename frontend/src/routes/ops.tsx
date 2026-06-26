@@ -1,16 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   Lock,
   Play,
-  ShieldCheck,
   Sparkles,
   XCircle,
   AlertTriangle,
-  Cpu,
 } from "lucide-react";
 import {
   privacy,
@@ -22,6 +19,7 @@ import {
   type Vertical,
 } from "@/data/ops";
 import { useOpsQuery, useOpsReportQuery } from "@/hooks/queries";
+import { ConnectWorkHomeLink, MainRouteNav } from "@/components/navigation/MainRouteNav";
 
 export const Route = createFileRoute("/ops")({
   head: () => ({
@@ -282,38 +280,15 @@ function AgentOpsPage() {
       {/* Page header */}
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-4 px-6 py-4 xl:px-10">
-          <div className="flex items-center gap-6">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--secondary-text)] transition-colors hover:text-foreground"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to meeting
-            </Link>
-            <div className="flex items-center gap-2">
-              <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
-              <span className="text-[15px] font-semibold tracking-tight">ConnectWork</span>
-              <span className="ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-[var(--primary-tint)] px-2 text-[11px] font-semibold text-primary">
-                <ShieldCheck className="h-3 w-3" />
-                Agent Ops
-              </span>
-            </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <ConnectWorkHomeLink />
+            <MainRouteNav />
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 text-[11.5px] font-medium text-[var(--secondary-text)]">
-              <Cpu className="h-3 w-3" />
-              <Mono>deterministic eval runner</Mono>
-            </span>
             <span className="text-[11.5px] text-[var(--muted-fg)] tabular-nums">
               {lastRunLabel}
             </span>
-            <Link
-              to="/developers/gating"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-[12.5px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              View API reference
-            </Link>
             <button
               type="button"
               onClick={runEvals}

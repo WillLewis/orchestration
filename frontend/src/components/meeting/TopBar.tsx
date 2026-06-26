@@ -1,9 +1,9 @@
-import { LogOut, ArrowLeft, ShieldCheck, Workflow, GitBranch } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import { meeting } from "@/lib/meeting-data";
-import { openDrawer } from "@/lib/actions-store";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { ConnectWorkHomeLink, MainRouteNav } from "@/components/navigation/MainRouteNav";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +49,7 @@ export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-5">
       {/* Wordmark */}
-      <div className="flex items-center gap-6">
+      <div className="flex min-w-0 items-center gap-6">
         {showBackToMeeting && (
           <Link
             to="/"
@@ -59,41 +59,14 @@ export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: 
             Back to meeting
           </Link>
         )}
-        <div className="flex items-center gap-2">
-          <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
-          <span className="text-[15px] font-semibold tracking-tight text-foreground">
-            ConnectWork
-          </span>
-          <Link
-            to="/ops"
-            className="ml-2 inline-flex h-6 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-medium text-[var(--secondary-text)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary-tint)] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label="Open Agent Ops evaluation dashboard"
-          >
-            <ShieldCheck className="h-3 w-3" />
-            Agent Ops
-          </Link>
-          <Link
-            to="/loop"
-            className="ml-1 inline-flex h-6 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-medium text-[var(--secondary-text)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary-tint)] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label="Open Agent Batch orchestration"
-          >
-            <Workflow className="h-3 w-3" />
-            Agent Batch
-          </Link>
-          <button
-            type="button"
-            onClick={() => openDrawer({ source: "Acme renewal — pre-committee review" })}
-            className="ml-1 inline-flex h-6 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-medium text-[var(--secondary-text)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary-tint)] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label="Open Agent Actions"
-          >
-            <GitBranch className="h-3 w-3" />
-            Agent Actions
-          </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <ConnectWorkHomeLink />
+          <MainRouteNav />
         </div>
 
         {/* Title + live + timer */}
-        <div className="flex items-center gap-3">
-          <h1 className="text-[13px] font-medium text-foreground">{meeting.title}</h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="truncate text-[13px] font-medium text-foreground">{meeting.title}</h1>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--danger-bg)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--danger)]">
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-[var(--danger)]" />
             Live

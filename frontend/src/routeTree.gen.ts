@@ -13,6 +13,7 @@ import { Route as PacketRouteImport } from './routes/packet'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DevelopersIndexRouteImport } from './routes/developers/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
 import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
 import { Route as DevelopersVerticalsRouteImport } from './routes/developers/verticals'
@@ -54,6 +55,11 @@ const LoopRoute = LoopRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersIndexRoute = DevelopersIndexRouteImport.update({
+  id: '/developers/',
+  path: '/developers/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecordRecordIdRoute = RecordRecordIdRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
+  '/developers/': typeof DevelopersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
+  '/developers': typeof DevelopersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/record/$recordId': typeof RecordRecordIdRoute
+  '/developers/': typeof DevelopersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -284,6 +293,7 @@ export interface FileRouteTypes {
     | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
+    | '/developers/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
+    | '/developers'
   id:
     | '__root__'
     | '/'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/developers/verticals'
     | '/developers/vision'
     | '/record/$recordId'
+    | '/developers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -369,6 +381,7 @@ export interface RootRouteChildren {
   DevelopersVerticalsRoute: typeof DevelopersVerticalsRoute
   DevelopersVisionRoute: typeof DevelopersVisionRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
+  DevelopersIndexRoute: typeof DevelopersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/': {
+      id: '/developers/'
+      path: '/developers'
+      fullPath: '/developers/'
+      preLoaderRoute: typeof DevelopersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/record/$recordId': {
@@ -585,6 +605,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersVerticalsRoute: DevelopersVerticalsRoute,
   DevelopersVisionRoute: DevelopersVisionRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
+  DevelopersIndexRoute: DevelopersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
