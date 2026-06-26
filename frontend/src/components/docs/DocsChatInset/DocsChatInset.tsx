@@ -24,6 +24,7 @@ import {
   docsChatMocks,
   type DocsCitation,
   type DocsChatMockKey,
+  type DocsChatMessage,
   type DocsChatResponse,
   type DocsSurface,
 } from "@/data/docsChat.mocks";
@@ -42,7 +43,8 @@ type PanelState =
   | { kind: "locked"; citation: DocsCitation }
   | null;
 
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== "false";
+const API_BASE =
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "http://localhost:8000";
 
 const EXAMPLES: Array<{ key: DocsChatMockKey; label: string }> = [
   {
@@ -106,6 +108,12 @@ const CITATION_DETAILS: Record<
     readerBody:
       "Private-first responses keep sensitive findings visible to the asker until they explicitly share them into a thread or meeting.",
   },
+  "design-rationale": {
+    owner: "Product",
+    requestAccessTo: "product@connectwork.example",
+    readerBody:
+      "Private-first responses keep sensitive findings visible to the asker until they explicitly share them into a thread or meeting.",
+  },
   "red-team-eval": {
     owner: "Security",
     requestAccessTo: "security@connectwork.example",
@@ -113,6 +121,10 @@ const CITATION_DETAILS: Record<
   "revenue-fy26": {
     owner: "Finance",
     requestAccessTo: "finance@connectwork.example",
+  },
+  "employee-directory": {
+    owner: "People",
+    requestAccessTo: "people@connectwork.example",
   },
 };
 
@@ -140,12 +152,39 @@ function responseFor(key: DocsChatMockKey): DocsChatResponse {
   return docsChatMocks[key];
 }
 
+function fallbackResponseFor(text: string, forcedKey?: DocsChatMockKey): DocsChatResponse {
+  return responseFor(forcedKey ?? mockKeyForPrompt(text));
+}
+
+async function postDocsChat(
+  surface: DocsSurface,
+  message: string,
+  history: DocsChatMessage[],
+): Promise<DocsChatResponse> {
+  const res = await fetch(`${API_BASE}/docs/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ surface, message, history }),
+  });
+  if (!res.ok) throw new Error(`/docs/chat returned ${res.status}`);
+  return (await res.json()) as DocsChatResponse;
+}
+
+function historyFromTurns(turns: DocsTurn[]): DocsChatMessage[] {
+  return turns.flatMap((turn) => [
+    { role: "user", content: turn.prompt },
+    { role: "agent", content: turn.response.reply },
+  ]);
+}
+
 export function DocsChatInset({
   surface,
   initialMock,
+  live = !initialMock,
 }: {
   surface: DocsSurface;
   initialMock?: DocsChatMockKey;
+  live?: boolean;
 }) {
   const [stage, setStage] = useState<DocsInsetStage>(initialMock ? "chat" : "idle");
   const [pending, setPending] = useState(false);
@@ -175,30 +214,50 @@ export function DocsChatInset({
 
   const lastTurnIndex = turns.length - 1;
 
-  const submitMock = useCallback(
+  const appendTurn = useCallback(
+    (prompt: string, response: DocsChatResponse) => {
+      setTurns((current) => [
+        ...current,
+        {
+          prompt,
+          response,
+          privateFirst: surface === "chat" && response.citations.some((c) => c.access === "locked"),
+        },
+      ]);
+    },
+    [surface],
+  );
+
+  const submitDocs = useCallback(
     (text: string, forcedKey?: DocsChatMockKey) => {
       const clean = text.trim();
       if (!clean || pending) return;
+      const prompt = clean.startsWith("@Agent") ? clean : `@Agent ${clean}`;
+      const history = historyFromTurns(turns);
       setStage("chat");
       setPending(true);
       setMentionOpen(false);
 
-      const key = USE_MOCKS ? (forcedKey ?? mockKeyForPrompt(clean)) : "error";
-      window.setTimeout(() => {
-        const response = responseFor(key);
-        setTurns((current) => [
-          ...current,
-          {
-            prompt: clean.startsWith("@Agent") ? clean : `@Agent ${clean}`,
-            response,
-            privateFirst:
-              surface === "chat" && response.citations.some((c) => c.access === "locked"),
-          },
-        ]);
-        setPending(false);
-      }, 450);
+      if (!live) {
+        window.setTimeout(() => {
+          appendTurn(prompt, fallbackResponseFor(clean, forcedKey));
+          setPending(false);
+        }, 450);
+        return;
+      }
+
+      void postDocsChat(surface, clean, history)
+        .then((response) => {
+          appendTurn(prompt, response);
+        })
+        .catch(() => {
+          appendTurn(prompt, fallbackResponseFor(clean, forcedKey));
+        })
+        .finally(() => {
+          setPending(false);
+        });
     },
-    [pending, surface],
+    [appendTurn, live, pending, surface, turns],
   );
 
   const startAgentStateFlow = useCallback(() => {
@@ -263,7 +322,7 @@ export function DocsChatInset({
               <MentionMenu
                 open={mentionOpen}
                 onOpenChange={setMentionOpen}
-                onPick={(item) => submitMock(item.label, item.key)}
+                onPick={(item) => submitDocs(item.label, item.key)}
               />
             )}
             <button
@@ -288,7 +347,7 @@ export function DocsChatInset({
           </span>
           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
             <ShieldCheck className="h-3 w-3" />
-            Phase-0 mocks
+            {live ? "Live /docs/chat" : "Phase-0 mocks"}
           </span>
         </div>
       </header>
@@ -297,7 +356,7 @@ export function DocsChatInset({
         {stage === "idle" && turns.length === 0 && (
           <>
             <IdleState onStart={startAgentStateFlow} />
-            <ExamplePrompts onPick={(example) => submitMock(example.label, example.key)} />
+            <ExamplePrompts onPick={(example) => submitDocs(example.label, example.key)} />
           </>
         )}
 
@@ -311,11 +370,11 @@ export function DocsChatInset({
 
         {stage === "success" && (
           <>
-            <ResultBrief onFollowups={() => submitMock("What follow-ups should the docs cite?")} />
+            <ResultBrief onFollowups={() => submitDocs("What follow-ups should the docs cite?")} />
             <div className="px-5 pb-4">
               <button
                 type="button"
-                onClick={() => submitMock(EXAMPLES[0].label, EXAMPLES[0].key)}
+                onClick={() => submitDocs(EXAMPLES[0].label, EXAMPLES[0].key)}
                 className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-3 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Bot className="h-3.5 w-3.5" />
@@ -350,7 +409,7 @@ export function DocsChatInset({
         )}
       </div>
 
-      <InputBar onSubmit={submitMock} pending={pending} />
+      <InputBar onSubmit={submitDocs} pending={pending} />
       <CitationPanel panel={panel} onClose={() => setPanel(null)} />
     </section>
   );

@@ -72,13 +72,13 @@ from api.workproducts import verify as verify_workproduct
 
 app = FastAPI(title="ConnectWork Command Agent — gateway", version="0.2.0")
 
-# CORS: the Vite dev server (default 5173), any localhost port, an explicit `FRONTEND_ORIGIN`
+# CORS: the Vite dev server (default 5173), local dev hosts, an explicit `FRONTEND_ORIGIN`
 # override, and the hosted Lovable demo.
 _FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[_FRONTEND_ORIGIN, "https://govern-meeting-view.lovable.app"],
-    allow_origin_regex=r"http://localhost:\d+",
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_methods=["*"],
     allow_headers=["*"],
 )
