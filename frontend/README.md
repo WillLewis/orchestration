@@ -18,6 +18,19 @@ bun run dev      # dev server (URL printed on start)
 bun run build    # production build
 ```
 
+## Docs corpus extractor
+
+Developer docs anchors and corpus JSON are generated from rendered `/developers/*` routes:
+
+```bash
+cd frontend
+bun test tests/docs-extractor.test.tsx
+bun run scripts/extract-docs.ts
+```
+
+The extractor writes `../api/docs_corpus/generated/pages.json`. CI regenerates this file and fails
+if it differs from the committed output.
+
 ## Data layer (mocks ↔ live API)
 
 Surfaces read through React Query hooks in `src/hooks/queries.ts`. By default they serve the

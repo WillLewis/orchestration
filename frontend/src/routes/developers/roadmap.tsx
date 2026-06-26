@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { DeveloperDocsHeader } from "@/components/docs/DeveloperDocsHeader";
+import { DocsHeading, DocsHeadingScope } from "@/components/docs/DocsPage";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
 
 export const Route = createFileRoute("/developers/roadmap")({
@@ -154,14 +155,22 @@ function PhaseCard({ phase }: { phase: Phase }) {
       style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
     >
       <div className="flex items-center gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 font-mono text-[14px] font-semibold text-emerald-300">
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 font-mono text-[14px] font-semibold text-emerald-300"
+          data-docs-corpus-skip="true"
+        >
           {phase.n}
         </span>
         <div>
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+          <div
+            className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-zinc-500"
+            data-docs-corpus-skip="true"
+          >
             {phase.tag}
           </div>
-          <h3 className="text-[17px] font-semibold tracking-tight text-zinc-50">{phase.title}</h3>
+          <DocsHeading level={3} className="text-[17px] font-semibold tracking-tight text-zinc-50">
+            {phase.title}
+          </DocsHeading>
         </div>
       </div>
 
@@ -195,75 +204,82 @@ function RoadmapDocsPage() {
       <div className="mx-auto block w-full max-w-[1320px] gap-8 px-4 py-8 sm:px-6 md:flex">
         <DocsSidebar />
 
-        <main className="w-full min-w-0 space-y-8 md:flex-1">
-          <section style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
-              Getting started
-            </div>
-            <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50">
-              Roadmap
-            </h1>
-            <p className="mt-3 max-w-[68ch] text-[14px] leading-relaxed text-zinc-400">
-              A phased plan for ConnectAgent. Each phase ships value on its own and earns the next.
-              The ranking behind the sequence lives in{" "}
-              <Link
-                to="/developers/prioritization"
-                className="text-emerald-300 underline-offset-2 hover:underline"
+        <DocsHeadingScope>
+          <main className="w-full min-w-0 space-y-8 md:flex-1">
+            <section style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
+                Getting started
+              </div>
+              <DocsHeading
+                level={1}
+                className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50"
               >
-                Prioritization
-              </Link>
-              .
-            </p>
-          </section>
+                Roadmap
+              </DocsHeading>
+              <p className="mt-3 max-w-[68ch] text-[14px] leading-relaxed text-zinc-400">
+                A phased plan for ConnectAgent. Each phase ships value on its own and earns the
+                next. The ranking behind the sequence lives in{" "}
+                <Link
+                  to="/developers/prioritization"
+                  className="text-emerald-300 underline-offset-2 hover:underline"
+                >
+                  Prioritization
+                </Link>
+                .
+              </p>
+            </section>
 
-          <section
-            className="rounded-lg border-l-2 border-emerald-400/80 bg-emerald-400/[0.06] p-4"
-            style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
-          >
-            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-300/90">
-              Why this order
+            <section
+              className="rounded-lg border-l-2 border-emerald-400/80 bg-emerald-400/[0.06] p-4"
+              style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-300/90">
+                Why this order
+              </div>
+              <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-emerald-100/90">
+                Most teams make the agent more{" "}
+                <span className="font-semibold text-emerald-50">powerful</span> with each release.
+                We make it more{" "}
+                <span className="font-semibold text-emerald-50">measurable and more governed</span>{" "}
+                first. Phase 0 builds the substrate every later feature depends on - how the agent
+                gets context, what it's allowed to do, how each change is previewed, and how its
+                output is tested. After that, capability arrives in a deliberate order: the agent{" "}
+                <span className="font-semibold text-emerald-50">reads before it writes</span>, and
+                policy is{" "}
+                <span className="font-semibold text-emerald-50">
+                  enforced before it's opened up
+                </span>{" "}
+                for others to configure. Nothing downstream has to improvise, because the primitives
+                underneath it are already defined.
+              </p>
+            </section>
+
+            <div className="space-y-4">
+              {PHASES.map((phase) => (
+                <PhaseCard key={phase.n} phase={phase} />
+              ))}
             </div>
-            <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-emerald-100/90">
-              Most teams make the agent more{" "}
-              <span className="font-semibold text-emerald-50">powerful</span> with each release. We
-              make it more{" "}
-              <span className="font-semibold text-emerald-50">measurable and more governed</span>{" "}
-              first. Phase 0 builds the substrate every later feature depends on - how the agent
-              gets context, what it's allowed to do, how each change is previewed, and how its
-              output is tested. After that, capability arrives in a deliberate order: the agent{" "}
-              <span className="font-semibold text-emerald-50">reads before it writes</span>, and
-              policy is{" "}
-              <span className="font-semibold text-emerald-50">enforced before it's opened up</span>{" "}
-              for others to configure. Nothing downstream has to improvise, because the primitives
-              underneath it are already defined.
-            </p>
-          </section>
 
-          <div className="space-y-4">
-            {PHASES.map((phase) => (
-              <PhaseCard key={phase.n} phase={phase} />
-            ))}
-          </div>
-
-          <section
-            className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
-            style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
-          >
-            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-              Where the enforcement lives
-            </div>
-            <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-zinc-300">
-              The Phase 0 gate and Policy Artifact are the same objects the platform exposes under{" "}
-              <Link
-                to="/developers/gating"
-                className="text-emerald-300 underline-offset-2 hover:underline"
-              >
-                Deterministic Gating
-              </Link>
-              . Read first, then governed action - the gate is built before any write rides on it.
-            </p>
-          </section>
-        </main>
+            <section
+              className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
+              style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
+                Where the enforcement lives
+              </div>
+              <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-zinc-300">
+                The Phase 0 gate and Policy Artifact are the same objects the platform exposes under{" "}
+                <Link
+                  to="/developers/gating"
+                  className="text-emerald-300 underline-offset-2 hover:underline"
+                >
+                  Deterministic Gating
+                </Link>
+                . Read first, then governed action - the gate is built before any write rides on it.
+              </p>
+            </section>
+          </main>
+        </DocsHeadingScope>
       </div>
 
       <footer className="border-t border-zinc-800/60 bg-[#0a0a0c]">

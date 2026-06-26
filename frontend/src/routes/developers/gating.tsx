@@ -3,6 +3,7 @@ import { Check, Copy } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { DeveloperDocsHeader } from "@/components/docs/DeveloperDocsHeader";
+import { DocsHeading, DocsHeadingScope } from "@/components/docs/DocsPage";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
 import { gatingExamples, type GatingExample, type GatingVertical } from "@/data/gating";
 
@@ -192,10 +193,16 @@ function DocsSection({
       style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
     >
       <div className="min-w-0 space-y-3">
-        <div className="font-mono text-[11px] text-zinc-500">§{number}</div>
-        <h2 className="text-[22px] font-semibold tracking-tight text-zinc-50">
+        <div className="font-mono text-[11px] text-zinc-500" data-docs-corpus-skip="true">
+          §{number}
+        </div>
+        <DocsHeading
+          level={2}
+          anchorText={`${title} - ${subtitle}`}
+          className="text-[22px] font-semibold tracking-tight text-zinc-50"
+        >
           {title} <span className="text-[14px] font-normal text-zinc-500">- {subtitle}</span>
-        </h2>
+        </DocsHeading>
         <div className="max-w-[300px] space-y-3 text-[13.5px] leading-relaxed text-zinc-400 sm:max-w-none [&_code]:font-mono">
           {prose}
         </div>
@@ -420,179 +427,187 @@ function GatingDocsPage() {
       <div className="mx-auto block w-full max-w-[1320px] gap-8 px-4 py-8 sm:px-6 md:flex">
         <DocsSidebar />
 
-        <main className="w-full min-w-0 space-y-12 md:flex-1">
-          <section style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
-              Governance
-            </div>
-            <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50">
-              Deterministic Gating
-            </h1>
-            <p className="mt-3 max-w-[300px] text-[14px] leading-relaxed text-zinc-400 sm:max-w-[68ch]">
-              Agents built on Anthropic, OpenAI, or Gemini route their action requests through our
-              existing API. Deterministic policy gates then apply before any write, workflow
-              transition, or approval state can commit.
-            </p>
-            <p className="mt-3 max-w-[300px] text-[14px] leading-relaxed text-zinc-400 sm:max-w-[68ch]">
-              ConnectWork already governs who an agent may act for; gating governs whether a
-              specific action is allowed to commit.
-            </p>
-
-            <div className="mt-5 inline-flex max-w-full flex-wrap items-center rounded-lg border border-zinc-800 bg-zinc-900/50 p-1">
-              {VERTICALS.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setVertical(item)}
-                  className={[
-                    "h-7 rounded-md px-3 text-[12px] font-medium capitalize transition-colors",
-                    vertical === item
-                      ? "bg-zinc-100 text-zinc-900"
-                      : "text-zinc-400 hover:text-zinc-200",
-                  ].join(" ")}
-                >
-                  {item}
-                </button>
-              ))}
-              <span className="ml-2 mr-2 text-[10.5px] text-zinc-500">swaps every example</span>
-            </div>
-
-            <div className="mt-6 w-full max-w-full overflow-hidden rounded-[14px]">
-              <PolicyDiagram example={example} />
-            </div>
-          </section>
-
-          <section
-            className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
-            style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
-          >
-            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-              How this fits with Agent Ops
-            </div>
-            <p className="mt-1.5 max-w-[300px] text-[13px] leading-relaxed text-zinc-300 sm:max-w-[68ch]">
-              Agent Ops shows which Policy Artifact is active, which rules fired, and which version
-              is live. This API lets developers create, test, replay, and publish the same policy
-              artifacts.
-            </p>
-          </section>
-
-          <section
-            className="rounded-lg border-l-2 border-emerald-400/80 bg-emerald-400/[0.06] p-4"
-            style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
-          >
-            <p className="max-w-[300px] text-[13px] leading-relaxed text-emerald-100/90 sm:max-w-[68ch]">
-              <span className="font-semibold text-emerald-200">
-                Enforcement is a checkpoint, not an opt-in call.
-              </span>{" "}
-              The gate sits on the write/commit path. The API is for authoring policy and submitting
-              action proposals for evaluation - an agent cannot route around the gate by declining
-              to call it.
-            </p>
-          </section>
-
-          <DocsSection
-            number="1"
-            title="Policy Artifact"
-            subtitle="policy-as-data"
-            prose={
-              <>
-                <p>
-                  Create, version, and retrieve deterministic policy as a typed object. Policy
-                  Artifacts can be attached to Agent Recipes and Work Product Contracts.
-                </p>
-                <EndpointList
-                  endpoints={[
-                    { method: "POST", path: "/v2/gating/policy-artifacts" },
-                    { method: "GET", path: "/v2/gating/policy-artifacts/{id}" },
-                    { method: "GET", path: "/v2/gating/policy-artifacts/{id}/versions" },
-                  ]}
-                />
-                <ArtifactStates />
-                <p className="text-[12px] text-zinc-500">
-                  Transition to <span className="text-zinc-300">Active</span> is blocked unless the
-                  EvalPack passes. Version history returns prior policy artifacts; rollback
-                  re-activates a prior version.
-                </p>
-              </>
-            }
-            code={<CodeBlock title="policy_artifact" body={example.policyArtifact} />}
-          />
-
-          <DocsSection
-            number="2"
-            title="Evaluate"
-            subtitle="the gate as a service"
-            prose={
-              <>
-                <p>
-                  <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-[12px] text-zinc-200">
-                    POST /v2/gating/evaluate
-                  </code>{" "}
-                  is the pre-commit evaluation endpoint. The platform invokes it automatically on
-                  action proposals; developers can also call it for preflight checks.
-                </p>
-                <p>
-                  Each firing reports <code className="text-zinc-300">passed</code> and a{" "}
-                  <code className="text-zinc-300">detail</code>, matching the{" "}
-                  <code>RuleFiring</code> contract; threshold rules also carry the typed numbers
-                  behind the outcome.
-                </p>
-              </>
-            }
-            code={
-              <div className="space-y-3">
-                <CodeBlock
-                  method="POST"
-                  path="/v2/gating/evaluate"
-                  headers={{
-                    "Idempotency-Key": "action_123",
-                    "X-ConnectWork-Actor":
-                      vertical === "finance" ? "dana" : vertical === "legal" ? "marcus" : "priya",
-                  }}
-                  body={example.evaluateRequest}
-                />
-                <CodeBlock title="200 OK - compliance_trace" body={example.evaluateResponse} />
+        <DocsHeadingScope>
+          <main className="w-full min-w-0 space-y-12 md:flex-1">
+            <section style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
+                Governance
               </div>
-            }
-          />
-
-          <DocsSection
-            number="2.1"
-            title="Errors"
-            subtitle="blocked commits"
-            prose={
-              <p>
-                When the platform invokes the gate and a rule blocks the write, callers see a{" "}
-                <code className="text-zinc-300">policy_gate_failed</code> error with the firing rule
-                code and a trace id for the matching ComplianceTrace.
+              <DocsHeading
+                level={1}
+                className="mt-2 text-[28px] font-semibold leading-tight tracking-tight text-zinc-50"
+              >
+                Deterministic Gating
+              </DocsHeading>
+              <p className="mt-3 max-w-[300px] text-[14px] leading-relaxed text-zinc-400 sm:max-w-[68ch]">
+                Agents built on Anthropic, OpenAI, or Gemini route their action requests through our
+                existing API. Deterministic policy gates then apply before any write, workflow
+                transition, or approval state can commit.
               </p>
-            }
-            code={<CodeBlock title="409 - policy_gate_failed" body={example.errorExample} />}
-          />
+              <p className="mt-3 max-w-[300px] text-[14px] leading-relaxed text-zinc-400 sm:max-w-[68ch]">
+                ConnectWork already governs who an agent may act for; gating governs whether a
+                specific action is allowed to commit.
+              </p>
 
-          <DocsSection
-            number="3"
-            title="Replay"
-            subtitle="blast-radius simulator"
-            prose={
-              <>
-                <p>
-                  Validate a process at scale, not just a prompt. Replay a draft Policy Artifact
-                  across a historical corpus and get a readiness report covering block rate, leaks,
-                  regression, and <code className="text-zinc-300">approval_burden</code> - the
-                  buyer-facing economics number.
-                </p>
-                <EndpointList endpoints={[{ method: "POST", path: "/v2/gating/replay" }]} />
-              </>
-            }
-            code={
-              <div className="space-y-3">
-                <CodeBlock method="POST" path="/v2/gating/replay" body={example.replayRequest} />
-                <CodeBlock title="200 OK - readiness_report" body={example.replayResponse} />
+              <div
+                className="mt-5 inline-flex max-w-full flex-wrap items-center rounded-lg border border-zinc-800 bg-zinc-900/50 p-1"
+                data-docs-corpus-skip="true"
+              >
+                {VERTICALS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setVertical(item)}
+                    className={[
+                      "h-7 rounded-md px-3 text-[12px] font-medium capitalize transition-colors",
+                      vertical === item
+                        ? "bg-zinc-100 text-zinc-900"
+                        : "text-zinc-400 hover:text-zinc-200",
+                    ].join(" ")}
+                  >
+                    {item}
+                  </button>
+                ))}
+                <span className="ml-2 mr-2 text-[10.5px] text-zinc-500">swaps every example</span>
               </div>
-            }
-          />
-        </main>
+
+              <div className="mt-6 w-full max-w-full overflow-hidden rounded-[14px]">
+                <PolicyDiagram example={example} />
+              </div>
+            </section>
+
+            <section
+              className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
+              style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
+                How this fits with Agent Ops
+              </div>
+              <p className="mt-1.5 max-w-[300px] text-[13px] leading-relaxed text-zinc-300 sm:max-w-[68ch]">
+                Agent Ops shows which Policy Artifact is active, which rules fired, and which
+                version is live. This API lets developers create, test, replay, and publish the same
+                policy artifacts.
+              </p>
+            </section>
+
+            <section
+              className="rounded-lg border-l-2 border-emerald-400/80 bg-emerald-400/[0.06] p-4"
+              style={{ maxWidth: "100%", width: "calc(100vw - 2rem)" }}
+            >
+              <p className="max-w-[300px] text-[13px] leading-relaxed text-emerald-100/90 sm:max-w-[68ch]">
+                <span className="font-semibold text-emerald-200">
+                  Enforcement is a checkpoint, not an opt-in call.
+                </span>{" "}
+                The gate sits on the write/commit path. The API is for authoring policy and
+                submitting action proposals for evaluation - an agent cannot route around the gate
+                by declining to call it.
+              </p>
+            </section>
+
+            <DocsSection
+              number="1"
+              title="Policy Artifact"
+              subtitle="policy-as-data"
+              prose={
+                <>
+                  <p>
+                    Create, version, and retrieve deterministic policy as a typed object. Policy
+                    Artifacts can be attached to Agent Recipes and Work Product Contracts.
+                  </p>
+                  <EndpointList
+                    endpoints={[
+                      { method: "POST", path: "/v2/gating/policy-artifacts" },
+                      { method: "GET", path: "/v2/gating/policy-artifacts/{id}" },
+                      { method: "GET", path: "/v2/gating/policy-artifacts/{id}/versions" },
+                    ]}
+                  />
+                  <ArtifactStates />
+                  <p className="text-[12px] text-zinc-500">
+                    Transition to <span className="text-zinc-300">Active</span> is blocked unless
+                    the EvalPack passes. Version history returns prior policy artifacts; rollback
+                    re-activates a prior version.
+                  </p>
+                </>
+              }
+              code={<CodeBlock title="policy_artifact" body={example.policyArtifact} />}
+            />
+
+            <DocsSection
+              number="2"
+              title="Evaluate"
+              subtitle="the gate as a service"
+              prose={
+                <>
+                  <p>
+                    <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-[12px] text-zinc-200">
+                      POST /v2/gating/evaluate
+                    </code>{" "}
+                    is the pre-commit evaluation endpoint. The platform invokes it automatically on
+                    action proposals; developers can also call it for preflight checks.
+                  </p>
+                  <p>
+                    Each firing reports <code className="text-zinc-300">passed</code> and a{" "}
+                    <code className="text-zinc-300">detail</code>, matching the{" "}
+                    <code>RuleFiring</code> contract; threshold rules also carry the typed numbers
+                    behind the outcome.
+                  </p>
+                </>
+              }
+              code={
+                <div className="space-y-3">
+                  <CodeBlock
+                    method="POST"
+                    path="/v2/gating/evaluate"
+                    headers={{
+                      "Idempotency-Key": "action_123",
+                      "X-ConnectWork-Actor":
+                        vertical === "finance" ? "dana" : vertical === "legal" ? "marcus" : "priya",
+                    }}
+                    body={example.evaluateRequest}
+                  />
+                  <CodeBlock title="200 OK - compliance_trace" body={example.evaluateResponse} />
+                </div>
+              }
+            />
+
+            <DocsSection
+              number="2.1"
+              title="Errors"
+              subtitle="blocked commits"
+              prose={
+                <p>
+                  When the platform invokes the gate and a rule blocks the write, callers see a{" "}
+                  <code className="text-zinc-300">policy_gate_failed</code> error with the firing
+                  rule code and a trace id for the matching ComplianceTrace.
+                </p>
+              }
+              code={<CodeBlock title="409 - policy_gate_failed" body={example.errorExample} />}
+            />
+
+            <DocsSection
+              number="3"
+              title="Replay"
+              subtitle="blast-radius simulator"
+              prose={
+                <>
+                  <p>
+                    Validate a process at scale, not just a prompt. Replay a draft Policy Artifact
+                    across a historical corpus and get a readiness report covering block rate,
+                    leaks, regression, and <code className="text-zinc-300">approval_burden</code> -
+                    the buyer-facing economics number.
+                  </p>
+                  <EndpointList endpoints={[{ method: "POST", path: "/v2/gating/replay" }]} />
+                </>
+              }
+              code={
+                <div className="space-y-3">
+                  <CodeBlock method="POST" path="/v2/gating/replay" body={example.replayRequest} />
+                  <CodeBlock title="200 OK - readiness_report" body={example.replayResponse} />
+                </div>
+              }
+            />
+          </main>
+        </DocsHeadingScope>
       </div>
 
       <footer className="border-t border-zinc-800/60 bg-[#0a0a0c]">
