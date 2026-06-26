@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from api.docs_corpus import load_chunks
@@ -30,6 +31,8 @@ from api.models import (
     DocsPhrasingMode,
     DocsSurface,
 )
+
+load_dotenv()
 
 
 class DocsChatDraft(BaseModel):
@@ -112,9 +115,6 @@ class LLMDocsChatClient:
     """Opt-in live client routed by `CHAT_MODEL`. Not used in tests/CI."""
 
     def __init__(self, model_env: str = "CHAT_MODEL") -> None:
-        from dotenv import load_dotenv
-
-        load_dotenv()
         model = os.environ.get(model_env)
         if not model:
             raise RuntimeError(f"{model_env} is not set; cannot route docs chat drafting.")
