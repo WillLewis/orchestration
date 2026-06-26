@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { DocsPageShell } from "@/components/docs/DocsPage";
 import { DocsChatInset } from "@/components/docs/DocsChatInset";
 import { ProductFrame } from "@/components/docs/ProductFrame";
-import { DOCS_CHAT_LIVE } from "@/lib/docs-chat-live";
 
 export const Route = createFileRoute("/developers/ui-decision-brief")({
   head: () => ({
@@ -38,7 +37,7 @@ function UiDecisionBriefDocsPage() {
         subtitle="A command asks ConnectAgent to generate a brief while the same retrieval gates decide which source content can shape the draft."
         variant="fullBleed"
       >
-        <DocsChatInset surface="decision_brief" live={DOCS_CHAT_LIVE} />
+        <DocsChatInset surface="decision_brief" />
       </ProductFrame>
 
       <section className="space-y-3 border-t border-zinc-900 pt-7">

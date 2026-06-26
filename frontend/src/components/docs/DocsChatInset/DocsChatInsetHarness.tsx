@@ -24,8 +24,8 @@ export function DocsChatInsetHarness() {
           <div>
             <h1 className="text-[18px] font-semibold text-foreground">Docs chat inset harness</h1>
             <p className="mt-1 text-[13px] text-[var(--secondary-text)]">
-              Renders every Phase-0 mock disposition and exercises citation panels, the @Agent menu,
-              and agent empty/loading/success states.
+              Renders every docs-chat fixture disposition and exercises citation panels, the @Agent
+              menu, and agent empty/loading/success states.
             </p>
           </div>
           <div className="flex rounded-md border border-border bg-card p-1">
@@ -49,14 +49,14 @@ export function DocsChatInsetHarness() {
 
         <div className="grid gap-4 xl:grid-cols-2">
           <div className="xl:col-span-2">
-            <DocsChatInset surface={surface} live={false} />
+            <DocsChatInset surface={surface} />
           </div>
           {MOCK_KEYS.map((key) => (
             <div key={key} className="min-h-[640px]">
               <div className="mb-2 text-[11px] font-semibold uppercase text-[var(--muted-fg)]">
                 {key}
               </div>
-              <DocsChatInset surface={surface} initialMock={key} live={false} />
+              <DocsChatInset surface={surface} initialMock={key} />
             </div>
           ))}
         </div>
