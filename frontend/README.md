@@ -47,6 +47,11 @@ Mock shapes mirror `core/schemas.py` (snake_case), so the live API returns the s
 remapping. UI-only fields (`status`, `SourceStatus`, `SourceType`) are derived client-side and are
 **not** part of the frozen `core.schemas` contract.
 
+The `/developers/ui-chat`, `/developers/ui-meetings`, and
+`/developers/ui-decision-brief` docs insets are live by default against `POST /docs/chat`; if the
+gateway is unavailable, the inset falls back to its bundled demo-safe mocks. Set
+`VITE_DOCS_CHAT_MOCKS=true` to pin those docs insets to mocks while preserving the same UI path.
+
 ## Demo runbook
 
 Keep `VITE_USE_MOCKS=true` for the interview walkthrough. Mock mode powers the scripted hero arc

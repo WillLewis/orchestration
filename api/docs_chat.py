@@ -291,7 +291,10 @@ def _build_system_prompt() -> str:
 _NAME_WEIGHT = 5.0      # id/title/section is curated, high-signal text
 _SEALED_BONUS = 12.0    # override/survive/attempt queries are the sealed eval's topic
 _PHRASE_BONUS = 6.0
-_RELEVANCE_THRESHOLD = 0.25
+_RELEVANCE_THRESHOLD = 1.0
+_GROUNDED_COVERAGE = 0.8
+_PARTIAL_COVERAGE = 0.5
+_GROUNDED_MARGIN = 3.0
 _MAX_DOC_GROUPS = 3
 _MAX_CHUNKS_PER_DOC = 2
 _MAX_CITATIONS = 3
@@ -420,11 +423,11 @@ def _confidence(signals: _ConfidenceSignals) -> DocsConfidence:
         return "weak"
     if (
         signals.missing_empty
-        and signals.query_aspect_coverage >= 0.8
-        and (signals.support_count >= 2 or signals.margin >= 1.0)
+        and signals.query_aspect_coverage >= _GROUNDED_COVERAGE
+        and (signals.support_count >= 2 or signals.margin >= _GROUNDED_MARGIN)
     ):
         return "grounded"
-    if signals.query_aspect_coverage >= 0.5 and signals.support_count >= 1:
+    if signals.query_aspect_coverage >= _PARTIAL_COVERAGE and signals.support_count >= 1:
         return "partial"
     return "weak"
 

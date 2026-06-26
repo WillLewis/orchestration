@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from api.docs_corpus import load_chunks, load_docs
 
 
@@ -73,18 +76,25 @@ def test_design_rationale_reads_as_documentation_not_interview_prep():
         assert phrase not in body
 
 
-def test_load_chunks_adds_fixture_page_sections_with_anchors():
+def test_load_chunks_adds_generated_page_sections_with_anchors():
     chunks = load_chunks()
-    policy = next(chunk for chunk in chunks if chunk.chunk_id == "gating#policy-gate")
-    permission = next(chunk for chunk in chunks if chunk.chunk_id == "gating#permission-boundary")
+    page = next(
+        page
+        for page in json.loads(Path("api/docs_corpus/generated/pages.json").read_text())
+        if page["route"] == "/developers/rag"
+    )
+    section = next(
+        section
+        for section in page["sections"]
+        if section["anchor"] == "rag-reads-the-contextbundle-not-the-whole-workspace"
+    )
+    chunk = next(chunk for chunk in chunks if chunk.chunk_id == "rag#{}".format(section["anchor"]))
 
-    assert policy.source == "page_fixture"
-    assert policy.route == "/developers/gating"
-    assert policy.section == "Policy gate"
-    assert policy.anchor == "policy-gate"
-    assert "deterministic rule result" in policy.text
-    assert permission.section == "Permission boundary"
-    assert permission.anchor == "permission-boundary"
+    assert chunk.source == "generated_page"
+    assert chunk.route == "/developers/rag"
+    assert chunk.section == section["heading"]
+    assert chunk.anchor == section["anchor"]
+    assert chunk.text == section["text"]
 
 
 def test_load_chunks_applies_acl_projection_to_chunk_text():

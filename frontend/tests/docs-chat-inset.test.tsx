@@ -47,6 +47,18 @@ function renderInset(surface: (typeof surfaces)[number], disposition: (typeof di
   );
 }
 
+function renderLiveInset(surface: (typeof surfaces)[number]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return renderToStaticMarkup(
+    <QueryClientProvider client={queryClient}>
+      <DocsChatInset surface={surface} live />
+    </QueryClientProvider>,
+  );
+}
+
 describe("DocsChatInset", () => {
   for (const surface of surfaces) {
     for (const disposition of dispositions) {
@@ -67,6 +79,12 @@ describe("DocsChatInset", () => {
     const html = renderInset("chat", "tier1Open");
 
     expect(html).toContain("/developers/gating#policy-gate");
+  });
+
+  it("renders the live adapter state when enabled", () => {
+    const html = renderLiveInset("chat");
+
+    expect(html).toContain("Live /docs/chat");
   });
 
   it("keeps locked citations snippet-free", () => {

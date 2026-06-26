@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { DocsPageShell } from "@/components/docs/DocsPage";
 import { DocsChatInset } from "@/components/docs/DocsChatInset";
 import { ProductFrame } from "@/components/docs/ProductFrame";
+import { DOCS_CHAT_LIVE } from "@/lib/docs-chat-live";
 
 export const Route = createFileRoute("/developers/ui-meetings")({
   head: () => ({
@@ -36,7 +37,7 @@ function UiMeetingsDocsPage() {
         subtitle="A participant can ask in the rail and receive a permission-scoped docs answer that stays private to the asker."
         variant="fullBleed"
       >
-        <DocsChatInset surface="meetings" />
+        <DocsChatInset surface="meetings" live={DOCS_CHAT_LIVE} />
       </ProductFrame>
 
       <section className="space-y-3 border-t border-zinc-900 pt-7">
