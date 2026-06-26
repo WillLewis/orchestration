@@ -520,7 +520,7 @@ function MetricsPage() {
           },
           {
             label: "Replay sample",
-            value: financeReplay.cases_evaluated,
+            value: String(financeReplay.cases_evaluated),
             detail: "Finance replay cases evaluated before a policy artifact is activated.",
           },
           {
@@ -530,7 +530,7 @@ function MetricsPage() {
           },
           {
             label: "Guardrail leaks",
-            value: financeReplay.permission_leaks,
+            value: String(financeReplay.permission_leaks),
             detail:
               "Permission leaks, unsupported approval claims, and stale-source misses stay at zero.",
           },
@@ -548,7 +548,10 @@ function MetricsPage() {
             ]}
             rows={[
               { metric: "Projected block rate", value: pct(financeReplay.projected_block_rate) },
-              { metric: "Policy violations caught", value: financeReplay.policy_violations_caught },
+              {
+                metric: "Policy violations caught",
+                value: String(financeReplay.policy_violations_caught),
+              },
               { metric: "Approval escalations", value: approvalBurden.escalations },
               { metric: "Estimated p95 latency", value: `${financeReplay.est_latency_p95_ms} ms` },
               { metric: "Estimated replay cost", value: `$${financeReplay.est_cost_usd}` },
@@ -1445,7 +1448,7 @@ function SealedRecordsPage() {
             ]}
             rows={Object.entries(governance.section_dependencies).map(([section, deps]) => ({
               section,
-              sources: (deps as string[]).join(", "),
+              sources: Array.from(deps).join(", "),
             }))}
           />
         }

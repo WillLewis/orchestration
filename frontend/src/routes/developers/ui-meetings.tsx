@@ -3,9 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { DocsPageShell } from "@/components/docs/DocsPage";
 import { DocsChatInset } from "@/components/docs/DocsChatInset";
 import { ProductFrame } from "@/components/docs/ProductFrame";
-import { ParticipantRail } from "@/components/meeting/ParticipantRail";
-import { SharedDocViewer } from "@/components/meeting/SharedDocViewer";
-import { TopBar } from "@/components/meeting/TopBar";
 
 export const Route = createFileRoute("/developers/ui-meetings")({
   head: () => ({
@@ -19,24 +16,6 @@ export const Route = createFileRoute("/developers/ui-meetings")({
   }),
   component: UiMeetingsDocsPage,
 });
-
-function MeetingDocsFrame() {
-  return (
-    <div className="flex h-[760px] min-h-[640px] w-full flex-col overflow-hidden bg-[var(--canvas)] text-foreground">
-      <TopBar />
-      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--canvas)]">
-          <ParticipantRail />
-          <SharedDocViewer />
-        </main>
-
-        <aside className="min-h-[640px] shrink-0 border-t border-border bg-background xl:w-[400px] xl:border-l xl:border-t-0">
-          <DocsChatInset surface="meetings" />
-        </aside>
-      </div>
-    </div>
-  );
-}
 
 function UiMeetingsDocsPage() {
   return (
@@ -55,8 +34,9 @@ function UiMeetingsDocsPage() {
         surface="Meeting rail"
         title="Docs answer beside a live meeting"
         subtitle="A participant can ask in the rail and receive a permission-scoped docs answer that stays private to the asker."
+        variant="fullBleed"
       >
-        <MeetingDocsFrame />
+        <DocsChatInset surface="meetings" />
       </ProductFrame>
 
       <section className="space-y-3 border-t border-zinc-900 pt-7">

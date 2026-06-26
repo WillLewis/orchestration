@@ -1,0 +1,53 @@
+[
+  {
+    "id": "gating",
+    "route": "/developers/gating",
+    "title": "Deterministic Gating",
+    "sections": [
+      {
+        "heading": "Policy gate",
+        "anchor": "policy-gate",
+        "text": "The policy gate reads the permission-filtered bundle and deterministic rule result before any proposed action can commit."
+      },
+      {
+        "heading": "Permission boundary",
+        "anchor": "permission-boundary",
+        "text": "Denied sources stay in the permission boundary and cannot be quoted, summarized, or used as hidden evidence."
+      }
+    ]
+  },
+  {
+    "id": "rag",
+    "route": "/developers/rag",
+    "title": "RAG",
+    "sections": [
+      {
+        "heading": "Grounded retrieval",
+        "anchor": "grounded-retrieval",
+        "text": "Docs RAG answers from permitted documentation, returns section-level citations, and names missing coverage instead of filling gaps."
+      },
+      {
+        "heading": "Restricted-source behavior",
+        "anchor": "restricted-source-behavior",
+        "text": "Locked citations can identify revealable metadata, but they never expose snippets or raw source text."
+      }
+    ]
+  },
+  {
+    "id": "decision-brief",
+    "route": "/developers/decision-brief",
+    "title": "Decision Brief",
+    "sections": [
+      {
+        "heading": "Overview",
+        "anchor": "overview",
+        "text": "The decision brief is a typed work product that carries grounded facts, gate state, missing evidence, conflicts, and next steps."
+      },
+      {
+        "heading": "Overview",
+        "anchor": "overview-1",
+        "text": "Duplicate headings use the shared slug collision policy so deep links remain stable across rendering and extraction."
+      }
+    ]
+  }
+]

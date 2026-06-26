@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, model_serializer
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 from core.schemas import AgentRecipe, DecisionBrief, SourceRef, StaleSectionState, TelemetryEvent
 from lifecycle.revalidation import ReapprovalRoute
@@ -29,6 +29,7 @@ DocsSurface = Literal["chat", "meetings", "decision_brief"]
 DocsAccess = Literal["open", "sealed", "locked"]
 DocsChatStatus = Literal["answered", "no_results", "error"]
 DocsCitationTier = Literal[1, 2, "sealed", 3]
+DocsConfidence = Literal["grounded", "partial", "weak"]
 
 DOCS_SURFACE_ROUTES: dict[DocsSurface, str] = {
     "chat": "/developers/ui-chat",
@@ -58,6 +59,7 @@ class DocsCitation(BaseModel):
     doc_id: str
     title: Optional[str] = None
     route: Optional[str] = None
+    anchor: Optional[str] = None
     section: Optional[str] = None
     snippet: Optional[str] = None
     access: DocsAccess = "open"
@@ -75,10 +77,25 @@ class DocsCitation(BaseModel):
 class DocsChatResponse(BaseModel):
     """Docs-RAG answer envelope shared by the docs UI mock and future backend endpoint."""
 
+    response: str
     reply: str
     citations: list[DocsCitation] = Field(default_factory=list)
+    confidence: DocsConfidence = "grounded"
+    missing: list[str] = Field(default_factory=list)
     status: DocsChatStatus = "answered"
     suggested_questions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _populate_transitional_reply(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        values = dict(data)
+        if "response" in values:
+            values["reply"] = values["response"]
+        elif "reply" in values:
+            values["response"] = values["reply"]
+        return values
 
 
 # --------------------------------------------------------------------------- #
