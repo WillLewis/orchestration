@@ -7,13 +7,24 @@ import {
   Loader2,
   Clock,
   ArrowRight,
+  CheckCircle2,
+  XCircle,
+  GitCompareArrows,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { sources } from "@/data/brief";
 import type { ChatAction, ChatMessage, ChatResponse } from "@/hooks/queries";
+import { useGovernedBrief } from "@/lib/revalidation-store";
 
 // A rendered turn: the wire shape plus an assistant turn's UI-only governance `meta` and an optional
 // pending-approval chip label (Beat 3).
-export type Turn = ChatMessage & { meta?: ChatResponse; pending?: string };
+export type Turn = ChatMessage & {
+  meta?: ChatResponse;
+  pending?: string;
+  author?: string;
+  visibility?: "public" | "private";
+  kind?: "text" | "brief_preview";
+};
 
 // Each governance boolean → a chip, rendered only when the flag is exactly `true`, so an absent or
 // newly-added field never lights one. Styling + icons mirror ResultBrief / the packet STATUS_CHIP.
@@ -72,11 +83,32 @@ export function ChatThread({
 }
 
 function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatAction) => void }) {
+  if (turn.kind === "brief_preview") {
+    return <BriefPreviewTurn turn={turn} />;
+  }
+
   if (turn.role === "user") {
+    if (turn.visibility === "public") {
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[88%] space-y-1">
+            <div className="px-1 text-[10.5px] font-medium text-[var(--muted-fg)]">
+              {turn.author ?? "Meeting chat"}
+            </div>
+            <div className="rounded-2xl rounded-tl-sm border border-border bg-card px-3.5 py-2 text-[13px] leading-relaxed text-foreground shadow-card">
+              {turn.content}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-[13px] leading-snug text-white">
-          {turn.content}
+        <div className="max-w-[85%] space-y-1">
+          <div className="rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-[13px] leading-snug text-white">
+            {turn.content}
+          </div>
         </div>
       </div>
     );
@@ -101,6 +133,9 @@ function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatActi
   return (
     <div className="flex justify-start">
       <div className="max-w-[90%] space-y-2">
+        {turn.author && (
+          <div className="px-1 text-[10.5px] font-medium text-[var(--muted-fg)]">{turn.author}</div>
+        )}
         <div className="rounded-2xl rounded-bl-sm border border-border bg-card px-3.5 py-2 text-[13px] leading-relaxed text-foreground shadow-card">
           {turn.content.trim() ? (
             turn.content
@@ -108,6 +143,12 @@ function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatActi
             <span className="text-[var(--muted-fg)]">No answer was returned.</span>
           )}
         </div>
+
+        {turn.visibility === "private" && (
+          <div className="px-1 text-[10.5px] italic text-[var(--muted-fg)]">
+            only you can see this
+          </div>
+        )}
 
         {turn.pending && (
           <div className="flex flex-wrap gap-1.5">
@@ -165,6 +206,120 @@ function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatActi
                 <ArrowRight className="h-3 w-3" />
               </button>
             ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BriefPreviewTurn({ turn }: { turn: Turn }) {
+  const { decision_brief: b, decision_readiness } = useGovernedBrief();
+  const approvalReady = b.policy_gates.approval_ready;
+  const blockers = decision_readiness.rows.filter((row) => row.status === "blocking");
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[92%] space-y-2">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+          <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                Decision Brief · Draft
+              </div>
+              <div className="mt-1 text-[11px] text-[var(--muted-fg)]">
+                Confidence:{" "}
+                <span className="font-medium capitalize text-[var(--secondary-text)]">
+                  {b.confidence}
+                </span>
+              </div>
+            </div>
+            <div
+              className={[
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                approvalReady
+                  ? "bg-[var(--success-bg)] text-[var(--success)]"
+                  : "bg-[var(--danger-bg)] text-[var(--danger)]",
+              ].join(" ")}
+            >
+              {approvalReady ? (
+                <CheckCircle2 className="h-3 w-3" strokeWidth={2.25} />
+              ) : (
+                <XCircle className="h-3 w-3" strokeWidth={2.25} />
+              )}
+              {approvalReady ? "Ready" : "Not ready"}
+            </div>
+          </div>
+
+          <div className="space-y-4 px-4 py-4">
+            <section>
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                Decision needed
+              </div>
+              <p className="mt-1.5 text-[14px] font-semibold leading-snug text-foreground">
+                {b.decision_needed}
+              </p>
+            </section>
+
+            <section>
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                What changed
+              </div>
+              <ul className="mt-1.5 space-y-1.5">
+                {b.what_changed.slice(0, 2).map((change, index) => (
+                  <li
+                    key={index}
+                    className="flex gap-2 text-[12.5px] leading-snug text-[var(--secondary-text)]"
+                  >
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--muted-fg)]" />
+                    <span>{change}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section>
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                Blocking
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {blockers.slice(0, 3).map((row) => (
+                  <span
+                    key={row.id}
+                    className="inline-flex items-center gap-1 rounded-md bg-[var(--danger-bg)] px-2 py-1 text-[11.5px] font-medium text-[var(--danger)]"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    {row.gate}
+                  </span>
+                ))}
+              </div>
+            </section>
+
+            {b.conflicts.slice(0, 1).map((conflict, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-2 rounded-md bg-[var(--warning-bg)] px-3 py-2 text-[12px] leading-snug text-[var(--warning)]"
+              >
+                <GitCompareArrows className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{conflict.description}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-end border-t border-border bg-[var(--canvas)]/50 px-4 py-3">
+            <Link
+              to="/packet"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              Open full brief
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {turn.visibility === "private" && (
+          <div className="px-1 text-[10.5px] italic text-[var(--muted-fg)]">
+            only you can see this
           </div>
         )}
       </div>

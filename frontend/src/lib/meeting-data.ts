@@ -11,9 +11,7 @@ export const meeting = {
 };
 
 export const entry_actions = [
-  { id: "brief", label: "Generate Decision Brief", primary: true as const },
   { id: "changed", label: "What changed since last review?" },
-  { id: "approval", label: "Check approval readiness" },
   { id: "followups", label: "Agent Actions" },
   { id: "summary", label: "Summarize this meeting" },
   { id: "monitor", label: "Monitor this decision" },

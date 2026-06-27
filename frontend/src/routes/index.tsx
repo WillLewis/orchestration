@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { TopBar } from "@/components/meeting/TopBar";
 import { ParticipantRail } from "@/components/meeting/ParticipantRail";
@@ -28,6 +28,8 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [isWide, setIsWide] = useState(true);
+  const [briefRequestId, setBriefRequestId] = useState(0);
+  const briefRequestSeq = useRef(0);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1100px)");
@@ -37,18 +39,28 @@ function Index() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
+  const requestBrief = useCallback(() => {
+    setPanelOpen(true);
+    briefRequestSeq.current += 1;
+    setBriefRequestId(briefRequestSeq.current);
+  }, []);
+  const handleBriefRequestHandled = useCallback(() => setBriefRequestId(0), []);
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-[var(--canvas)] text-foreground">
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col bg-[var(--canvas)]">
           <ParticipantRail />
-          <SharedDocViewer />
+          <SharedDocViewer onGenerateBrief={requestBrief} />
         </main>
 
         {isWide ? (
           <div className="w-[400px] shrink-0">
-            <AgentPanel />
+            <AgentPanel
+              briefRequestId={briefRequestId}
+              onBriefRequestHandled={handleBriefRequestHandled}
+            />
           </div>
         ) : (
           <>
@@ -58,7 +70,7 @@ function Index() {
               className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-gradient-ai px-4 py-3 text-[13px] font-semibold text-white shadow-panel"
             >
               <Sparkles className="h-4 w-4" />
-              ConnectAgent
+              Chat
             </button>
             {panelOpen && (
               <>
@@ -75,7 +87,10 @@ function Index() {
                   >
                     <X className="h-4 w-4" />
                   </button>
-                  <AgentPanel />
+                  <AgentPanel
+                    briefRequestId={briefRequestId}
+                    onBriefRequestHandled={handleBriefRequestHandled}
+                  />
                 </div>
               </>
             )}

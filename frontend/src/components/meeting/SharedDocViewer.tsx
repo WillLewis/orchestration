@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, FileText, Maximize2, Sparkles } from "lucide-react";
+import { FileText, Maximize2, Sparkles } from "lucide-react";
 import { sources, type SourceStatus } from "@/data/brief";
 import { useGovernedBrief, useRevalidation } from "@/lib/revalidation-store";
 
@@ -70,7 +70,7 @@ function MemoSpan({
 /* Shared doc viewer — the Acme credit memo (v3), screen-shared in-meeting.    */
 /* -------------------------------------------------------------------------- */
 
-export function SharedDocViewer() {
+export function SharedDocViewer({ onGenerateBrief }: { onGenerateBrief?: () => void }) {
   // The screen-shared memo recomputes with the brief: source-status highlights and the
   // approval/conflict sentences are driven by the governed overlay, not static data.
   const gb = useGovernedBrief();
@@ -93,10 +93,14 @@ export function SharedDocViewer() {
                 Screen-shared by Dana R. · 4 min ago
               </div>
             </div>
-            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--info-bg)] px-2 py-0.5 text-[10.5px] font-medium text-[var(--info)]">
-              <ShieldCheck className="h-3 w-3" />
-              Governed
-            </span>
+            <button
+              type="button"
+              onClick={onGenerateBrief}
+              className="ml-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-gradient-ai px-3 text-[12px] font-semibold text-white shadow-card transition-transform duration-150 hover:brightness-105 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              <Sparkles className="h-3.5 w-3.5" strokeWidth={2.4} />
+              Generate Decision Brief
+            </button>
           </div>
           <button
             type="button"

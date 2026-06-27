@@ -11,6 +11,7 @@ import type { ChatAction, ChatResponse } from "@/hooks/queries";
 function normalize(s: string): string {
   return s
     .toLowerCase()
+    .replace(/^@agent\b[\s:,-]*/i, "")
     .replace(/%/g, " percent ")
     .replace(/[.,!?'"]/g, " ")
     .replace(/\s+/g, " ")

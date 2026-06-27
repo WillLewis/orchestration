@@ -1,4 +1,4 @@
-import { Shield, ArrowUp } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { useState } from "react";
 
 export function InputBar({
@@ -10,7 +10,7 @@ export function InputBar({
 }) {
   const [v, setV] = useState("");
   return (
-    <div className="sticky bottom-0 border-t border-border bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
+    <div className="border-t border-border bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -24,7 +24,7 @@ export function InputBar({
         <input
           value={v}
           onChange={(e) => setV(e.target.value)}
-          placeholder="Ask about Acme renewal…"
+          placeholder="Message everyone or @Agent…"
           className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-[var(--muted-fg)] focus:outline-none"
         />
         <button
@@ -36,10 +36,6 @@ export function InputBar({
           <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.75} />
         </button>
       </form>
-      <div className="mt-2 flex items-center justify-center gap-1 text-[10.5px] text-[var(--muted-fg)]">
-        <Shield className="h-3 w-3" />
-        Permissions-aware · answers cite only sources you can access
-      </div>
     </div>
   );
 }

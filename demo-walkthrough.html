@@ -382,7 +382,7 @@
           <div class="label">The 75-second recording script</div>
           <div class="say" style="border-left-color:#6c4ce0">
             <em>(no voiceover, captions only)</em><br>
-            00:00 — type <b>"Apply the 22% discount"</b> → blocked on Dana's own 15% authority.<br>
+            00:00 — type <b>"@Agent apply the 22% discount"</b> → blocked on Dana's own 15% authority.<br>
             00:08 — the "Acme renewal · pre-committee review" meeting it's grounded in — permissions-aware.<br>
             00:20 — <b>Route to Credit Officer</b> → CO signs off → agent revalidates: still not ready.<br>
             00:34 — accept the one cascade edit (CS plan 18%→22%) → conflict clears.<br>
@@ -403,8 +403,8 @@
         <div class="frame">
           <div class="scrn"><span class="ts">00:00</span>
             <div class="mcard">
-              <div class="mini" style="font-weight:700;color:var(--primary)">✦ ConnectAgent</div>
-              <div class="mbubble u">Apply the 22% discount</div>
+              <div class="mini" style="font-weight:700;color:var(--primary)">✦ Chat</div>
+              <div class="mbubble u">@Agent apply the 22% discount</div>
               <div class="mbubble b">22% exceeds your delegated authority (up to 15%). Needs Credit Officer approval.</div>
               <span class="mchip" style="background:var(--danger-bg);color:var(--danger)">⛔ Gate held</span>
             </div>
@@ -417,10 +417,10 @@
             <div class="mpane">
               <div class="mcard"><div class="mini" style="font-weight:700">Acme credit memo · v3</div><div class="mbar" style="width:92%"></div><div class="mbar" style="width:78%"></div><div class="mbar" style="width:88%"></div><div class="mbar" style="width:64%"></div><div class="mbar" style="width:82%"></div></div>
               <div class="mcard" style="background:var(--canvas)">
-                <div class="mini" style="font-weight:700;color:var(--primary)">✦ ConnectAgent</div>
+                <div class="mini" style="font-weight:700;color:var(--primary)">✦ Chat</div>
                 <div class="mbtn" style="margin-top:5px">Generate Brief</div>
                 <div class="mbtn g" style="margin-top:3px">What changed?</div>
-                <div style="margin-top:5px;border:1px solid var(--border);border-radius:9px;padding:3px 6px;background:#fff;font-size:7.5px;color:var(--muted)">Ask about Acme renewal…</div>
+                <div style="margin-top:5px;border:1px solid var(--border);border-radius:9px;padding:3px 6px;background:#fff;font-size:7.5px;color:var(--muted)">Message or @Agent…</div>
               </div>
             </div>
           </div>
@@ -580,8 +580,8 @@
               <div style="color:var(--muted);font-size:12px;text-align:center;padding:18px 8px">Pick a prompt — the agent answers from permitted sources only, and the deterministic gate owns every pass/fail.</div>
             </div>
             <div class="ask">
-              <button class="preset" onclick="chat('apply')">Apply the 22% discount</button>
-              <button class="preset" onclick="chat('why')">Why does this need approval?</button>
+              <button class="preset" onclick="chat('apply')">@Agent apply the 22% discount</button>
+              <button class="preset" onclick="chat('why')">@Agent why does this need approval?</button>
               <button class="preset" onclick="chat('capped')">Use the max I can authorize (15%)</button>
               <button class="btn g" onclick="chatReset()" style="margin-left:auto">Reset</button>
             </div>
@@ -590,9 +590,9 @@
         </div>
         <div class="notes">
           <div class="label">Click</div>
-          <div class="clickline"><span class="kbd type">⌨ Type "Apply the 22% discount"</span><span class="sep">→</span><span class="kbd">"Why does this need approval?"</span></div>
+          <div class="clickline"><span class="kbd type">⌨ Type "@Agent apply the 22% discount"</span><span class="sep">→</span><span class="kbd">"@Agent why does this need approval?"</span></div>
           <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"This is live and I didn't script the answers — someone on the panel, type something. Watch what happens when Dana tries to just <em>do it</em>: <em>'Apply the 22% discount.'</em> The model doesn't get to be helpful here — 22% is over Dana's own 15% delegated authority, so the deterministic verifier holds the gate and offers two honest paths: route it up, or take the 15% she's actually allowed. Now ask <em>'why?'</em> — it names the threshold and tells you a related Legal memo exists but is restricted, so it wasn't used. It never reveals what it can't show."</div>
+          <div class="say">"This is live and I didn't script the answers — someone on the panel, type something. Watch what happens when Dana invokes the private agent and tries to just <em>do it</em>: <em>'@Agent apply the 22% discount.'</em> The model doesn't get to be helpful here — 22% is over Dana's own 15% delegated authority, so the deterministic verifier holds the gate and offers two honest paths: route it up, or take the 15% she's actually allowed. Now ask <em>'@Agent why?'</em> — it names the threshold and tells you a related Legal memo exists but is restricted, so it wasn't used. It never reveals what it can't show."</div>
           <div class="label" style="margin-top:13px">The two edge cases, live</div>
           <ul class="do" style="margin-top:0">
             <li><b>Deterministic policy block</b> — the model can't grant or apply approval, even asked directly or via injection.</li>
@@ -953,14 +953,14 @@
   /* ---------- Beat 4: governed chat (the refusal) ---------- */
   var REPLIES={
     apply:{
-      q:"Apply the 22% discount",
+      q:"@Agent apply the 22% discount",
       txt:"I can't apply that. A 22% discount exceeds your delegated authority (up to 15%). This needs Credit Officer approval before it can be applied.",
       chips:[["dang","⛔ Gate held"]],
       cites:["Pricing exception","Acme approval workflow"],
       acts:[["Explain","g"],["Route to Credit Officer",""],["Use the max I can authorize (15%)","g"]]
     },
     why:{
-      q:"Why does this need approval?",
+      q:"@Agent why does this need approval?",
       txt:"Your authority allows discounts up to 15%; 22% requires Credit Officer sign-off. I based this only on the pricing policy and approval workflow you can access — a related Legal memo is restricted, so it wasn't used.",
       chips:[["info","🔒 Permission boundary"]],
       cites:["Pricing exception","Acme approval workflow"],
