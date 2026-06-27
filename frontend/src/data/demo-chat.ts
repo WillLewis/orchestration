@@ -20,7 +20,7 @@ function normalize(s: string): string {
 
 const ROUTE_ACTION: ChatAction = {
   id: "route_credit_officer",
-  label: "Route to Credit Officer",
+  label: "Stage: route 22% to Credit Officer",
   kind: "route_credit_officer",
 };
 

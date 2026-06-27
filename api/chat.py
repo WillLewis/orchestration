@@ -502,7 +502,7 @@ def _discount_block_actions(delegated: float) -> list[ChatAction]:
         ChatAction(id="explain", label="Explain", kind="explain"),
         ChatAction(
             id="route_credit_officer",
-            label="Route to Credit Officer",
+            label="Stage: route 22% to Credit Officer",
             kind="route_credit_officer",
         ),
         ChatAction(

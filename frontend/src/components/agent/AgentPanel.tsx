@@ -251,7 +251,7 @@ export function AgentPanel({
             );
             setMessages((m) => [
               ...m,
-              privateUserTurn(agentPrompt("Stage route to Credit Officer")),
+              privateUserTurn(agentPrompt("Stage: route 22% to Credit Officer")),
               privateAssistantTurn(FLOW.staged.reply, FLOW.staged),
             ]);
             if (row?.action) {

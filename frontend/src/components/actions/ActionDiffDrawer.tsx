@@ -39,6 +39,7 @@ import {
 import { verify_result_financials, type VerifyResult } from "@/data/record";
 import {
   approveAction,
+  clearStagedDecisionReadinessRemediation,
   closeDrawer,
   executeApproved,
   executeRegated,
@@ -58,6 +59,7 @@ import {
   acceptCascadeEdit,
   routeToCreditOfficer,
   simulateCreditOfficerResponse,
+  useGovernedBrief,
   useRevalidation,
 } from "@/lib/revalidation-store";
 import { useLatestRecordId } from "@/lib/record-store";
@@ -211,10 +213,28 @@ export function ActionDiffDrawer() {
   const store = useActionsStore();
   const { drawer, staged_remediations, user_status, audit } = store;
   const reval = useRevalidation();
+  const governed = useGovernedBrief();
   const recordId = useLatestRecordId();
   const { data: cachedVerification } = useVerification(recordId);
   const planActions = useActionPlanQuery().data.actions;
-  const stagedReferences = useMemo(() => Object.values(staged_remediations), [staged_remediations]);
+  const actionableStagedRows = useMemo(() => {
+    const rows = new Map(
+      governed.decision_readiness.rows.flatMap((row) => (row.action ? [[row.id, row.action]] : [])),
+    );
+    return rows;
+  }, [governed.decision_readiness.rows]);
+  const stagedReferences = useMemo(
+    () =>
+      Object.values(staged_remediations).filter((reference) => {
+        const action = actionableStagedRows.get(reference.origin.row_id);
+        return (
+          action?.tool === reference.origin.remediation_tool &&
+          action.target_object_id === reference.origin.target_object_id &&
+          (action.required_approver ?? null) === (reference.origin.required_approver ?? null)
+        );
+      }),
+    [actionableStagedRows, staged_remediations],
+  );
   const stagedValidation = useStagedRemediationActions(stagedReferences);
   const stagedReferenceByRowId = useMemo(
     () => new Map(stagedReferences.map((reference) => [reference.origin.row_id, reference])),
@@ -280,6 +300,14 @@ export function ActionDiffDrawer() {
       setExecResult(null);
     }
   }, [drawer.open, drawer.mode]);
+
+  useEffect(() => {
+    if (!drawer.open || drawer.mode !== "staged_remediation") return;
+    Object.values(staged_remediations).forEach((reference) => {
+      if (actionableStagedRows.has(reference.origin.row_id)) return;
+      clearStagedDecisionReadinessRemediation(reference.origin.row_id);
+    });
+  }, [actionableStagedRows, drawer.mode, drawer.open, staged_remediations]);
 
   // Live mode verifies through the backend once per drawer/record. The drawer renders the pinned
   // deterministic snapshot immediately, so a slow or unavailable gateway cannot repaint/flicker the

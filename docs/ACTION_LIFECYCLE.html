@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Action Lifecycle — Decision Brief, Agent Actions &amp; Revalidation</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --ink: #1c2230;
+    --ink-soft: #4a5468;
+    --muted: #788196;
+    --line: #e4e7ee;
+    --accent: #3b5bdb;
+    --accent-soft: #eef2ff;
+    --green: #2f9e44;
+    --green-soft: #ebfbee;
+    --amber: #e8590c;
+    --amber-soft: #fff4e6;
+    --red: #e03131;
+    --red-soft: #fff0f0;
+    --code-bg: #1e2330;
+    --code-ink: #e6e9f2;
+    --radius: 12px;
+    --maxw: 880px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+    font-size: 16px;
+  }
+
+  /* Layout */
+  .wrap {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    max-width: 1240px;
+    margin: 0 auto;
+    gap: 0;
+  }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 32px 20px 48px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+  }
+  nav.toc .toc-title {
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    margin: 0 0 14px;
+  }
+  nav.toc a {
+    display: block;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    margin-bottom: 1px;
+    transition: background .12s, color .12s;
+  }
+  nav.toc a:hover { background: var(--accent-soft); color: var(--accent); }
+  nav.toc a.sub { padding-left: 22px; font-size: 12.5px; color: var(--muted); }
+
+  main {
+    padding: 48px 56px 120px;
+    min-width: 0;
+  }
+  .doc { max-width: var(--maxw); margin: 0 auto; }
+
+  /* Hero */
+  header.hero {
+    margin-bottom: 40px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid var(--line);
+  }
+  header.hero .kicker {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+  header.hero h1 {
+    font-size: 34px;
+    line-height: 1.2;
+    margin: 8px 0 12px;
+    letter-spacing: -.02em;
+  }
+  header.hero p.lede {
+    font-size: 17px;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 640px;
+  }
+
+  /* Sections */
+  section { margin-bottom: 14px; scroll-margin-top: 24px; }
+  h2 {
+    font-size: 24px;
+    margin: 48px 0 16px;
+    padding-top: 8px;
+    letter-spacing: -.01em;
+  }
+  h3 {
+    font-size: 18px;
+    margin: 30px 0 10px;
+    color: var(--ink);
+  }
+  h2 .num {
+    display: inline-block;
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  p { margin: 0 0 14px; }
+  strong { color: var(--ink); font-weight: 650; }
+
+  /* Callouts */
+  .callout {
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin: 18px 0;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 15px;
+  }
+  .callout .label {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .callout.warn { background: var(--amber-soft); border-color: #ffd8a8; }
+  .callout.warn .label { color: var(--amber); }
+  .callout.info { background: var(--accent-soft); border-color: #c5cff0; }
+  .callout.info .label { color: var(--accent); }
+  .callout.key { background: var(--green-soft); border-color: #b2f2bb; }
+  .callout.key .label { color: var(--green); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* Invariant cards */
+  .invariant {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin: 14px 0;
+  }
+  .invariant .chip {
+    flex: 0 0 auto;
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    display: grid; place-items: center;
+    font-size: 15px;
+  }
+  .invariant .body { min-width: 0; }
+  .invariant h3 { margin: 2px 0 6px; font-size: 16.5px; }
+  .invariant p:last-child { margin-bottom: 0; }
+
+  /* Tables */
+  .table-scroll { overflow-x: auto; margin: 18px 0; border-radius: var(--radius); border: 1px solid var(--line); }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14.5px;
+    background: var(--surface);
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    background: #f0f2f7;
+    font-weight: 650;
+    font-size: 13px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #fafbfd; }
+  td code, th code, p code, li code, .invariant code {
+    background: #eef0f5;
+    color: #2b3450;
+    padding: 1.5px 6px;
+    border-radius: 5px;
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: .86em;
+  }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin: 16px 0;
+  }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* Lists */
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+
+  /* Steps (walkthrough) */
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  .step .step-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .step h3 { margin: 0 0 8px; }
+  .step p:last-child, .step ul:last-child { margin-bottom: 0; }
+
+  /* status pills */
+  .pill {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    letter-spacing: .02em;
+  }
+  .pill.done { background: var(--green-soft); color: var(--green); }
+  .pill.gap { background: var(--red-soft); color: var(--red); }
+  .pill.partial { background: var(--amber-soft); color: var(--amber); }
+
+  footer {
+    max-width: var(--maxw);
+    margin: 40px auto 0;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 880px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav.toc { display: none; }
+    main { padding: 28px 20px 80px; }
+    header.hero h1 { font-size: 27px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="toc">
+    <p class="toc-title">On this page</p>
+    <a href="#scope">Scope</a>
+    <a href="#reality">Current repo reality</a>
+    <a href="#invariants">Load-bearing invariants</a>
+    <a href="#loop">Target loop</a>
+    <a href="#triggers">Trigger classes</a>
+    <a href="#staging">Staging vs. execution</a>
+    <a href="#notifications">Notification model</a>
+    <a href="#taxonomy">Row taxonomy</a>
+    <a href="#appearances">Appearances vs. transitions</a>
+    <a href="#recompute">Recompute target</a>
+    <a href="#walkthrough">Acme walkthrough</a>
+    <a href="#config">Configurability</a>
+    <a href="#buildplan">Build plan</a>
+    <a href="#gaps">Known gaps</a>
+    <a href="#safety">Demo-safety rules</a>
+  </nav>
+
+  <main>
+  <div class="doc">
+
+    <header class="hero">
+      <div class="kicker">Build Spec</div>
+      <h1>Action Lifecycle</h1>
+      <p class="lede">How the <strong>Decision Brief</strong> and <strong>Agent Actions</strong> drawer get
+      populated, staged, executed, and revalidated — and how to keep the Acme demo coherent without
+      overclaiming what's wired today.</p>
+    </header>
+
+    <section id="scope">
+      <h2>Scope</h2>
+      <p>This document is the build spec for how the Decision Brief and Agent Actions drawer should be
+      populated, staged, executed, and revalidated. It is intentionally split into three lenses:</p>
+      <ul>
+        <li><strong>Target architecture</strong> — the invariant we want the product to satisfy.</li>
+        <li><strong>Current implementation</strong> — what exists in this repo today.</li>
+        <li><strong>Build gaps</strong> — the smallest changes needed to make the visible demo match the architecture.</li>
+      </ul>
+      <div class="callout warn">
+        <span class="label">⚠ Do not touch</span>
+        <p>Do not edit <code>core/schemas.py</code> or <code>core/pipeline.py</code> for this work.</p>
+      </div>
+    </section>
+
+    <section id="reality">
+      <h2>Current repo reality</h2>
+      <p>The lifecycle primitives mostly exist, and the Acme live demo now has an API-local anti-drift
+      seam. The remaining gap is a general <code>EventTrigger</code> dispatcher and persistent event log.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Claim</th><th>Current state</th></tr></thead>
+        <tbody>
+          <tr><td>Typed lifecycle primitives</td><td>Present in <code>core/schemas.py</code>, including <code>EventTrigger</code>, <code>PolicyGraph</code>, <code>WorkProductContract</code>, revalidation types, action types.</td></tr>
+          <tr><td>Safe action validation</td><td>Present in <code>actions/composer.py</code> and <code>actions/engine.py</code>. The composer validates every proposed action through the deterministic engine.</td></tr>
+          <tr><td>Rollback</td><td>Present on <code>WorkspaceExecutor.rollback()</code> in <code>actions/engine.py</code>. It is not the main capability of <code>actions/loop.py</code>.</td></tr>
+          <tr><td>Brief &amp; drawer share one source</td><td>Live staged rows are verified server-side against the current readiness row before composition; <code>/api/actions</code> derives row actions from <code>DecisionReadiness.rows[*].action</code> plus explicitly labeled batch fixtures.</td></tr>
+          <tr><td>Event log / dispatcher</td><td>API-local in-memory lifecycle events exist for the Acme demo. <code>EventTrigger</code> is still only a type; no general backend dispatcher fans events into one recompute loop yet.</td></tr>
+          <tr><td>Demo revalidation</td><td>Live mode derives routed/signed/reconciled state from API lifecycle events. Mock mode keeps the deterministic frontend store for offline demo parity.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="callout info">
+        <span class="label">Reading note</span>
+        <p>The strongest lifecycle claims below are <strong>design invariants to enforce</strong>, not
+        statements that the current repo already satisfies end to end.</p>
+      </div>
+    </section>
+
+    <section id="invariants">
+      <h2>Load-bearing invariants</h2>
+
+      <div class="invariant">
+        <div class="chip">1</div>
+        <div class="body">
+          <h3>The Decision Brief stages. Agent Actions executes.</h3>
+          <p>The Decision Brief is a read-and-stage surface. It shows what a decision needs and lets a
+          human queue a remediation. <strong>It must not run side effects.</strong></p>
+          <p>The Agent Actions drawer is the execution chokepoint — where dry-run, edit, approval, audit,
+          and execution happen. If a brief-row button appears to run the action directly, the boundary has leaked.</p>
+        </div>
+      </div>
+
+      <div class="invariant">
+        <div class="chip">2</div>
+        <div class="body">
+          <h3>No drift: the drawer card must be derived from the staged brief row.</h3>
+          <p><strong>This is the most important build guardrail.</strong> Clicking <strong>Stage</strong>
+          on a brief readiness row must not independently create a drawer action. It records a reference
+          to that row's remediation, then asks the composer / validation layer to produce the drawer card
+          from that exact remediation.</p>
+          <p>Required provenance for every staged drawer card:</p>
+          <pre><code>origin: {
+  surface: "decision_readiness";
+  row_id: string;
+  remediation_tool: string;
+  target_object_id: string;
+  required_approver?: string | null;
+}</code></pre>
+          <p><strong>Acceptance test:</strong></p>
+          <ol>
+            <li>A readiness row carries a remediation descriptor: tool, target, approver, sources, and business parameters such as the 22% amount.</li>
+            <li>Clicking <code>Stage</code> stores the row/remediation identity, not a parallel hand-authored action.</li>
+            <li>The drawer card is produced by composer validation of that remediation.</li>
+            <li>If the row remediation changes, the staged drawer card changes.</li>
+            <li>If the composer or gate blocks the remediation, the drawer shows the blocked card.</li>
+            <li>The drawer must not render an orphan action without <code>origin</code>, except for a deliberately labeled batch proposal path.</li>
+          </ol>
+          <p>This is the direct fix for the old <code>AcmeFollowupProposer</code> drift problem: the drawer
+          cannot be another source of truth. The server also rejects stale or forged staged descriptors
+          before composition.</p>
+        </div>
+      </div>
+
+      <div class="invariant">
+        <div class="chip">3</div>
+        <div class="body">
+          <h3>The home memo is not the Decision Brief.</h3>
+          <p>The center surface in the meeting is Dana's screen-shared credit memo draft — an authored
+          work product with governed highlights. The Decision Brief is the system-generated readiness
+          projection. The Agent Actions drawer is the execution surface. Keep those roles visually and
+          narratively separate:</p>
+          <ul>
+            <li>The <strong>home memo</strong> can show the business request, financial changes, and obvious open facts.</li>
+            <li>The <strong>brief</strong> should explain policy gates, delegated authority, missing approvals, conflicts, and restricted-source limitations.</li>
+            <li>The <strong>drawer</strong> should show executable remediations and changes requiring review.</li>
+          </ul>
+          <p>Do not overload the home memo with future workflow state.</p>
+        </div>
+      </div>
+
+      <div class="invariant">
+        <div class="chip">4</div>
+        <div class="body">
+          <h3><code>approval_ready</code> is recomputed and must not flicker true.</h3>
+          <p><code>approval_ready</code> is never carried over from a prior stage. It must be recomputed
+          from the current facts and gates. For the Acme arc, it must stay <code>false</code> after Credit
+          Officer approval because Legal sign-off and the final covenant tracker remain unresolved.</p>
+        </div>
+      </div>
+
+      <div class="invariant">
+        <div class="chip">5</div>
+        <div class="body">
+          <h3>Visible simulation beats hidden timers.</h3>
+          <p>Counterparty responses in the demo should use a visible simulated counterparty affordance,
+          not a hidden timer. For example:</p>
+          <ol>
+            <li>Execute <code>Route to Credit Officer</code>.</li>
+            <li>Show route pending.</li>
+            <li>Presenter clicks <code>Simulate Credit Officer response</code>.</li>
+            <li>The simulated persona signs off.</li>
+            <li>Revalidation runs.</li>
+          </ol>
+          <p>This preserves determinism without making the panel wonder whether the system pre-knew the answer.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="loop">
+      <h2>Target loop</h2>
+      <p>This is the target architecture. Parts of it are not wired yet.</p>
+      <pre><code>EventTrigger
+  -&gt; revalidate(WorkProductContract)
+  -&gt; Decision Brief read model
+       readiness rows
+       status
+       next_steps / remediations
+       Stage affordances
+  -&gt; human stages a row
+  -&gt; staged remediation reference
+  -&gt; composer validates remediation into one drawer card
+  -&gt; Agent Actions / Next actions
+  -&gt; human executes
+  -&gt; AuditEvent
+  -&gt; side effect / approval route
+  -&gt; EventTrigger
+  -&gt; Agent Actions / Changes</code></pre>
+      <p>The loop closes because execution, source changes, and approval returns are all new events.
+      Until an event dispatcher exists, the demo can use explicit frontend/API transitions, but the
+      surface behavior should still respect the same state boundaries.</p>
+    </section>
+
+    <section id="triggers">
+      <h2>Trigger classes</h2>
+      <p>A Decision Brief should eventually respond to any event that affects a source dependency in its
+      <code>WorkProductContract</code>.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Event class</th><th>Example</th><th>Drawer implication</th></tr></thead>
+        <tbody>
+          <tr><td><code>decision_request</code></td><td>Dana frames the Acme renewal decision or asks for 22%.</td><td>Generates or refreshes the brief. No drawer action until a row is staged.</td></tr>
+          <tr><td><code>source_changed</code></td><td>Customer success plan remains at 18% after a 22% approval.</td><td>Creates a Changes notification or a stageable reconciliation remediation.</td></tr>
+          <tr><td><code>approval_returned</code></td><td>Credit Officer signs the 22% exception.</td><td>Creates a Changes notification and revalidates readiness.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="callout info">
+        <span class="label">Important</span>
+        <p>A brief is not chat-only. Approval returns and source changes can update the brief even when
+        nobody typed <code>@Agent</code>.</p>
+      </div>
+    </section>
+
+    <section id="staging">
+      <h2>Staging versus execution</h2>
+      <p>Use two verbs because the surfaces do different work.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Surface</th><th>Verb</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Brief readiness row</td><td><code>Stage</code></td><td>Queue a remediation for review. No side effect.</td></tr>
+          <tr><td>Agent Actions drawer</td><td><code>Execute</code>, <code>Route</code>, <code>Create</code>, <code>Accept edit</code></td><td>Run the validated action through the execution chokepoint.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p><strong>Preferred labels:</strong></p>
+      <ul>
+        <li>Brief: <code>Stage: route 22% to Credit Officer</code></li>
+        <li>Drawer: <code>Route to Credit Officer</code></li>
+      </ul>
+      <p>The drawer card should include the amount by default: <code>22% pricing exception</code>. It should
+      allow edit where the user can safely change meaningful fields before execution. For approval routing,
+      editable fields should be explicit and limited — for example approver, route note, and requested
+      amount if changing it triggers revalidation.</p>
+    </section>
+
+    <section id="notifications">
+      <h2>Notification model</h2>
+      <p>Use two counters with opposite meanings.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Chip</th><th>Counts</th><th>Increments when</th><th>Default drawer tab</th></tr></thead>
+        <tbody>
+          <tr><td><code>Next actions</code></td><td>Staged remediations awaiting execution.</td><td>A row is staged or a batch proposal is accepted.</td><td><code>Next actions</code></td></tr>
+          <tr><td><code>Changes</code></td><td>Committed or external mutations awaiting review.</td><td>An <code>AuditEvent</code>, <code>source_changed</code>, or <code>approval_returned</code> lands.</td><td><code>Changes</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>The top-nav <code>Agent Actions</code> badge should count unseen items across both chips. Per-chip
+      badges should clear when the user opens that chip, not merely when the drawer opens.</p>
+      <div class="callout key">
+        <span class="label">Rule of thumb</span>
+        <p>"The agent should do something" → <strong>Next actions</strong>.<br>
+        "Something happened you should inspect" → <strong>Changes</strong>.</p>
+      </div>
+    </section>
+
+    <section id="taxonomy">
+      <h2>Row taxonomy</h2>
+      <p>Do not render every readiness issue as the same red row. These are different schema objects and
+      different user jobs.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Meaning</th><th>Schema object</th><th>Acme example</th><th>UI treatment</th><th>Stage remediation</th></tr></thead>
+        <tbody>
+          <tr><td>Needs a person</td><td><code>ApprovalRequirement</code></td><td>Credit Officer, Legal</td><td>person/role icon, approver identity, route state</td><td><code>route_approval</code></td></tr>
+          <tr><td>Needs an artifact</td><td><code>MissingEvidenceState(blocking=true)</code></td><td>final covenant tracker</td><td>document/task icon, owner, due date, upload/request affordance</td><td><code>create_task</code></td></tr>
+          <tr><td>Two sources disagree</td><td><code>ConflictState</code></td><td>approved 22% vs CS plan 18%</td><td>compare/diff treatment, source chips, before/after values</td><td><code>edit_document</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="callout warn">
+        <span class="label">Product-critical</span>
+        <p>If all three look identical, viewers conflate "waiting on a human" with "missing a file" with
+        "contradictory evidence."</p>
+      </div>
+    </section>
+
+    <section id="appearances">
+      <h2>Appearances versus transitions</h2>
+      <p>This rule prevents the demo from looking like it knows the ending.</p>
+      <ul>
+        <li>A row may appear mid-flow <strong>only if a new input created it</strong>.</li>
+        <li>Otherwise prerequisites should be present from generation and only change status.</li>
+      </ul>
+      <p><strong>Examples:</strong></p>
+      <ul>
+        <li>Credit Officer, Legal, and covenant tracker are standing prerequisites for the Acme decision class. They can be present in the brief from generation.</li>
+        <li>The home memo should not show all of those as system analysis before the brief is opened.</li>
+        <li>For this walkthrough, the customer success plan conflict appears <strong>only after</strong> Credit Officer approval returns. The causal beat is <code>approval_returned</code> → revalidate dependent sources → detect approved 22% vs customer success plan 18%. Do not surface that conflict immediately after the 22% request.</li>
+      </ul>
+    </section>
+
+    <section id="recompute">
+      <h2>Recompute target</h2>
+      <p>On any qualifying event, the target backend recompute should:</p>
+      <ol>
+        <li>Re-assemble context under the permission boundary.</li>
+        <li>Re-run deterministic gates: rule firings, calculations, approval matrix, and missing evidence.</li>
+        <li>Recompute readiness rows by taxonomy.</li>
+        <li>Compute change impact for source changes.</li>
+        <li>Produce ordered <code>next_steps</code> / remediations from the policy graph.</li>
+        <li>Let the user stage a row.</li>
+        <li>Convert the staged remediation into a drawer card through composer validation.</li>
+      </ol>
+      <div class="callout warn">
+        <span class="label">No-drift invariant</span>
+        <p>This is only true if steps 5 and 7 use the <strong>same remediation identity</strong>. A separate
+        hardcoded drawer plan violates the invariant even if the UI looks correct.</p>
+      </div>
+    </section>
+
+    <section id="walkthrough">
+      <h2>Corrected Acme walkthrough</h2>
+
+      <div class="step">
+        <span class="step-tag">Step 0</span>
+        <h3>Meeting home</h3>
+        <p>The center object is Dana's screen-shared credit memo draft — not meeting notes and not the
+        system brief. Recommended home memo behavior:</p>
+        <ul>
+          <li>Show the request: Acme is requesting a 22% pricing exception and covenant modification.</li>
+          <li>Show financial changes: revenue forecast revised from $42M to $38M, and prior/current DSCR.</li>
+          <li>Show only simple open facts, such as Credit Officer outstanding and final covenant tracker missing.</li>
+          <li><strong>Do not</strong> show <code>(standard threshold 15%)</code>, Legal pending, restricted legal memo, or CS-plan conflict on the home memo before the brief/revalidation has context for them.</li>
+        </ul>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 1</span>
+        <h3>Dana asks the agent</h3>
+        <p>Dana types:</p>
+        <pre><code>@Agent apply the 22% discount</code></pre>
+        <p>The agent refuses direct application. The raw discount change is a hard-blocked ask and does not
+        enter the drawer.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 2</span>
+        <h3>Generate / open the Decision Brief</h3>
+        <p>The brief shows readiness by row type:</p>
+        <ul>
+          <li>Credit Officer approval needed.</li>
+          <li>Legal approval needed for the covenant modification.</li>
+          <li>Final covenant tracker missing.</li>
+          <li>DSCR calculation passed or close to threshold.</li>
+          <li>Restricted legal source acknowledged only as a permission limitation, not summarized.</li>
+        </ul>
+        <p>The brief can explain that 15% is the Relationship Manager's delegated authority and 22% requires
+        Credit Officer approval. For this walkthrough, the initial brief does <strong>not</strong> show the
+        customer success plan conflict — that disagreement is reserved for the post-Credit-Officer
+        revalidation beat.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 3</span>
+        <h3>Stage Credit Officer route</h3>
+        <p>The Credit Officer row button says:</p>
+        <pre><code>Stage: route 22% to Credit Officer</code></pre>
+        <p>Clicking it records the row remediation identity and lights <code>Agent Actions → Next actions 1</code>.
+        The drawer card must be produced by composer validation of that staged remediation — not a parallel
+        hardcoded action.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 4</span>
+        <h3>Execute the route</h3>
+        <p>The drawer card says <code>Route to Credit Officer</code>, includes <code>22% pricing exception</code>,
+        and can show the target workflow/doc. Clicking Execute/Route emits an audit event and moves the route
+        to pending.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 5</span>
+        <h3>Visible simulated counterparty</h3>
+        <p>The presenter clicks a visible affordance such as:</p>
+        <pre><code>Simulate Credit Officer response</code></pre>
+        <p>The <code>StubPersonaClient</code> / persona path returns a deterministic sign-off. This emits an
+        <code>approval_returned</code> event in the target architecture. In the current demo it can be a
+        frontend/API transition, but it should be visible and intentional.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 6</span>
+        <h3>Revalidate</h3>
+        <p>The brief updates:</p>
+        <ul>
+          <li>Credit Officer row transitions to passed/approved.</li>
+          <li><code>approval_threshold</code> and missing-CO gates clear.</li>
+          <li><code>approval_ready</code> remains <strong>false</strong> because Legal and covenant tracker remain unresolved.</li>
+          <li>Only now does the customer success plan 18% vs approved 22% conflict appear, as a revalidation change or stageable reconciliation.</li>
+        </ul>
+        <p>The top-nav badge should now point to <code>Changes 1</code>, not another generic action count.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-tag">Step 7</span>
+        <h3>Reconcile cascade and continue</h3>
+        <p>Opening <code>Changes</code> shows the approved change and/or a reconciliation diff for the customer
+        success plan. Accepting the reconciliation clears the conflict. Legal and covenant remain open until
+        their own remediations are staged and executed. The same loop repeats:</p>
+        <pre><code>event -&gt; recompute -&gt; row status/remediation -&gt; stage -&gt; composer validates -&gt; drawer executes</code></pre>
+      </div>
+    </section>
+
+    <section id="config">
+      <h2>Configurability answer</h2>
+      <p>This should be explainable as primitives, not an Acme script.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Primitive</th><th>Panel question</th><th>Configuration knob</th></tr></thead>
+        <tbody>
+          <tr><td><code>AgentRecipe</code></td><td>Does this only work for credit?</td><td>Swap recipe id and allowed sources/actions.</td></tr>
+          <tr><td><code>RulePack</code> / <code>Rule</code></td><td>Who decided the 15% threshold?</td><td>Rule parameters and versioned policy artifact.</td></tr>
+          <tr><td><code>ApprovalMatrix</code> / approval policy</td><td>Why Credit Officer?</td><td>Required approver by rule or side-effect class.</td></tr>
+          <tr><td><code>PolicyGraph</code></td><td>Why this order?</td><td>Dependency edges and prerequisite ordering.</td></tr>
+          <tr><td><code>WorkProductContract</code></td><td>What makes a brief stale?</td><td>Source dependencies and revalidation rules.</td></tr>
+          <tr><td><code>RevalidationRule</code></td><td>How does it know the CS plan is affected?</td><td>Trigger object ids mapped to affected sections.</td></tr>
+          <tr><td><code>Action</code> / <code>ActionDiff</code></td><td>What exactly will run?</td><td>ToolCard, side effect, before/after diff, gate result.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="callout key">
+        <span class="label">One-line answer</span>
+        <p>A Decision Brief is not chat-only. It recomputes when a decision is requested, a source changes,
+        or an approval returns. The brief stages remediations; Agent Actions executes validated diffs.</p>
+      </div>
+    </section>
+
+    <section id="buildplan">
+      <h2>Build plan</h2>
+
+      <h3>Phase 1 — demo coherence, no core changes</h3>
+      <ol>
+        <li>Clean the home memo copy so policy analysis is not shown before the brief and the customer success plan conflict is not shown before Credit Officer approval returns.</li>
+        <li>Add row taxonomy styling in the brief for approval, missing evidence, and conflict rows.</li>
+        <li>Replace hidden CO auto-sign timer with a visible simulated counterparty control.</li>
+        <li>Keep <code>approval_ready=false</code> until Legal and covenant tracker clear.</li>
+        <li>Add stage provenance for readiness-row actions.</li>
+        <li>Make the drawer render staged cards from composer validation of the row remediation.</li>
+        <li>Add tests proving no orphan drawer actions are rendered for staged rows.</li>
+      </ol>
+      <p><strong>Acceptance tests for Phase 1:</strong></p>
+      <ul>
+        <li>Bare public chat does not call the agent.</li>
+        <li><code>@Agent apply the 22% discount</code> refuses direct mutation.</li>
+        <li><code>@Agent generate decision brief</code> shows the brief.</li>
+        <li>Brief row <code>Stage: route 22% to Credit Officer</code> creates exactly one <code>Next actions</code> card.</li>
+        <li>That card includes the 22% amount and row provenance.</li>
+        <li>Changing the row remediation changes the drawer card.</li>
+        <li>The drawer card is blocked if validation blocks the remediation.</li>
+        <li>CO response requires a visible simulated action, not a hidden timer.</li>
+        <li>The initial brief does not show the customer success plan conflict.</li>
+        <li>The customer success plan conflict appears only after the visible Credit Officer response.</li>
+        <li><code>approval_ready</code> never flips true after CO sign-off while Legal/tracker remain unresolved.</li>
+      </ul>
+
+      <h3>Phase 2 — backend anti-drift seam</h3>
+      <ol>
+        <li>Replace the API demo path's fixed <code>AcmeFollowupProposer</code> for staged-row flows. <span class="pill done">Done</span></li>
+        <li>Add a composer entrypoint that accepts one staged remediation and returns one validated <code>Action</code>. <span class="pill done">Done</span></li>
+        <li>Route brief-row staging through that entrypoint. <span class="pill done">Done</span></li>
+        <li>Execute staged rows by verified origin instead of ActionPlan index. <span class="pill done">Done for <code>/actions/staged-remediation/execute</code></span></li>
+        <li>Keep batch proposals labeled separately and traceable to their proposal origin. <span class="pill done">Done for the Acme batch fixtures</span></li>
+        <li>Add API tests that prove row remediations and drawer actions cannot drift. <span class="pill done">Done</span></li>
+      </ol>
+
+      <h3>Phase 3 — event dispatch and live parity</h3>
+      <ol>
+        <li>Wire a general <code>EventTrigger</code> dispatcher.</li>
+        <li>Replace the API-local in-memory Acme event store with the eventual lifecycle store.</li>
+        <li>Revalidate work products from <code>WorkProductContract.source_dependencies</code>.</li>
+        <li>Emit <code>Changes</code> notifications from source-change and approval-return events.</li>
+        <li>Move the remaining mock-mode cascade presentation from special-cased frontend data to lifecycle/action primitives.</li>
+      </ol>
+    </section>
+
+    <section id="gaps">
+      <h2>Known current gaps to avoid overclaiming</h2>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Gap</th><th>Current location</th></tr></thead>
+        <tbody>
+          <tr><td>General event dispatcher for <code>EventTrigger</code> is not wired.</td><td>Lifecycle/API gap.</td></tr>
+          <tr><td>Persistent lifecycle event storage is not wired.</td><td><code>api/lifecycle_events.py</code> is intentionally in-memory for the prototype.</td></tr>
+          <tr><td>Mock mode still uses the deterministic frontend revalidation store.</td><td><code>frontend/src/lib/revalidation-store.ts</code>.</td></tr>
+          <tr><td>Changes counter is not fully first-class.</td><td><code>frontend/src/lib/actions-store.ts</code> and drawer wiring.</td></tr>
+          <tr><td>Cascade presentation still has a mock fixture.</td><td><code>frontend/src/data/actions.ts</code>; live readiness row carries the edit descriptor.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section id="safety">
+      <h2>Demo-safety rules</h2>
+      <div class="callout warn">
+        <span class="label">⚠ Never in the demo</span>
+        <ul style="margin-bottom:0">
+          <li>Do not imply the home memo is the system's complete readiness analysis.</li>
+          <li>Do not show restricted source contents. Permission limitations can be acknowledged.</li>
+          <li>Do not show Legal approval status on the home memo before the brief.</li>
+          <li>Do not show the customer success plan conflict before Credit Officer approval returns.</li>
+          <li>Do not use hidden timers for counterparty approvals.</li>
+          <li>Do not let the drawer run actions that are not traceable to a staged row or explicit batch proposal.</li>
+          <li>Do not let <code>approval_ready</code> flicker true during the Acme arc until Credit, Legal, and covenant tracker are all clear.</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>
+      Generated from <code>docs/ACTION_LIFECYCLE.md</code> · ConnectWork Command Agent prototype
+    </footer>
+
+  </div>
+  </main>
+</div>
+</body>
+</html>

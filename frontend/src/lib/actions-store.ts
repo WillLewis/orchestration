@@ -139,6 +139,15 @@ export function stageDecisionReadinessRemediation(row: DecisionReadinessRow) {
   return staged;
 }
 
+export function clearStagedDecisionReadinessRemediation(rowId: string) {
+  if (!state.staged_remediations[rowId]) return;
+  const { [rowId]: _removed, ...remaining } = state.staged_remediations;
+  state.staged_remediations = remaining;
+  state.active_staged_row_id =
+    state.active_staged_row_id === rowId ? null : state.active_staged_row_id;
+  emit();
+}
+
 export function recordReturnedChangeNotification() {
   state.notification_revision = {
     ...state.notification_revision,
