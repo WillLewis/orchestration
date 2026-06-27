@@ -232,9 +232,7 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     brief = { ...brief, conflicts: [...brief.conflicts, CS_PLAN_CONFLICT] };
     readiness = { ...readiness, rows: [...readiness.rows, CS_PLAN_CONFLICT_ROW] };
     sources = sources.map((src) =>
-      RECONCILED_IDS.has(src.object_id)
-        ? { ...src, status: "conflicting" as SourceStatus }
-        : src,
+      RECONCILED_IDS.has(src.object_id) ? { ...src, status: "conflicting" as SourceStatus } : src,
     );
   }
 

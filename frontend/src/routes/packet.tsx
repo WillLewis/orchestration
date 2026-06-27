@@ -432,9 +432,7 @@ function DecisionReadinessTable({
                       <TypeIcon className="h-3.5 w-3.5" />
                     </span>
                     <div className="min-w-0">
-                      <div className="text-[13.5px] font-semibold text-foreground">
-                        {row.gate}
-                      </div>
+                      <div className="text-[13.5px] font-semibold text-foreground">{row.gate}</div>
                       <div
                         className={[
                           "mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em]",

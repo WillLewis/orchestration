@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { action_plan, action_key, derive_status, type Action } from "@/data/actions";
 import type { DecisionReadinessRow } from "@/data/brief";
+import type { RevalidationState } from "@/lib/revalidation-store";
 import {
   buildStagedRemediationReference,
   type StagedRemediationReference,
@@ -27,11 +28,26 @@ export type DrawerState = {
   mode: DrawerMode;
   focus_key: string | null;
   source: string; // human label of the trigger
+  change_kind: "approval_returned" | "source_change" | null;
+};
+
+export type ActionChip = "next" | "changes";
+
+export type AgentActionNotificationCounts = {
+  nextTotal: number;
+  changesTotal: number;
+  nextUnseen: number;
+  changesUnseen: number;
+  topNavUnseen: number;
+  nextItemIds: string[];
+  changesItemIds: string[];
 };
 
 type State = {
   drawer: DrawerState;
   staged_remediation: StagedRemediationReference | null;
+  chip_seen_keys: Record<ActionChip, string>;
+  notification_revision: Record<ActionChip, number>;
   // per-action user status (proposed | approved | edited | rejected | committed | reverted)
   user_status: Record<string, UserStatus>;
   // user edits override `after` fields
@@ -40,8 +56,10 @@ type State = {
 };
 
 const initial: State = {
-  drawer: { open: false, mode: "plan", focus_key: null, source: "" },
+  drawer: { open: false, mode: "plan", focus_key: null, source: "", change_kind: null },
   staged_remediation: null,
+  chip_seen_keys: { next: "", changes: "" },
+  notification_revision: { next: 0, changes: 0 },
   user_status: Object.fromEntries(
     action_plan.actions.map((a) => [action_key(a), "proposed"] as const),
   ),
@@ -74,17 +92,25 @@ export function openDrawer(opts?: {
   focus_key?: string | null;
   source?: string;
   mode?: DrawerMode;
+  change_kind?: DrawerState["change_kind"];
 }) {
   state.drawer = {
     open: true,
     mode: opts?.mode ?? "plan",
     focus_key: opts?.focus_key ?? null,
     source: opts?.source ?? state.drawer.source ?? "Acme renewal — pre-committee review",
+    change_kind: opts?.change_kind ?? null,
   };
   emit();
 }
 export function closeDrawer() {
-  state.drawer = { ...state.drawer, open: false, mode: "plan", focus_key: null };
+  state.drawer = {
+    ...state.drawer,
+    open: false,
+    mode: "plan",
+    focus_key: null,
+    change_kind: null,
+  };
   emit();
 }
 
@@ -92,14 +118,34 @@ export function stageDecisionReadinessRemediation(row: DecisionReadinessRow) {
   const staged = buildStagedRemediationReference(row);
   if (!staged) return null;
   state.staged_remediation = staged;
+  state.notification_revision = {
+    ...state.notification_revision,
+    next: state.notification_revision.next + 1,
+  };
   state.drawer = {
     open: true,
     mode: "staged_remediation",
     focus_key: null,
     source: `Decision readiness — ${row.gate}`,
+    change_kind: null,
   };
   emit();
   return staged;
+}
+
+export function recordReturnedChangeNotification() {
+  state.notification_revision = {
+    ...state.notification_revision,
+    changes: state.notification_revision.changes + 1,
+  };
+  emit();
+}
+
+export function markActionChipOpened(chip: ActionChip, itemIds: string[]) {
+  const key = notificationKey(itemIds);
+  if (state.chip_seen_keys[chip] === key) return;
+  state.chip_seen_keys = { ...state.chip_seen_keys, [chip]: key };
+  emit();
 }
 
 /* -------- per-action actions -------- */
@@ -231,12 +277,74 @@ export function resetActions() {
   state.user_status = Object.fromEntries(
     action_plan.actions.map((a) => [action_key(a), "proposed"] as const),
   );
+  state.drawer = { open: false, mode: "plan", focus_key: null, source: "", change_kind: null };
+  state.staged_remediation = null;
+  state.chip_seen_keys = { next: "", changes: "" };
+  state.notification_revision = { next: 0, changes: 0 };
   state.edited_after = {};
   state.audit = [];
   emit();
 }
 
 /* -------- selectors -------- */
+
+function notificationKey(itemIds: string[]): string {
+  return [...itemIds].sort().join("|");
+}
+
+function stagedRemediationActionKey(reference: StagedRemediationReference): string {
+  return `${reference.origin.remediation_tool}:${reference.origin.target_object_id}`;
+}
+
+export function getPendingStagedNextActionIds(s: State = state): string[] {
+  if (!s.staged_remediation) return [];
+  const key = stagedRemediationActionKey(s.staged_remediation);
+  const user = s.user_status[key] ?? "proposed";
+  if (user === "committed" || user === "rejected") return [];
+  return [`next:${s.notification_revision.next}:${s.staged_remediation.origin.row_id}:${key}`];
+}
+
+export function getReturnedChangeIds(
+  revalidation?: Pick<RevalidationState, "creditSigned" | "csReconciled">,
+  s: State = state,
+): string[] {
+  if (!revalidation?.creditSigned || revalidation.csReconciled) return [];
+  return [
+    `changes:${s.notification_revision.changes}:credit_officer_response:cs_plan_reconciliation`,
+  ];
+}
+
+export function getAgentActionNotificationCounts(
+  s: State = state,
+  revalidation?: Pick<RevalidationState, "creditSigned" | "csReconciled">,
+): AgentActionNotificationCounts {
+  const nextItemIds = getPendingStagedNextActionIds(s);
+  const changesItemIds = getReturnedChangeIds(revalidation, s);
+  const nextKey = notificationKey(nextItemIds);
+  const changesKey = notificationKey(changesItemIds);
+  const nextUnseen =
+    nextItemIds.length > 0 && s.chip_seen_keys.next !== nextKey ? nextItemIds.length : 0;
+  const changesUnseen =
+    changesItemIds.length > 0 && s.chip_seen_keys.changes !== changesKey
+      ? changesItemIds.length
+      : 0;
+
+  return {
+    nextTotal: nextItemIds.length,
+    changesTotal: changesItemIds.length,
+    nextUnseen,
+    changesUnseen,
+    topNavUnseen: nextUnseen + changesUnseen,
+    nextItemIds,
+    changesItemIds,
+  };
+}
+
+export function getCurrentAgentActionNotificationCounts(
+  revalidation?: Pick<RevalidationState, "creditSigned" | "csReconciled">,
+): AgentActionNotificationCounts {
+  return getAgentActionNotificationCounts(state, revalidation);
+}
 
 export function getEffectiveAfter(a: Action): Record<string, unknown> {
   return state.edited_after[action_key(a)] ?? a.diff.after;

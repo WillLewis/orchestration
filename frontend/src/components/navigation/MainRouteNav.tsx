@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { BookOpen, GitBranch, ShieldCheck, Workflow } from "lucide-react";
 
-import { openDrawer } from "@/lib/actions-store";
+import { getAgentActionNotificationCounts, openDrawer, useActionsStore } from "@/lib/actions-store";
+import { useRevalidation } from "@/lib/revalidation-store";
 
 type MainRouteNavProps = {
   variant?: "light" | "dark";
@@ -31,6 +32,9 @@ const NAV_ITEMS = [
 export function MainRouteNav({ variant = "light" }: MainRouteNavProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isDark = variant === "dark";
+  const actions = useActionsStore();
+  const revalidation = useRevalidation();
+  const actionCounts = getAgentActionNotificationCounts(actions, revalidation);
 
   function navClasses(active = false) {
     const base =
@@ -51,6 +55,22 @@ export function MainRouteNav({ variant = "light" }: MainRouteNavProps) {
     ].join(" ");
   }
 
+  function openAgentActions() {
+    if (actionCounts.changesTotal > 0) {
+      openDrawer({
+        mode: "revalidation_edit",
+        source: "Credit Officer response — approval returned",
+        change_kind: "approval_returned",
+      });
+      return;
+    }
+    if (actionCounts.nextTotal > 0) {
+      openDrawer({ mode: "staged_remediation", source: "Decision readiness — staged route" });
+      return;
+    }
+    openDrawer({ source: "Acme renewal — pre-committee review" });
+  }
+
   return (
     <nav className="flex shrink-0 items-center gap-1" aria-label="Agent navigation">
       {NAV_ITEMS.map(({ label, to, icon: Icon, isActive, ariaLabel }) => (
@@ -67,12 +87,17 @@ export function MainRouteNav({ variant = "light" }: MainRouteNavProps) {
       ))}
       <button
         type="button"
-        onClick={() => openDrawer({ source: "Acme renewal — pre-committee review" })}
+        onClick={openAgentActions}
         className={navClasses()}
         aria-label="Open Agent Actions"
       >
         <GitBranch className="h-3 w-3" />
         Agent Actions
+        {actionCounts.topNavUnseen > 0 && (
+          <span className="ml-0.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-white">
+            {actionCounts.topNavUnseen}
+          </span>
+        )}
       </button>
       <Link
         to="/developers"
