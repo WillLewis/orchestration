@@ -22,7 +22,7 @@ import {
   sources,
 } from "@/data/brief";
 import { gatingExamples } from "@/data/gating";
-import { loop_state, loop_ui, escalationsInFlightLabel } from "@/data/loop";
+import { deriveOpenStatus, loop_state } from "@/data/loop";
 import {
   METRIC_LABELS,
   TAXONOMY_LABELS,
@@ -59,6 +59,7 @@ const regressionStats = financeReplay.regression as { passed: number; total: num
 const dscr = decision_brief.policy_gates.calculations[0];
 const routeApprovalAction = action_plan.actions.find((action) => action.tool === "route_approval");
 const blockedAction = action_plan.actions.find((action) => action.blocked_reason);
+const loopOpenStatus = deriveOpenStatus(loop_state, action_plan.actions);
 
 function Pill({
   children,
@@ -1337,7 +1338,7 @@ function OrchestrationPage() {
               escalations: loop_state.escalations,
               scheduled: loop_state.scheduled,
               closed: loop_state.closed,
-              open_summary: loop_ui.open_summary,
+              open_summary: loopOpenStatus.summary,
             }}
           />
         }
@@ -1345,7 +1346,7 @@ function OrchestrationPage() {
         <p>
           <code>LoopState.closed</code> mirrors the backend: the loop cycle finished. The UI derives
           "open" status from escalations and unresolved prerequisites. In the Acme mock,{" "}
-          {escalationsInFlightLabel(loop_state)} keeps the loop open.
+          {loopOpenStatus.shortLabel} keeps the loop open.
         </p>
       </DocsSection>
     </>

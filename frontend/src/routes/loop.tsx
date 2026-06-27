@@ -23,13 +23,13 @@ import { toast } from "sonner";
 import { TopBar } from "@/components/meeting/TopBar";
 import {
   decision_chip,
-  escalationsInFlightLabel,
-  loop_ui,
+  deriveOpenStatus,
   personas,
   type Assignment,
   type Decision,
   type Escalation,
   type LoopState,
+  type OpenStatus,
   type PersonaRole,
   type Reply,
   type Scheduled,
@@ -106,9 +106,19 @@ function buildEvents(state: LoopState): TimelineEvent[] {
     }),
   );
   state.replies.forEach((r) => e.push({ kind: "reply", stage: "collect", actor: r.role, data: r }));
-  state.escalations.forEach((es) =>
-    e.push({ kind: "escalation", stage: "escalate", actor: "legal", data: es }),
-  );
+  state.escalations.forEach((es) => {
+    const sourceReply = state.replies.find(
+      (r) =>
+        r.action_index === es.action_index &&
+        (r.decision === "escalate" || r.decision === "decline"),
+    );
+    e.push({
+      kind: "escalation",
+      stage: "escalate",
+      actor: sourceReply?.role ?? "command_agent",
+      data: es,
+    });
+  });
   state.scheduled.forEach((s) =>
     e.push({
       kind: "scheduled",
@@ -141,6 +151,7 @@ const ROLE_TITLE: Partial<Record<PersonaRole, string>> = {
   credit_officer: "Credit Officer",
   legal: "Legal",
   compliance: "Compliance Officer",
+  human: "Manual review",
 };
 
 type MatrixStatus = "pending" | "approved" | "signed" | "escalated" | "in_review";
@@ -219,7 +230,10 @@ function WorkLoop() {
   // Live mode composes this from the plan server-side; mock is the bundled scripted outcome.
   const { data: loop_state } = useLoopQuery();
   const events = useMemo(() => buildEvents(loop_state), [loop_state]);
-  const inFlight = escalationsInFlightLabel(loop_state);
+  const openStatus = useMemo(
+    () => deriveOpenStatus(loop_state, baseActions),
+    [loop_state, baseActions],
+  );
   const execute = useExecuteActionsMutation();
 
   const [serverResult, setServerResult] = useState<ServerAuditEvent[] | null>(null);
@@ -310,7 +324,7 @@ function WorkLoop() {
       }
     : exported
       ? {
-          label: `Batch run complete · ${inFlight}`,
+          label: `Batch run complete · ${openStatus.shortLabel}`,
           cls: "bg-[var(--success-bg)] text-[var(--success)]",
         }
       : {
@@ -369,11 +383,21 @@ function WorkLoop() {
       },
       { role: "legal", title: ROLE_TITLE.legal!, status: ran ? "escalated" : "pending" },
     ];
-    if (ran && loop_state.escalations.length) {
-      rows.push({ role: "compliance", title: ROLE_TITLE.compliance!, status: "in_review" });
+    if (ran) {
+      const existing = new Set(rows.map((row) => row.role));
+      loop_state.escalations.forEach((escalation) => {
+        if (!existing.has(escalation.to)) {
+          rows.push({
+            role: escalation.to,
+            title: ROLE_TITLE[escalation.to] ?? "Review",
+            status: "in_review",
+          });
+          existing.add(escalation.to);
+        }
+      });
     }
     return rows;
-  }, [ran, revalidation.creditSigned, loop_state.escalations.length]);
+  }, [ran, revalidation.creditSigned, loop_state.escalations]);
   const approvedCount = matrixRows.filter(
     (r) => r.status === "approved" || r.status === "signed",
   ).length;
@@ -519,7 +543,12 @@ function WorkLoop() {
                       />
                     ),
                 )}
-                <CloseSection audit={displayAudit} exported={exported} onExport={exportDossier} />
+                <CloseSection
+                  audit={displayAudit}
+                  exported={exported}
+                  openStatus={openStatus}
+                  onExport={exportDossier}
+                />
               </>
             )}
           </main>
@@ -535,7 +564,7 @@ function WorkLoop() {
             events={events}
             audit={displayAudit}
             executedCount={executedCount}
-            inFlightLabel={inFlight}
+            openStatus={openStatus}
             onExport={exportDossier}
           />
         </div>
@@ -838,13 +867,15 @@ function Avatar({
       ? "bg-gradient-ai text-white shadow-card"
       : role === "compliance"
         ? "bg-[var(--warning-bg)] text-[var(--warning)]"
-        : role === "legal"
-          ? "bg-[#EEF1FF] text-[#3949AB]"
-          : role === "credit_officer"
-            ? "bg-[var(--primary-tint)] text-primary"
-            : role === "analyst"
-              ? "bg-[#E8F5EE] text-[var(--success)]"
-              : "bg-[#FFF1E6] text-[#B25E00]",
+        : role === "human"
+          ? "bg-[var(--danger-bg)] text-[var(--danger)]"
+          : role === "legal"
+            ? "bg-[#EEF1FF] text-[#3949AB]"
+            : role === "credit_officer"
+              ? "bg-[var(--primary-tint)] text-primary"
+              : role === "analyst"
+                ? "bg-[#E8F5EE] text-[var(--success)]"
+                : "bg-[#FFF1E6] text-[#B25E00]",
     dim ? "opacity-50" : "",
     highlight ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "",
   ].join(" ");
@@ -864,23 +895,19 @@ function TimelineRow({
   hoverRole: PersonaRole | null;
   setHoverRole: (r: PersonaRole | null) => void;
 }) {
-  const primaryRole: PersonaRole =
+  const eventRoles: PersonaRole[] =
     event.kind === "assignment"
-      ? event.to
+      ? [event.from, event.to]
       : event.kind === "reply"
-        ? event.actor
+        ? [event.actor]
         : event.kind === "escalation"
-          ? "legal"
-          : "command_agent";
+          ? [event.actor, event.data.to]
+          : [event.actor];
+  const primaryRole = event.kind === "assignment" ? event.to : event.actor;
 
   const dim =
-    hoverRole !== null &&
-    hoverRole !== primaryRole &&
-    hoverRole !== "command_agent" &&
-    !(event.kind === "assignment" && hoverRole === event.from);
-  const highlight =
-    hoverRole !== null &&
-    (hoverRole === primaryRole || (event.kind === "assignment" && hoverRole === event.from));
+    hoverRole !== null && hoverRole !== "command_agent" && !eventRoles.includes(hoverRole);
+  const highlight = hoverRole !== null && eventRoles.includes(hoverRole);
 
   return (
     <li
@@ -977,17 +1004,18 @@ function ReplyBody({ ev }: { ev: Extract<TimelineEvent, { kind: "reply" }> }) {
 }
 
 function EscalationBody({ ev }: { ev: Extract<TimelineEvent, { kind: "escalation" }> }) {
+  const source = personas[ev.actor];
   const target = personas[ev.data.to];
   return (
     <>
       <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-        <Avatar role="legal" size={7} />
+        <Avatar role={ev.actor} size={7} />
         <ArrowUpRight className="h-3 w-3 text-[var(--warning)]" />
         <Avatar role={ev.data.to} size={7} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
-          <span className="font-semibold text-foreground">Sam L.</span>
+          <span className="font-semibold text-foreground">{source.display}</span>
           <span>escalated to</span>
           <span className="font-semibold text-foreground">{target.display}</span>
           <RelTime />
@@ -1037,10 +1065,12 @@ function ScheduledBody({ ev }: { ev: Extract<TimelineEvent, { kind: "scheduled" 
 function CloseSection({
   audit,
   exported,
+  openStatus,
   onExport,
 }: {
   audit: DisplayAudit[];
   exported: boolean;
+  openStatus: OpenStatus;
   onExport: () => void;
 }) {
   const meta = STAGE_META.close;
@@ -1115,7 +1145,7 @@ function CloseSection({
         </ol>
 
         <div className="mt-2.5 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-3 py-2 text-[12.5px] leading-snug text-foreground">
-          <span className="font-semibold">Batch status:</span> {loop_ui.open_summary}
+          <span className="font-semibold">Batch status:</span> {openStatus.summary}
         </div>
       </div>
     </section>
@@ -1136,7 +1166,7 @@ function Dossier({
   events,
   audit,
   executedCount,
-  inFlightLabel,
+  openStatus,
   onExport,
 }: {
   ran: boolean;
@@ -1148,7 +1178,7 @@ function Dossier({
   events: TimelineEvent[];
   audit: DisplayAudit[];
   executedCount: number;
-  inFlightLabel: string;
+  openStatus: OpenStatus;
   onExport: () => void;
 }) {
   const counts = {
@@ -1314,11 +1344,11 @@ function Dossier({
                 {!ran
                   ? "Not started"
                   : exported
-                    ? `Batch run complete · ${inFlightLabel}`
+                    ? `Batch run complete · ${openStatus.shortLabel}`
                     : "Ran — open items"}
               </span>
               <span className="text-[var(--secondary-text)]">
-                {ran ? ` · ${loop_ui.open_summary}` : ""}
+                {ran ? ` · ${openStatus.summary}` : ""}
               </span>
             </span>
           </div>

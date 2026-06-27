@@ -14,7 +14,7 @@ export type ToolKey =
 export type SideEffect = "read" | "draft" | "propose" | "write";
 export type Risk = "low" | "medium" | "high";
 
-export type ActionSource = { object_id: string };
+export type ActionSource = { object_id: string; span?: string | null };
 
 export type ActionDiff = {
   target_object_id: string;
@@ -50,9 +50,11 @@ export const object_labels: Record<string, string> = {
   doc_legal_memo: "Legal approval memo",
   doc_financials: "Acme financial model",
   doc_credit_memo: "Acme credit memo · v3",
+  doc_research_publicside: "Public-side sector research",
   mtg_committee_0612: "Acme renewal — pre-committee review",
   task_new_1: "New task",
   note_new_1: "New internal note",
+  note_mnpi_1: "Information-barrier note",
   mtg_new_1: "New committee meeting",
 };
 
@@ -84,20 +86,6 @@ export const action_plan: { actions: Action[] } = {
       },
     },
     {
-      tool: "update_project_status",
-      reason: "Legal approval is pending, so the workflow should reflect that state.",
-      sources: [{ object_id: "wf_approval" }],
-      side_effect: "write",
-      risk: "low",
-      required_approver: null,
-      blocked_reason: null,
-      diff: {
-        target_object_id: "wf_approval",
-        before: { status: "Ready for Approval" },
-        after: { status: "Pending Legal" },
-      },
-    },
-    {
       tool: "draft_internal_note",
       reason: "Summarize open risks for the committee pre-read.",
       sources: [{ object_id: "doc_financials" }, { object_id: "doc_credit_memo" }],
@@ -111,15 +99,20 @@ export const action_plan: { actions: Action[] } = {
         after: {
           title: "Acme renewal — open risks",
           body: "Revenue forecast revised to $38M. Discount (22%) exceeds standard threshold. Credit Officer approval and final covenant tracker outstanding.",
+          key_points: [
+            "Revenue forecast revised to $38M.",
+            "22% discount exceeds standard threshold.",
+            "Credit Officer approval and final covenant tracker are outstanding.",
+          ],
+          status: "draft",
         },
       },
     },
     {
       tool: "route_approval",
-      reason:
-        "The 22% discount exceeds the RM's delegated authority and needs Credit Officer sign-off.",
+      reason: "The 22% discount exceeds the RM's delegated authority.",
       sources: [{ object_id: "doc_pricing_exception" }],
-      side_effect: "write",
+      side_effect: "propose",
       risk: "medium",
       required_approver: "credit_officer",
       blocked_reason: null,
@@ -131,9 +124,9 @@ export const action_plan: { actions: Action[] } = {
     },
     {
       tool: "route_approval",
-      reason: "Legal approval is still pending and must be completed before decision.",
-      sources: [{ object_id: "wf_approval" }, { object_id: "doc_legal_memo" }],
-      side_effect: "write",
+      reason: "Legal approval is still pending and must complete before decision.",
+      sources: [{ object_id: "wf_approval" }],
+      side_effect: "propose",
       risk: "medium",
       required_approver: "legal",
       blocked_reason: null,
@@ -150,7 +143,8 @@ export const action_plan: { actions: Action[] } = {
       side_effect: "write",
       risk: "low",
       required_approver: null,
-      blocked_reason: "Final covenant tracker not uploaded and Credit Officer approval missing.",
+      blocked_reason:
+        "missing_evidence: blocked by ['missing_covenant_tracker'] (blocking evidence unresolved)",
       diff: {
         target_object_id: "mtg_new_1",
         before: {},
@@ -158,6 +152,23 @@ export const action_plan: { actions: Action[] } = {
           title: "Acme — final committee decision",
           attendees: ["Dana R.", "Chris O.", "Priya N.", "Sam L."],
           proposed: "2026-06-24 14:00",
+        },
+      },
+    },
+    {
+      tool: "draft_internal_note",
+      reason: "Synthesize public-side sector research with the private-side model.",
+      sources: [{ object_id: "doc_research_publicside" }, { object_id: "doc_financials" }],
+      side_effect: "draft",
+      risk: "high",
+      required_approver: null,
+      blocked_reason:
+        "information-barrier (mosaic): action combines ['private-side', 'public-side'] sources — would cross an information barrier",
+      diff: {
+        target_object_id: "note_mnpi_1",
+        before: {},
+        after: {
+          topic: "sector + borrower synthesis",
         },
       },
     },
