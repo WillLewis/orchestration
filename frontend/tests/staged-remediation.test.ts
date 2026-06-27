@@ -50,6 +50,7 @@ describe("staged readiness remediation provenance", () => {
       mode: "staged_remediation",
       staged_remediations: [reference],
       validationActions: action_plan.actions,
+      creditRouted: false,
       creditSigned: false,
     });
 
@@ -92,6 +93,7 @@ describe("staged readiness remediation provenance", () => {
       mode: "staged_remediation",
       staged_remediations: [reference],
       validationActions: blockedPlan,
+      creditRouted: false,
       creditSigned: false,
     });
 
@@ -113,6 +115,7 @@ describe("staged readiness remediation provenance", () => {
       mode: "staged_remediation",
       staged_remediations: [requireReference(invalid)],
       validationActions: action_plan.actions,
+      creditRouted: false,
       creditSigned: false,
     });
 
@@ -131,6 +134,29 @@ describe("staged readiness remediation provenance", () => {
     expect(hasRenderableOrigin(batch[0])).toBe(true);
   });
 
+  it("removes the batch Credit Officer route once it has been routed", () => {
+    const actions = deriveDrawerActions({
+      mode: "plan",
+      staged_remediations: [],
+      validationActions: action_plan.actions,
+      creditRouted: true,
+      creditSigned: false,
+    });
+
+    expect(
+      actions.some(
+        (action) =>
+          action.tool === "route_approval" && action.required_approver === "credit_officer",
+      ),
+    ).toBe(false);
+    expect(actions.some((action) => action.tool === "create_task")).toBe(true);
+    expect(
+      actions.some(
+        (action) => action.tool === "route_approval" && action.required_approver === "legal",
+      ),
+    ).toBe(true);
+  });
+
   it("renders multiple staged row references as independent drawer cards", () => {
     const credit = requireReference();
     const legalRow = decision_readiness.rows.find((row) => row.id === "legal_approval");
@@ -141,6 +167,7 @@ describe("staged readiness remediation provenance", () => {
       mode: "staged_remediation",
       staged_remediations: [credit, legal],
       validationActions: action_plan.actions,
+      creditRouted: false,
       creditSigned: false,
     });
 
@@ -185,6 +212,7 @@ describe("staged readiness remediation provenance", () => {
       staged_remediations: [reference],
       stagedValidatedActions: [liveBlocked],
       validationActions: action_plan.actions,
+      creditRouted: false,
       creditSigned: false,
     });
 
@@ -204,6 +232,7 @@ describe("staged readiness remediation provenance", () => {
         credit_officer_approval: "/actions/staged-remediation → 409",
       },
       validationActions: action_plan.actions,
+      creditRouted: false,
       creditSigned: false,
     });
 

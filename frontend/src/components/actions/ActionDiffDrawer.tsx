@@ -257,11 +257,13 @@ export function ActionDiffDrawer() {
         stagedValidatedActions: stagedValidation.actions,
         stagedValidationErrors: stagedValidation.errorByRowId,
         validationActions: planActions,
+        creditRouted: reval.routed,
         creditSigned: reval.creditSigned,
       }),
     [
       drawer.mode,
       planActions,
+      reval.routed,
       reval.creditSigned,
       stagedReferences,
       stagedValidation.actions,
@@ -274,7 +276,6 @@ export function ActionDiffDrawer() {
   const executeStaged = useExecuteStagedRemediationMutation();
   const lifecycleEvent = useLifecycleEventMutation();
   const [execResult, setExecResult] = useState<ExecResult | null>(null);
-  const isAfterSourceChange = drawer.mode === "revalidation_edit";
   const liveVerification =
     verifyData?.record_id === recordId
       ? verifyData
@@ -423,18 +424,6 @@ export function ActionDiffDrawer() {
     overrideCount > 0
       ? `Send all + ${overrideCount} override${overrideCount === 1 ? "" : "s"}`
       : `Send all (${pendingCount})`;
-
-  function switchScenario(mode: "plan" | "revalidation_edit") {
-    openDrawer({
-      mode,
-      focus_key: null,
-      source:
-        mode === "revalidation_edit"
-          ? "After source change — financial model v2"
-          : "Acme renewal — pre-committee review",
-      change_kind: mode === "revalidation_edit" ? "source_change" : null,
-    });
-  }
 
   function approvedIndices(actions: Action[]) {
     return actions
@@ -613,39 +602,6 @@ export function ActionDiffDrawer() {
             >
               <X className="h-4 w-4" />
             </button>
-          </div>
-
-          {/* Scenario */}
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-              Scenario
-            </span>
-            <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-[12px] font-medium">
-              <button
-                type="button"
-                onClick={() => switchScenario("plan")}
-                className={[
-                  "rounded-[5px] px-2.5 py-1 transition-colors",
-                  !isAfterSourceChange
-                    ? "bg-[var(--primary-tint)] text-primary"
-                    : "text-[var(--secondary-text)] hover:text-foreground",
-                ].join(" ")}
-              >
-                Happy path
-              </button>
-              <button
-                type="button"
-                onClick={() => switchScenario("revalidation_edit")}
-                className={[
-                  "rounded-[5px] px-2.5 py-1 transition-colors",
-                  isSourceChangeReview
-                    ? "bg-[var(--primary-tint)] text-primary"
-                    : "text-[var(--secondary-text)] hover:text-foreground",
-                ].join(" ")}
-              >
-                After source change
-              </button>
-            </div>
           </div>
 
           {reval.routed && !reval.creditSigned && (

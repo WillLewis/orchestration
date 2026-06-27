@@ -96,6 +96,7 @@ export function deriveDrawerActions({
   stagedValidatedActions = [],
   stagedValidationErrors = {},
   validationActions,
+  creditRouted,
   creditSigned,
 }: {
   mode: DrawerActionMode;
@@ -103,6 +104,7 @@ export function deriveDrawerActions({
   stagedValidatedActions?: OriginatedAction[];
   stagedValidationErrors?: Record<string, string>;
   validationActions: Action[];
+  creditRouted: boolean;
   creditSigned: boolean;
 }): OriginatedAction[] {
   if (mode === "staged_remediation") {
@@ -122,7 +124,8 @@ export function deriveDrawerActions({
   }
 
   const batchActions = withBatchOrigin(validationActions);
-  const visible = creditSigned
+  const creditRouteNoLongerActionable = creditRouted || creditSigned;
+  const visible = creditRouteNoLongerActionable
     ? batchActions.filter(
         (action) =>
           !(action.tool === "route_approval" && action.required_approver === "credit_officer"),

@@ -645,6 +645,15 @@ export interface ServerAuditEvent {
   };
 }
 
+function executedCreditOfficerRoute(events: ServerAuditEvent[]): boolean {
+  return events.some(
+    (event) =>
+      event.action === "executed" &&
+      event.detail.tool === "route_approval" &&
+      event.detail.target === "doc_pricing_exception",
+  );
+}
+
 // POST approved indices to the gateway; it recomposes + executes the gated plan and returns the
 // audit. Live-only (the drawer keeps its client-side simulation for offline/mock). Used to prove
 // the anti-bypass guarantee: approve every index, the blocked ones still come back `skipped`.
@@ -664,7 +673,25 @@ export function useExecuteActionsMutation() {
       if (!res.ok) throw new Error(`/actions/execute → ${res.status}`);
       return (await res.json()) as ServerAuditEvent[];
     },
-    onSuccess: () => {
+    onSuccess: (events) => {
+      if (executedCreditOfficerRoute(events)) {
+        qc.setQueryData<LifecycleStateData>(
+          ["lifecycle", "u_rm", "prepare_decision_brief"],
+          (previous = initialLifecycleState) => {
+            if (previous.credit_signed) return previous;
+            return {
+              ...previous,
+              routed: true,
+              credit_signed: false,
+              cs_reconciled: false,
+              stage: "credit_routed",
+              cascade_available: false,
+              changes_count: 0,
+              event_count: previous.event_count + 1,
+            };
+          },
+        );
+      }
       qc.invalidateQueries({ queryKey: ["lifecycle"] });
       qc.invalidateQueries({ queryKey: ["brief"] });
       qc.invalidateQueries({ queryKey: ["actions"] });
