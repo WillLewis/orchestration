@@ -32,16 +32,10 @@ import {
   type SourceStatus,
   type SourceType,
 } from "@/data/brief";
-import { openDrawer } from "@/lib/actions-store";
+import { stageDecisionReadinessRemediation } from "@/lib/actions-store";
 import { useGovernedBrief, useRevalidation } from "@/lib/revalidation-store";
-import { type Action } from "@/data/actions";
 import { buildGovernanceCertificate } from "@/data/record";
-import {
-  useActionPlanQuery,
-  useChatMutation,
-  useMintWorkProductMutation,
-  resolveReadinessAction,
-} from "@/hooks/queries";
+import { useChatMutation, useMintWorkProductMutation } from "@/hooks/queries";
 
 const searchSchema = z.object({
   focus: z.enum(["next-steps"]).optional(),
@@ -356,7 +350,6 @@ function findCalculation(calcs: CalcCheck[], name: string): CalcCheck | null {
 function DecisionReadinessTable({
   readiness,
   brief,
-  planActions,
   hoveredId,
   setHoveredId,
   rulepackId,
@@ -364,7 +357,6 @@ function DecisionReadinessTable({
 }: {
   readiness: DecisionReadiness;
   brief: typeof briefTemplate;
-  planActions: Action[];
   hoveredId: string | null;
   setHoveredId: (id: string | null) => void;
   rulepackId: string;
@@ -393,7 +385,6 @@ function DecisionReadinessTable({
             {readiness.rows.map((row) => {
               const meta = READINESS_STATUS[row.status];
               const StatusIcon = meta.icon;
-              const focusKey = resolveReadinessAction(row.action, planActions);
               const threshold =
                 row.explainer?.kind === "threshold"
                   ? findThreshold(brief, row.explainer.rule_id)
@@ -449,12 +440,7 @@ function DecisionReadinessTable({
                     {row.action ? (
                       <button
                         type="button"
-                        onClick={() =>
-                          openDrawer({
-                            focus_key: focusKey,
-                            source: `Decision readiness — ${row.gate}`,
-                          })
-                        }
+                        onClick={() => stageDecisionReadinessRemediation(row)}
                         className="inline-flex h-8 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <span className="truncate">{row.action.label}</span>
@@ -496,7 +482,6 @@ function PacketWorkspace() {
     banner_subtitle,
     path_to_ready,
   } = useGovernedBrief();
-  const { actions: planActions } = useActionPlanQuery().data;
   const mint = useMintWorkProductMutation();
   const b = decision_brief;
 
@@ -736,7 +721,6 @@ function PacketWorkspace() {
                 <DecisionReadinessTable
                   readiness={decision_readiness}
                   brief={b}
-                  planActions={planActions}
                   hoveredId={hoveredId}
                   setHoveredId={setHoveredId}
                   rulepackId={rulepack_id}

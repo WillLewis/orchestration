@@ -61,6 +61,7 @@ import {
   useVerifyWorkProductMutation,
   type ServerAuditEvent,
 } from "@/hooks/queries";
+import { deriveDrawerActions, type OriginatedAction } from "@/lib/staged-remediation";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -183,7 +184,7 @@ function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
 
 export function ActionDiffDrawer() {
   const store = useActionsStore();
-  const { drawer, user_status, audit } = store;
+  const { drawer, staged_remediation, user_status, audit } = store;
   const reval = useRevalidation();
   const recordId = useLatestRecordId();
   const { data: cachedVerification } = useVerification(recordId);
@@ -195,16 +196,17 @@ export function ActionDiffDrawer() {
   } = useVerifyWorkProductMutation(recordId);
   const verifyRequestKeyRef = useRef<string | null>(null);
   // Beat 6: once the Credit Officer has signed off, the route-to-CO follow-up is already done —
-  // drop it so the plan proposes only the REMAINING work (tracker, Legal, schedule). The live
-  // gateway proof below still submits the full plan to prove server-side re-gating.
-  const visibleActions = useMemo(
+  // drop it so the batch proposes only the REMAINING work (tracker, Legal, schedule). A staged
+  // brief-row remediation bypasses the batch list and renders exactly its validated row card.
+  const visibleActions = useMemo<OriginatedAction[]>(
     () =>
-      reval.creditSigned
-        ? planActions.filter(
-            (a) => !(a.tool === "route_approval" && a.required_approver === "credit_officer"),
-          )
-        : planActions,
-    [planActions, reval.creditSigned],
+      deriveDrawerActions({
+        mode: drawer.mode,
+        staged_remediation,
+        validationActions: planActions,
+        creditSigned: reval.creditSigned,
+      }),
+    [drawer.mode, planActions, reval.creditSigned, staged_remediation],
   );
   const [tab, setTab] = useState<"changes" | "next" | "notes" | "audit">("next");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -302,7 +304,7 @@ export function ActionDiffDrawer() {
   const cascadeChangeCount =
     isAfterSourceChange && (reval.cascadeAvailable || reval.csReconciled) ? 1 : 0;
   const changesCount = sourceChangeCount + gateChangeCount + cascadeChangeCount;
-  const nextCount = nextActions.length;
+  const nextCount = drawer.mode === "staged_remediation" ? ordered.length : nextActions.length;
   const pendingCount = nextPending.length;
   const notesCount = noteActions.length;
 
@@ -370,7 +372,7 @@ export function ActionDiffDrawer() {
     nextPending.forEach((a) => approveAction(action_key(a)));
     if (overrideCount > 0) {
       // Mirror the server re-gate client-side: blocked overrides are refused, never committed.
-      const r = executeRegated();
+      const r = executeRegated("Dana R.", [...nextPending, ...overriddenBlocked]);
       setExecResult({
         executed: r.executed.map((e) => ({ tool: e.tool, target: e.target_object_id })),
         refused: r.refused.map((e) => ({
@@ -384,7 +386,7 @@ export function ActionDiffDrawer() {
       toast.success(`Executed ${r.executed.length} · refused ${r.refused.length} (gate held)`);
       return;
     }
-    const n = executeApproved();
+    const n = executeApproved("Dana R.", nextPending);
     if (n > 0) {
       toast.success(`${n} action${n === 1 ? "" : "s"} sent · audit recorded`);
       setTab("audit");
@@ -1313,8 +1315,15 @@ function primaryLabelFor(action: Action) {
 
 function routeDescription(action: Action) {
   const destination = destinationFor(action);
+  const approvalRequest =
+    typeof action.diff.after.approval_request === "string"
+      ? action.diff.after.approval_request
+      : "";
   if (action.required_approver === "legal") {
     return "Creates a review task for Legal; sets the workflow to 'Pending Legal'.";
+  }
+  if (approvalRequest) {
+    return `Routes the ${approvalRequest} to the ${destination}; sets the workflow to 'routed'.`;
   }
   return `Creates an approval task for the ${destination}; sets the workflow to 'routed'.`;
 }
