@@ -325,7 +325,7 @@
       {
         "heading": "RAG reads the ContextBundle, not the whole workspace",
         "anchor": "rag-reads-the-contextbundle-not-the-whole-workspace",
-        "text": "The retrieval layer is scoped to accessible, assembled sources. Used sources can support facts; conflicting sources are surfaced as conflicts; missing sources are named as gaps; restricted sources are acknowledged as unavailable and never summarized. Source Type Status Prior committee — Acme review meeting used Acme renewal — pre-committee review meeting used Acme deal room chat used Acme credit memo · v3 document used Acme financial model (updated) document used Pricing exception document conflicting Customer success plan document conflicting Sector research (public side) document used Acme approval workflow workflow used"
+        "text": "The retrieval layer is scoped to accessible, assembled sources. Used sources can support facts; conflicting sources are surfaced as conflicts; missing sources are named as gaps; restricted sources are acknowledged as unavailable and never summarized. Source Type Status Prior committee — Acme review meeting used Acme renewal — pre-committee review meeting used Acme deal room chat used Acme credit memo · v3 document used Acme financial model (updated) document used Pricing exception document used Customer success plan document used Sector research (public side) document used Acme approval workflow workflow used"
       },
       {
         "heading": "Unsupported claims become questions",
@@ -374,7 +374,7 @@
       {
         "heading": "A card can suggest, but not commit",
         "anchor": "a-card-can-suggest-but-not-commit",
-        "text": "A proactive card may offer to route an approval or create a task, but it does so by moving into Action Packets. The card itself stays read-only; writes still require diff preview, gate validation, and human approval. card source { \"kind\" : \"open_approval\" , \"source\" : \"decision_readiness.rows[credit_officer_approval]\" , \"suggested_action\" : { \"label\" : \"Route to Credit Officer\" , \"tool\" : \"route_approval\" , \"target_object_id\" : \"doc_pricing_exception\" , \"required_approver\" : \"credit_officer\" }, \"commit_path\" : \"/actions/compose\" }"
+        "text": "A proactive card may offer to route an approval or create a task, but it does so by moving into Action Packets. The card itself stays read-only; writes still require diff preview, gate validation, and human approval. card source { \"kind\" : \"open_approval\" , \"source\" : \"decision_readiness.rows[credit_officer_approval]\" , \"suggested_action\" : { \"label\" : \"Stage: route 22% to Credit Officer\" , \"tool\" : \"route_approval\" , \"target_object_id\" : \"doc_pricing_exception\" , \"required_approver\" : \"credit_officer\" , \"parameters\" : { \"business_label\" : \"22% pricing exception\" , \"requested_discount_percent\" : 22 , \"route_note\" : \"Route the 22% pricing exception to the Credit Officer; it exceeds the RM's delegated authority.\" } }, \"commit_path\" : \"/actions/compose\" }"
       }
     ]
   },
