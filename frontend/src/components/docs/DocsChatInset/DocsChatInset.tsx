@@ -64,7 +64,7 @@ type SurfaceController = {
   loadingStep: number;
   panel: PanelState;
   sharedTurnIds: Set<number>;
-  toggleMode: () => void;
+  selectMode: (mode: DocsPhrasingMode) => void;
   submitDocs: (text: string, forcedKey?: DocsChatMockKey) => void;
   reset: () => void;
   retry: () => void;
@@ -188,7 +188,7 @@ function offlineFallbackResponse(mode: DocsPhrasingMode): DocsChatResponse {
 }
 
 function initialModeFrom(response: DocsChatResponse | undefined): DocsPhrasingMode {
-  return response?.phrasing.llm_available === false ? "deterministic" : "llm";
+  return response?.phrasing.requested_mode ?? "llm";
 }
 
 function readStoredMode(): DocsPhrasingMode | null {
@@ -202,18 +202,14 @@ function writeStoredMode(mode: DocsPhrasingMode) {
   window.localStorage.setItem(DOCS_CHAT_MODE_STORAGE_KEY, mode);
 }
 
-function oppositeMode(mode: DocsPhrasingMode): DocsPhrasingMode {
-  return mode === "llm" ? "deterministic" : "llm";
-}
-
 function latestResponse(turns: DocsTurn[]): DocsChatResponse | undefined {
   return turns.length > 0 ? turns[turns.length - 1].response : undefined;
 }
 
 function fallbackReasonLabel(reason: DocsPhrasingFallbackReason | null | undefined): string {
-  if (reason === "not_configured") return "LLM not configured";
-  if (reason === "client_error") return "Model error";
-  if (reason === "grounding_guard") return "Grounding fallback";
+  if (reason === "not_configured") return "not configured";
+  if (reason === "client_error") return "client error";
+  if (reason === "grounding_guard") return "grounding guard";
   return "Fallback";
 }
 
@@ -227,10 +223,10 @@ function fallbackReasonDetail(reason: DocsPhrasingFallbackReason | null | undefi
   return "The backend changed the effective phrasing mode.";
 }
 
-function modeButtonLabel(mode: DocsPhrasingMode, response?: DocsChatResponse) {
+function phrasingStatusLabel(mode: DocsPhrasingMode, response?: DocsChatResponse) {
   if (response?.status === "error") {
     return {
-      label: "Offline fallback",
+      label: "Backend offline",
       detail: "Backend unreachable",
       title: "The docs-chat backend did not respond. Retry the request or use static docs.",
       tone: "danger" as const,
@@ -240,7 +236,7 @@ function modeButtonLabel(mode: DocsPhrasingMode, response?: DocsChatResponse) {
   const phrasing = response?.phrasing;
   if (phrasing && phrasing.effective_mode !== phrasing.requested_mode) {
     return {
-      label: "Deterministic",
+      label: "Fallback: deterministic",
       detail: fallbackReasonLabel(phrasing.fallback_reason),
       title: fallbackReasonDetail(phrasing.fallback_reason),
       tone: "warning" as const,
@@ -249,7 +245,7 @@ function modeButtonLabel(mode: DocsPhrasingMode, response?: DocsChatResponse) {
 
   if ((phrasing?.effective_mode ?? mode) === "llm") {
     return {
-      label: "LLM phrasing",
+      label: phrasing ? "Accepted: LLM prose" : "Selected: LLM live",
       detail: phrasing?.model ?? "requested",
       title: phrasing?.model
         ? `Backend-reported model: ${phrasing.model}`
@@ -259,14 +255,14 @@ function modeButtonLabel(mode: DocsPhrasingMode, response?: DocsChatResponse) {
   }
 
   return {
-    label: "Deterministic",
-    detail: "Template phrasing",
+    label: "Selected: deterministic",
+    detail: "template prose",
     title: "Backend deterministic phrasing mode.",
     tone: "neutral" as const,
   };
 }
 
-function modeButtonClass(tone: ReturnType<typeof modeButtonLabel>["tone"]) {
+function phrasingStatusClass(tone: ReturnType<typeof phrasingStatusLabel>["tone"]) {
   if (tone === "danger") {
     return "border-[var(--danger)]/20 bg-[var(--danger-bg)] text-[var(--danger)]";
   }
@@ -277,6 +273,12 @@ function modeButtonClass(tone: ReturnType<typeof modeButtonLabel>["tone"]) {
     return "border-primary/20 bg-[var(--primary-tint)] text-primary";
   }
   return "border-border bg-card text-[var(--secondary-text)]";
+}
+
+function modeOptionClass(selected: boolean) {
+  return selected
+    ? "bg-primary text-white shadow-card"
+    : "text-[var(--secondary-text)] hover:bg-[var(--canvas)]";
 }
 
 async function postDocsChat(
@@ -381,11 +383,11 @@ function useSurfaceController({
     writeStoredMode(mode);
   }, [mode, storageReady]);
 
-  const toggleMode = useCallback(() => {
-    setModePreference((current) => ({
-      mode: oppositeMode(current.mode),
+  const selectMode = useCallback((mode: DocsPhrasingMode) => {
+    setModePreference({
+      mode,
       source: "stored",
-    }));
+    });
   }, []);
 
   const appendTurn = useCallback(
@@ -470,7 +472,7 @@ function useSurfaceController({
     loadingStep,
     panel,
     sharedTurnIds,
-    toggleMode,
+    selectMode,
     submitDocs,
     reset,
     retry,
@@ -495,35 +497,71 @@ export function DocsChatInset({
   return <ChatSurface controller={controller} />;
 }
 
-function AppModeButton({
+function AppModeControl({
   mode,
   response,
-  onToggle,
+  onSelectMode,
 }: {
   mode: DocsPhrasingMode;
   response?: DocsChatResponse;
-  onToggle: () => void;
+  onSelectMode: (mode: DocsPhrasingMode) => void;
 }) {
-  const display = modeButtonLabel(mode, response);
-  const Icon = display.tone === "danger" ? AlertTriangle : mode === "llm" ? Sparkles : ShieldCheck;
+  const display = phrasingStatusLabel(mode, response);
+  const StatusIcon =
+    display.tone === "danger" ? AlertTriangle : mode === "llm" ? Sparkles : ShieldCheck;
 
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      title={display.title}
-      className={[
-        "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        modeButtonClass(display.tone),
-      ].join(" ")}
-      aria-label={`Switch docs chat to ${mode === "llm" ? "Deterministic" : "LLM phrasing"}`}
-    >
-      <Icon className="h-3 w-3 shrink-0" />
-      <span className="truncate">{display.label}</span>
-      <span className="max-w-[130px] truncate text-[10.5px] font-medium opacity-80">
-        {display.detail}
+    <div className="flex max-w-full flex-wrap items-center gap-1.5">
+      <div
+        className="inline-flex min-h-8 items-center rounded-md border border-border bg-card p-0.5"
+        aria-label="Docs chat LLM mode"
+      >
+        <span className="px-1.5 text-[10.5px] font-semibold uppercase text-[var(--muted-fg)]">
+          LLM
+        </span>
+        <button
+          type="button"
+          onClick={() => onSelectMode("deterministic")}
+          title="Request deterministic prose from the backend."
+          aria-label="Use deterministic docs-chat prose"
+          aria-pressed={mode === "deterministic"}
+          className={[
+            "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            modeOptionClass(mode === "deterministic"),
+          ].join(" ")}
+        >
+          <ShieldCheck className="h-3 w-3" />
+          Off
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectMode("llm")}
+          title="Request live LLM prose from the backend."
+          aria-label="Use live LLM docs-chat prose"
+          aria-pressed={mode === "llm"}
+          className={[
+            "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            modeOptionClass(mode === "llm"),
+          ].join(" ")}
+        >
+          <Sparkles className="h-3 w-3" />
+          Live
+        </button>
+      </div>
+      <span
+        title={display.title}
+        className={[
+          "inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold",
+          phrasingStatusClass(display.tone),
+        ].join(" ")}
+      >
+        <StatusIcon className="h-3 w-3 shrink-0" />
+        <span className="truncate">{display.label}</span>
+        <span className="max-w-[130px] truncate text-[10.5px] font-medium opacity-80">
+          {display.detail}
+        </span>
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -545,10 +583,10 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AppModeButton
+            <AppModeControl
               mode={controller.mode}
               response={response}
-              onToggle={controller.toggleMode}
+              onSelectMode={controller.selectMode}
             />
             <button
               type="button"
@@ -632,7 +670,7 @@ function MeetingSurface({ controller }: { controller: SurfaceController }) {
             icon={<MessageCircle className="h-4 w-4" />}
             mode={controller.mode}
             response={latestResponse(controller.turns)}
-            onToggleMode={controller.toggleMode}
+            onSelectMode={controller.selectMode}
             onReset={controller.reset}
             showModeControl
           />
@@ -797,10 +835,10 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AppModeButton
+            <AppModeControl
               mode={controller.mode}
               response={latestResponse(controller.turns)}
-              onToggle={controller.toggleMode}
+              onSelectMode={controller.selectMode}
             />
             <button
               type="button"
@@ -832,7 +870,7 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
           icon={<PenLine className="h-4 w-4" />}
           mode={controller.mode}
           response={latestResponse(controller.turns)}
-          onToggleMode={controller.toggleMode}
+          onSelectMode={controller.selectMode}
           onReset={controller.reset}
         />
         <RailBody
@@ -864,7 +902,7 @@ function RailHeader({
   icon,
   mode,
   response,
-  onToggleMode,
+  onSelectMode,
   onReset,
   showModeControl = false,
 }: {
@@ -873,7 +911,7 @@ function RailHeader({
   icon: ReactNode;
   mode: DocsPhrasingMode;
   response?: DocsChatResponse;
-  onToggleMode: () => void;
+  onSelectMode: (mode: DocsPhrasingMode) => void;
   onReset: () => void;
   showModeControl?: boolean;
 }) {
@@ -902,7 +940,7 @@ function RailHeader({
       </div>
       {showModeControl && (
         <div className="mt-3">
-          <AppModeButton mode={mode} response={response} onToggle={onToggleMode} />
+          <AppModeControl mode={mode} response={response} onSelectMode={onSelectMode} />
         </div>
       )}
     </header>
@@ -1120,6 +1158,7 @@ function ResponseCard({
   return (
     <div className="space-y-3">
       <ResponseStatus status={response.status} locked={locked} sealed={sealed} />
+      <PhrasingStatusLine response={response} compact={compact} />
       <p
         className={[
           "leading-relaxed text-foreground",
@@ -1167,6 +1206,38 @@ function ResponseCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PhrasingStatusLine({
+  response,
+  compact,
+}: {
+  response: DocsChatResponse;
+  compact: boolean;
+}) {
+  const display = phrasingStatusLabel(response.phrasing.requested_mode, response);
+  const Icon =
+    display.tone === "danger"
+      ? AlertTriangle
+      : response.phrasing.requested_mode === "llm"
+        ? Sparkles
+        : ShieldCheck;
+
+  return (
+    <div
+      title={display.title}
+      className={[
+        "inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 font-medium",
+        compact ? "text-[10.5px]" : "text-[11.5px]",
+        phrasingStatusClass(display.tone),
+      ].join(" ")}
+    >
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="shrink-0 font-semibold">Prose</span>
+      <span className="truncate">{display.label}</span>
+      <span className="max-w-[140px] truncate opacity-80">{display.detail}</span>
     </div>
   );
 }

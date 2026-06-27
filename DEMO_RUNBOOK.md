@@ -85,6 +85,20 @@ either in the shell or `.env`. The backend may report a model even if the shell 
 | `How does the agent handle restricted source material?` | Yes | `effective_mode=llm`, `fallback_reason=null` | Main visible LLM-toggle proof: prose changes while governed fields remain fixed. |
 | `What is the cafeteria menu for next Tuesday?` | Yes | `status=no_results`, `effective_mode=deterministic`, `fallback_reason=null` | Shows honest no-results behavior. |
 
+Presenter UI cues:
+
+- In the docs-chat header, use the `LLM` segmented control. `Off` requests deterministic prose;
+  `Live` requests LLM prose from the backend.
+- The status chip next to the control reports backend metadata. For a successful live proof it
+  reads `Accepted: LLM prose` with the backend-reported model.
+- When `Live` is selected but the backend falls back, the chip reads `Fallback: deterministic`
+  with `not configured`, `client error`, or `grounding guard`. Treat `grounding guard` as safety
+  behavior, not a broken toggle.
+- Each answer card repeats the same concise `Prose` metadata line so the fallback state remains
+  visible after the header scrolls away.
+- The toggle affects prose only. Continue narrating `status`, citations, confidence, and missing
+  evidence as deterministic governed fields.
+
 Manual probe for a single question:
 
 ```bash
