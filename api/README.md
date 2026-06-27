@@ -69,9 +69,9 @@ Public page sections return anchored citations, locked chunks carry metadata wit
 sealed chunks expose only their cleared derivative.
 
 The `/docs/chat` ranker extends the #13 heuristic to chunks: curated name hits, length-normalized
-body hits, sealed-topic bonus, exact multi-token phrase bonus, and a real-corpus relevance
-threshold that filters stray single body-token hits. If no chunk clears the threshold, the endpoint
-returns `status="no_results"`. Answer confidence is a
+body hits, governance-intent aliases and phrase boosts, sealed-topic bonus, exact multi-token
+phrase bonus, and a real-corpus relevance threshold that filters stray single body-token hits. If
+no chunk clears the threshold, the endpoint returns `status="no_results"`. Answer confidence is a
 pure deterministic band (`grounded` / `partial` / `weak`) derived from ranking margin, query-aspect
 coverage, threshold status, missing coverage, and safe support count; model output never affects it.
 
