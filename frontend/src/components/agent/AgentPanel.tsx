@@ -42,6 +42,14 @@ const STARTER_LABELS: Record<string, string> = {
   monitor: "Monitor this decision",
 };
 
+const CREDIT_OFFICER_RESPONSE_DELAY_MS = 3000;
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function privateAssistantTurn(content: string, meta?: Turn["meta"], pending?: string): Turn {
   return {
     role: "assistant",
@@ -149,6 +157,7 @@ export function AgentPanel({
   onBriefRequestHandled?: () => void;
 }) {
   const [messages, setMessages] = useState<Turn[]>(() => seedMeetingTurns());
+  const [isSimulatingCreditOfficer, setIsSimulatingCreditOfficer] = useState(false);
   const chat = useChatMutation();
   const lifecycleEvent = useLifecycleEventMutation();
   const lifecycleReset = useLifecycleResetMutation();
@@ -291,37 +300,49 @@ export function AgentPanel({
   );
 
   const simulatePendingResponse = useCallback(
-    (pending: string) => {
+    async (pending: string) => {
       if (pending !== PENDING_CREDIT_OFFICER) return;
       if (!reval.routed || reval.creditSigned) return;
+      if (isSimulatingCreditOfficer || lifecycleEvent.isPending) return;
       setMessages((m) => [
         ...m.map((turn) =>
           turn.pending === PENDING_CREDIT_OFFICER ? { ...turn, pending: undefined } : turn,
         ),
         privateUserTurn(agentPrompt("Simulate Credit Officer response")),
       ]);
-      if (LIVE) {
-        lifecycleEvent.mutate(
-          {
+
+      setIsSimulatingCreditOfficer(true);
+      const toastId = toast.loading("Waiting on Credit Officer response", {
+        description: "Simulated counterparty is reviewing the routed 22% pricing exception.",
+      });
+
+      try {
+        await wait(CREDIT_OFFICER_RESPONSE_DELAY_MS);
+
+        if (LIVE) {
+          await lifecycleEvent.mutateAsync({
             type: "approval_returned",
             object_id: "doc_pricing_exception",
             detail: { approver: "credit_officer", approved: true },
-          },
-          {
-            onSuccess: () => recordReturnedChangeNotification(),
-            onError: () =>
-              toast.error("Couldn't simulate the Credit Officer response", {
-                description: "The lifecycle gateway didn't respond.",
-              }),
-          },
-        );
-        return;
-      }
-      if (simulateCreditOfficerResponse()) {
+          });
+        } else if (!simulateCreditOfficerResponse()) {
+          return;
+        }
+
         recordReturnedChangeNotification();
+        toast.success("Credit Officer response received", {
+          description: "Revalidated packet; Legal and covenant tracker still block.",
+        });
+      } catch {
+        toast.error("Couldn't simulate the Credit Officer response", {
+          description: "The lifecycle gateway didn't respond.",
+        });
+      } finally {
+        toast.dismiss(toastId);
+        setIsSimulatingCreditOfficer(false);
       }
     },
-    [lifecycleEvent, reval.creditSigned, reval.routed],
+    [isSimulatingCreditOfficer, lifecycleEvent, reval.creditSigned, reval.routed],
   );
 
   // Route sent from Agent Actions → surface the pending counterparty and the simulation affordance.

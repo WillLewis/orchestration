@@ -193,6 +193,14 @@ function includesCreditOfficerRoute(rows: ExecRow[]) {
   );
 }
 
+const CREDIT_OFFICER_RESPONSE_DELAY_MS = 3000;
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
   const executed: ExecRow[] = [];
   const refused: ExecRow[] = [];
@@ -276,6 +284,7 @@ export function ActionDiffDrawer() {
   const executeStaged = useExecuteStagedRemediationMutation();
   const lifecycleEvent = useLifecycleEventMutation();
   const [execResult, setExecResult] = useState<ExecResult | null>(null);
+  const [isSimulatingCreditOfficer, setIsSimulatingCreditOfficer] = useState(false);
   const liveVerification =
     verifyData?.record_id === recordId
       ? verifyData
@@ -560,6 +569,46 @@ export function ActionDiffDrawer() {
     }
   }
 
+  async function completeSimulatedCreditOfficerResponse() {
+    if (isSimulatingCreditOfficer || lifecycleEvent.isPending) return;
+
+    setIsSimulatingCreditOfficer(true);
+    const toastId = toast.loading("Waiting on Credit Officer response", {
+      description: "Simulated counterparty is reviewing the routed 22% pricing exception.",
+    });
+
+    try {
+      await wait(CREDIT_OFFICER_RESPONSE_DELAY_MS);
+
+      if (LIVE) {
+        await lifecycleEvent.mutateAsync({
+          type: "approval_returned",
+          object_id: "doc_pricing_exception",
+          detail: { source: "simulated_credit_officer" },
+        });
+      } else if (!simulateCreditOfficerResponse()) {
+        return;
+      }
+
+      recordReturnedChangeNotification();
+      toast.success("Credit Officer response received", {
+        description: "Revalidated packet; Legal and covenant tracker still block.",
+      });
+      openDrawer({
+        mode: "revalidation_edit",
+        source: "Credit Officer response — approval returned",
+        change_kind: "approval_returned",
+      });
+    } catch {
+      toast.error("Couldn't simulate the Credit Officer response", {
+        description: "The lifecycle gateway didn't respond.",
+      });
+    } finally {
+      toast.dismiss(toastId);
+      setIsSimulatingCreditOfficer(false);
+    }
+  }
+
   if (!drawer.open) return null;
 
   return (
@@ -618,47 +667,14 @@ export function ActionDiffDrawer() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  if (LIVE) {
-                    lifecycleEvent.mutate(
-                      {
-                        type: "approval_returned",
-                        object_id: "doc_pricing_exception",
-                        detail: { source: "simulated_credit_officer" },
-                      },
-                      {
-                        onSuccess: () => {
-                          recordReturnedChangeNotification();
-                          toast.success("Credit Officer response simulated", {
-                            description:
-                              "Revalidated packet; Legal and covenant tracker still block.",
-                          });
-                          openDrawer({
-                            mode: "revalidation_edit",
-                            source: "Credit Officer response — approval returned",
-                            change_kind: "approval_returned",
-                          });
-                        },
-                      },
-                    );
-                    return;
-                  }
-                  if (!simulateCreditOfficerResponse()) return;
-                  recordReturnedChangeNotification();
-                  toast.success("Credit Officer response simulated", {
-                    description: "Revalidated packet; Legal and covenant tracker still block.",
-                  });
-                  openDrawer({
-                    mode: "revalidation_edit",
-                    source: "Credit Officer response — approval returned",
-                    change_kind: "approval_returned",
-                  });
-                }}
+                onClick={() => void completeSimulatedCreditOfficerResponse()}
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                disabled={lifecycleEvent.isPending}
+                disabled={isSimulatingCreditOfficer || lifecycleEvent.isPending}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                {lifecycleEvent.isPending ? "Simulating…" : "Simulate Credit Officer response"}
+                {isSimulatingCreditOfficer || lifecycleEvent.isPending
+                  ? "Waiting…"
+                  : "Simulate Credit Officer response"}
               </button>
             </div>
           )}
