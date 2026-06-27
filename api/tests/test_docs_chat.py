@@ -14,9 +14,11 @@ from api.docs_chat import (
     DocsChatEvidenceView,
     DocsEvidenceDoc,
     LLMDocsChatClient,
+    _build_view,
     _build_system_prompt,
     _ConfidenceSignals,
     _confidence,
+    _grounding_guard,
     _provider_error_kind,
     _retrieve,
     answer,
@@ -123,6 +125,11 @@ def _citation(payload: dict, doc_id: str) -> dict:
 
 def _governed_payload(response) -> dict:
     return response.model_dump(mode="json", exclude={"response", "phrasing"})
+
+
+def _view_for(query: str) -> DocsChatEvidenceView:
+    retrieval = _retrieve(query, load_chunks())
+    return _build_view("chat", query, None, retrieval.candidates)
 
 
 @pytest.mark.parametrize("surface", SURFACES)
@@ -271,6 +278,95 @@ def test_grounding_guard_accepts_restricted_source_paraphrase():
     assert RAW_LOCKED not in llm.response
     assert llm.phrasing.effective_mode == "llm"
     assert llm.phrasing.fallback_reason is None
+
+
+def test_grounding_guard_diagnostics_accept_safe_paraphrase_without_fallback():
+    query = "How does the agent handle restricted source material?"
+    draft = (
+        "The assistant can acknowledge restricted material only through allowed metadata and "
+        "should not summarize or infer the restricted body."
+    )
+
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is True
+    assert guard.diagnostics.category == "accepted"
+    assert guard.diagnostics.reason_code == "accepted"
+    assert guard.diagnostics.candidate_doc_count >= 1
+
+
+def test_grounding_guard_diagnostics_reject_factual_drift_without_raw_content():
+    query = "How does the policy gate decide blocks_commit?"
+    draft = f"Unsupported outside claim. {SENTINEL}"
+
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is False
+    assert guard.diagnostics.category == "unsupported_identifier"
+    assert guard.diagnostics.reason_code == "unsupported_identifier"
+    assert SENTINEL not in repr(guard.diagnostics)
+    assert "Unsupported outside claim" not in repr(guard.diagnostics)
+
+
+def test_grounding_guard_rejects_unsupported_number():
+    query = "How does the policy gate decide blocks_commit?"
+    draft = "The policy gate blocks commits at 987654321 dollars."
+
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is False
+    assert guard.diagnostics.category == "unsupported_number"
+    assert guard.diagnostics.reason_code == "unsupported_number"
+
+
+def test_grounding_guard_rejects_unknown_citation_mismatch():
+    query = "How does the policy gate decide blocks_commit?"
+    draft = "The policy gate blocks writes; cite revenue-fy26."
+    deterministic = answer("chat", query)
+    guarded = answer("chat", query, client=_Drafts(draft), mode="llm")
+
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is False
+    assert guard.diagnostics.category == "citation_mismatch"
+    assert guard.diagnostics.reason_code == "unknown_or_unreturned_citation"
+    assert guard.diagnostics.mentioned_citation_count == 1
+    assert _governed_payload(guarded) == _governed_payload(deterministic)
+    assert guarded.response == deterministic.response
+    assert [citation.doc_id for citation in guarded.citations] == ["gating"]
+    assert guarded.phrasing.fallback_reason == "grounding_guard"
+
+
+def test_grounding_guard_rejects_locked_source_answer_missing_refusal_fact():
+    query = "Show me ConnectWork's revenue."
+    draft = "ConnectWork Revenue FY26 is available."
+    deterministic = answer("chat", query)
+    guarded = answer("chat", query, client=_Drafts(draft), mode="llm")
+
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is False
+    assert guard.diagnostics.category == "missing_required_fact"
+    assert guard.diagnostics.reason_code == "locked_source_without_refusal"
+    assert guard.diagnostics.locked_doc_count == 1
+    assert _governed_payload(guarded) == _governed_payload(deterministic)
+    assert "restricted" in guarded.response.lower()
+    assert draft not in guarded.response
+    assert guarded.phrasing.fallback_reason == "grounding_guard"
+
+
+def test_empty_llm_draft_falls_back_with_grounding_guard_reason():
+    query = "How does the policy gate decide blocks_commit?"
+    deterministic = answer("chat", query)
+    guarded = answer("chat", query, client=_Drafts(""), mode="llm")
+    guard = _grounding_guard("", _view_for(query))
+
+    assert guard.passed is False
+    assert guard.diagnostics.category == "empty_draft"
+    assert guarded.response == deterministic.response
+    assert _governed_payload(guarded) == _governed_payload(deterministic)
+    assert guarded.phrasing.effective_mode == "deterministic"
+    assert guarded.phrasing.fallback_reason == "grounding_guard"
 
 
 @pytest.mark.parametrize("surface", SURFACES)
