@@ -4,7 +4,9 @@ import { AgentHeader } from "./AgentHeader";
 import { InputBar } from "./InputBar";
 import { ChatThread, type Turn } from "./ChatThread";
 import {
+  LIVE,
   useChatMutation,
+  useLifecycleResetMutation,
   useMeetingQuery,
   type ChatAction,
   type ChatMessage,
@@ -147,6 +149,7 @@ export function AgentPanel({
 }) {
   const [messages, setMessages] = useState<Turn[]>(() => seedMeetingTurns());
   const chat = useChatMutation();
+  const lifecycleReset = useLifecycleResetMutation();
   const { entry_actions } = useMeetingQuery().data;
   // The revalidation arc's deterministic state (CO sign-off, cascade) drives store-pushed turns.
   const reval = useRevalidation();
@@ -176,7 +179,8 @@ export function AgentPanel({
     handledBriefRequestRef.current = 0;
     resetActions();
     resetRevalidation();
-  }, []);
+    if (LIVE) lifecycleReset.mutate();
+  }, [lifecycleReset]);
 
   const submitAgent = useCallback(
     (display: string, message: string) => {

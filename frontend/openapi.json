@@ -1584,6 +1584,128 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "LifecycleEvent": {
+        "description": "API-local demo lifecycle event. No raw document or transcript content belongs here.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "intent": {
+            "default": "prepare_decision_brief",
+            "title": "Intent",
+            "type": "string"
+          },
+          "object_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Id"
+          },
+          "type": {
+            "enum": [
+              "decision_request_submitted",
+              "approval_routed",
+              "approval_returned",
+              "source_changed",
+              "revalidation_applied"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "LifecycleEvent",
+        "type": "object"
+      },
+      "LifecycleState": {
+        "description": "Current event-derived Acme demo lifecycle state.",
+        "properties": {
+          "cascade_available": {
+            "default": false,
+            "title": "Cascade Available",
+            "type": "boolean"
+          },
+          "changes_count": {
+            "default": 0,
+            "title": "Changes Count",
+            "type": "integer"
+          },
+          "credit_signed": {
+            "default": false,
+            "title": "Credit Signed",
+            "type": "boolean"
+          },
+          "cs_reconciled": {
+            "default": false,
+            "title": "Cs Reconciled",
+            "type": "boolean"
+          },
+          "event_count": {
+            "default": 0,
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/LifecycleEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "intent": {
+            "default": "prepare_decision_brief",
+            "title": "Intent",
+            "type": "string"
+          },
+          "routed": {
+            "default": false,
+            "title": "Routed",
+            "type": "boolean"
+          },
+          "stage": {
+            "default": "initial",
+            "enum": [
+              "initial",
+              "credit_routed",
+              "cascade_pending",
+              "followups_ready"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "title": "LifecycleState",
+        "type": "object"
+      },
       "LoopRequest": {
         "description": "Body for `/actions/loop`. `approved_indices=None` uses the loop's default approval policy\n(`approve_nonblocked`); a provided list approves exactly those indices (blocked actions are\nstill never executed).",
         "properties": {
@@ -2297,6 +2419,78 @@
         "title": "SourceVersionSnapshot",
         "type": "object"
       },
+      "StagedRemediationExecuteRequest": {
+        "description": "Body for `/actions/staged-remediation/execute`.\n\nThe server validates the row descriptor against the current brief, composes exactly one action,\nand executes index 0 only when the human explicitly approved it.",
+        "properties": {
+          "approved": {
+            "default": true,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "intent": {
+            "default": "prepare_decision_brief",
+            "title": "Intent",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/StagedRemediationOrigin"
+          },
+          "remediation": {
+            "$ref": "#/components/schemas/DecisionReadinessActionSelector"
+          },
+          "row_details": {
+            "default": "",
+            "title": "Row Details",
+            "type": "string"
+          },
+          "row_gate": {
+            "default": "",
+            "title": "Row Gate",
+            "type": "string"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin",
+          "remediation"
+        ],
+        "title": "StagedRemediationExecuteRequest",
+        "type": "object"
+      },
+      "StagedRemediationExecuteResponse": {
+        "description": "Response for staged execution: the exact validated row action plus executor audit.",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "audit_events": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "title": "Audit Events",
+            "type": "array"
+          },
+          "lifecycle_state": {
+            "$ref": "#/components/schemas/LifecycleState"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "StagedRemediationExecuteResponse",
+        "type": "object"
+      },
       "StagedRemediationOrigin": {
         "description": "Trace from a staged drawer card back to the Decision Brief row that produced it.",
         "properties": {
@@ -2824,6 +3018,45 @@
         "summary": "Post Actions Staged Remediation"
       }
     },
+    "/actions/staged-remediation/execute": {
+      "post": {
+        "description": "Execute exactly one staged Decision Brief row remediation by origin.",
+        "operationId": "post_actions_staged_remediation_execute_actions_staged_remediation_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StagedRemediationExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StagedRemediationExecuteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Actions Staged Remediation Execute"
+      }
+    },
     "/api/actions": {
       "get": {
         "description": "The composed ActionPlan (typed diffs; blocked actions carry a `blocked_reason`).",
@@ -2947,6 +3180,112 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/api/lifecycle": {
+      "get": {
+        "operationId": "api_lifecycle_api_lifecycle_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "default": "u_rm",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "default": "prepare_decision_brief",
+              "title": "Intent",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Lifecycle"
+      }
+    },
+    "/api/lifecycle/events": {
+      "post": {
+        "operationId": "api_lifecycle_events_api_lifecycle_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifecycleEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Lifecycle Events"
+      }
+    },
+    "/api/lifecycle/reset": {
+      "post": {
+        "operationId": "api_lifecycle_reset_api_lifecycle_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Lifecycle Reset"
       }
     },
     "/api/loop": {

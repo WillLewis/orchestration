@@ -65,6 +65,8 @@ import {
   LIVE,
   useActionPlanQuery,
   useExecuteActionsMutation,
+  useExecuteStagedRemediationMutation,
+  useLifecycleEventMutation,
   useStagedRemediationActions,
   useVerification,
   useVerifyWorkProductMutation,
@@ -213,7 +215,11 @@ export function ActionDiffDrawer() {
   const { data: cachedVerification } = useVerification(recordId);
   const planActions = useActionPlanQuery().data.actions;
   const stagedReferences = useMemo(() => Object.values(staged_remediations), [staged_remediations]);
-  const liveStagedActions = useStagedRemediationActions(stagedReferences);
+  const stagedValidation = useStagedRemediationActions(stagedReferences);
+  const stagedReferenceByRowId = useMemo(
+    () => new Map(stagedReferences.map((reference) => [reference.origin.row_id, reference])),
+    [stagedReferences],
+  );
   const {
     data: verifyData,
     isPending: verifyPending,
@@ -228,15 +234,25 @@ export function ActionDiffDrawer() {
       deriveDrawerActions({
         mode: drawer.mode,
         staged_remediations: stagedReferences,
-        stagedValidatedActions: liveStagedActions,
+        stagedValidatedActions: stagedValidation.actions,
+        stagedValidationErrors: stagedValidation.errorByRowId,
         validationActions: planActions,
         creditSigned: reval.creditSigned,
       }),
-    [drawer.mode, liveStagedActions, planActions, reval.creditSigned, stagedReferences],
+    [
+      drawer.mode,
+      planActions,
+      reval.creditSigned,
+      stagedReferences,
+      stagedValidation.actions,
+      stagedValidation.errorByRowId,
+    ],
   );
   const [tab, setTab] = useState<"changes" | "next" | "notes" | "audit">("next");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const execute = useExecuteActionsMutation();
+  const executeStaged = useExecuteStagedRemediationMutation();
+  const lifecycleEvent = useLifecycleEventMutation();
   const [execResult, setExecResult] = useState<ExecResult | null>(null);
   const isAfterSourceChange = drawer.mode === "revalidation_edit";
   const liveVerification =
@@ -400,6 +416,61 @@ export function ActionDiffDrawer() {
 
   function onSendAll() {
     if (!canSend) return;
+    if (LIVE && drawer.mode === "staged_remediation") {
+      const references = nextPending.flatMap((action) => {
+        if (!("origin" in action) || action.origin.surface !== "decision_readiness") return [];
+        const reference = stagedReferenceByRowId.get(action.origin.row_id);
+        return reference ? [reference] : [];
+      });
+      const localRefusals = overriddenBlocked.map((action) => ({
+        tool: action.tool,
+        target: action.diff.target_object_id,
+        reason: action.blocked_reason ?? "blocked by staged validation",
+      }));
+
+      if (references.length === 0) {
+        setExecResult({ executed: [], refused: localRefusals, mode: "live" });
+        setTab("audit");
+        toast.error("No validated staged action to send", {
+          description: "Live validation must succeed before this row can execute.",
+        });
+        return;
+      }
+
+      executeStaged.mutate(
+        { references },
+        {
+          onSuccess: (responses) => {
+            const events = responses.flatMap((response) => response.audit_events);
+            const result = execResultFromServer(events);
+            const mergedResult = {
+              ...result,
+              refused: [...result.refused, ...localRefusals],
+            };
+            setExecResult(mergedResult);
+            const executedActions = responses
+              .filter((response) =>
+                response.audit_events.some((event) => event.action === "executed"),
+              )
+              .map((response) => response.action);
+            executedActions.forEach((action) => approveAction(action_key(action)));
+            if (executedActions.length > 0) executeApproved("Dana R.", executedActions);
+            setTab("audit");
+            const skipped = events.filter((event) => event.action === "skipped").length;
+            toast.success(
+              skipped > 0 || localRefusals.length > 0
+                ? `Sent ${events.length - skipped} · refused ${skipped + localRefusals.length}`
+                : `Sent ${events.length} staged action${events.length === 1 ? "" : "s"}`,
+            );
+          },
+          onError: () =>
+            toast.error("Gateway didn't validate the staged row", {
+              description: "The row stayed blocked; no local fallback was executed.",
+            }),
+        },
+      );
+      return;
+    }
     if (LIVE) {
       // Submit ready + any overridden-blocked indices; the gateway recomposes + re-gates, so the
       // blocked ones come back `skipped` even though we approved them.
@@ -409,6 +480,13 @@ export function ActionDiffDrawer() {
           onSuccess: (events) => {
             const result = execResultFromServer(events);
             setExecResult(result);
+            const executedActions = [...nextPending, ...overriddenBlocked].filter((action) =>
+              result.executed.some(
+                (row) => row.tool === action.tool && row.target === action.diff.target_object_id,
+              ),
+            );
+            executedActions.forEach((action) => approveAction(action_key(action)));
+            if (executedActions.length > 0) executeApproved("Dana R.", executedActions);
             if (includesCreditOfficerRoute(result.executed)) routeToCreditOfficer();
             setTab("audit");
             const skipped = events.filter((e) => e.action === "skipped").length;
@@ -551,6 +629,30 @@ export function ActionDiffDrawer() {
               <button
                 type="button"
                 onClick={() => {
+                  if (LIVE) {
+                    lifecycleEvent.mutate(
+                      {
+                        type: "approval_returned",
+                        object_id: "doc_pricing_exception",
+                        detail: { source: "simulated_credit_officer" },
+                      },
+                      {
+                        onSuccess: () => {
+                          recordReturnedChangeNotification();
+                          toast.success("Credit Officer response simulated", {
+                            description:
+                              "Revalidated packet; Legal and covenant tracker still block.",
+                          });
+                          openDrawer({
+                            mode: "revalidation_edit",
+                            source: "Credit Officer response — approval returned",
+                            change_kind: "approval_returned",
+                          });
+                        },
+                      },
+                    );
+                    return;
+                  }
                   if (!simulateCreditOfficerResponse()) return;
                   recordReturnedChangeNotification();
                   toast.success("Credit Officer response simulated", {
@@ -563,9 +665,10 @@ export function ActionDiffDrawer() {
                   });
                 }}
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                disabled={lifecycleEvent.isPending}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Simulate Credit Officer response
+                {lifecycleEvent.isPending ? "Simulating…" : "Simulate Credit Officer response"}
               </button>
             </div>
           )}
@@ -629,6 +732,24 @@ export function ActionDiffDrawer() {
                 showSourceChange={isSourceChangeReview}
                 showCascade={showCascadeReview}
                 onAcceptCascade={() => {
+                  if (LIVE) {
+                    lifecycleEvent.mutate(
+                      {
+                        type: "revalidation_applied",
+                        object_id: "doc_cs_plan",
+                        detail: { source: "cascade_accept" },
+                      },
+                      {
+                        onSuccess: () => {
+                          toast.success("Edit accepted · conflict reconciled", {
+                            description: "Customer success plan now reflects the approved 22%.",
+                          });
+                          closeDrawer();
+                        },
+                      },
+                    );
+                    return;
+                  }
                   acceptCascadeEdit();
                   toast.success("Edit accepted · conflict reconciled", {
                     description: "Customer success plan now reflects the approved 22%.",
@@ -716,11 +837,11 @@ export function ActionDiffDrawer() {
                 <button
                   type="button"
                   onClick={onSendAll}
-                  disabled={execute.isPending || !canSend}
+                  disabled={execute.isPending || executeStaged.isPending || !canSend}
                   className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gradient-ai px-3.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-95 disabled:opacity-60"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  {execute.isPending ? "Sending…" : sendLabel}
+                  {execute.isPending || executeStaged.isPending ? "Sending…" : sendLabel}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
@@ -1397,6 +1518,7 @@ function destinationFor(action: Action) {
 function primaryLabelFor(action: Action) {
   if (action.tool === "create_task") return "Create & assign";
   if (action.tool === "route_approval") return `Route to ${destinationFor(action)}`;
+  if (action.tool === "edit_document") return "Accept edit";
   return "Send";
 }
 
@@ -1411,6 +1533,9 @@ function routeDescription(action: Action) {
   }
   if (approvalRequest) {
     return `Routes the ${approvalRequest} to the ${destination}; sets the workflow to 'routed'.`;
+  }
+  if (action.tool === "edit_document") {
+    return `Stages a targeted edit to ${destination}; the change is applied only after acceptance.`;
   }
   return `Creates an approval task for the ${destination}; sets the workflow to 'routed'.`;
 }

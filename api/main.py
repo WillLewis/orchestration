@@ -24,7 +24,6 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from actions.composer import StagedRemediation
 from actions.loop import LoopState
 from core.schemas import (
     Action,
@@ -39,6 +38,11 @@ from lifecycle.revalidation import RevalidationResult
 
 from api.chat import answer as chat_answer
 from api.docs_chat import answer as docs_chat_answer
+from api.lifecycle_events import (
+    lifecycle_state,
+    record_lifecycle_event,
+    reset_lifecycle_events,
+)
 from api.models import (
     BriefRequest,
     ChatRequest,
@@ -47,12 +51,16 @@ from api.models import (
     DocsChatResponse,
     ExecuteRequest,
     GovernedRecord,
+    LifecycleEvent,
+    LifecycleState,
     LoopRequest,
     MintRecordRequest,
     MintResponse,
     OpsReport,
     RecordVerification,
     RevalidateRequest,
+    StagedRemediationExecuteRequest,
+    StagedRemediationExecuteResponse,
     StagedRemediationRequest,
     VerifyRecordRequest,
 )
@@ -61,6 +69,7 @@ from api.orchestrator import (
     assemble_context,
     compose_actions,
     compose_and_execute,
+    compose_and_execute_staged_remediation,
     compose_staged_remediation,
     default_action_plan,
     ops_report,
@@ -70,6 +79,7 @@ from api.orchestrator import (
     verify_context,
 )
 from api.presentation import build_decision_readiness, build_display_brief
+from api.staged_remediation import verified_staged_remediation
 from api.workproducts import get as get_workproduct
 from api.workproducts import mint as mint_workproduct
 from api.workproducts import verify as verify_workproduct
@@ -163,23 +173,87 @@ def post_actions_staged_remediation(req: StagedRemediationRequest) -> Action:
     passed through the deterministic action composer, not a separately authored follow-up list.
     """
     brief, bundle = assemble_brief(req.user_id, req.intent)
-    remediation = StagedRemediation(
-        row_id=req.origin.row_id,
-        tool=req.remediation.tool,
-        target_object_id=req.remediation.target_object_id,
-        required_approver=req.remediation.required_approver,
-        source_ids=req.source_ids,
-        reason=req.row_details,
-        parameters=req.remediation.parameters,
-    )
+    remediation = verified_staged_remediation(req, brief, bundle)
     return compose_staged_remediation(brief, bundle, remediation)
+
+
+@app.post("/actions/staged-remediation/execute", response_model=StagedRemediationExecuteResponse)
+def post_actions_staged_remediation_execute(
+    req: StagedRemediationExecuteRequest,
+) -> StagedRemediationExecuteResponse:
+    """Execute exactly one staged Decision Brief row remediation by origin."""
+    brief, bundle = assemble_brief(req.user_id, req.intent)
+    remediation = verified_staged_remediation(req, brief, bundle)
+    action, audit_events = compose_and_execute_staged_remediation(
+        brief,
+        bundle,
+        remediation,
+        approved=req.approved,
+    )
+    if _executed_credit_officer_route(audit_events):
+        state = record_lifecycle_event(
+            "approval_routed",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id=action.diff.target_object_id if action.diff else None,
+            detail={"row_id": remediation.row_id, "tool": action.tool},
+        )
+    else:
+        state = lifecycle_state(user_id=req.user_id, intent=req.intent)
+    return StagedRemediationExecuteResponse(
+        action=action,
+        audit_events=audit_events,
+        lifecycle_state=state,
+    )
 
 
 @app.post("/actions/execute", response_model=list[AuditEvent])
 def post_actions_execute(req: ExecuteRequest) -> list[AuditEvent]:
     """Execute only approved, non-blocked actions. The plan is recomposed server-side, so a
     blocked action is never executed even if its index is submitted as approved."""
-    return compose_and_execute(req.user_id, req.intent, req.approved_indices)
+    events = compose_and_execute(req.user_id, req.intent, req.approved_indices)
+    if _executed_credit_officer_route(events):
+        record_lifecycle_event(
+            "approval_routed",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id="doc_pricing_exception",
+            detail={"tool": "route_approval"},
+        )
+    return events
+
+
+def _executed_credit_officer_route(events: list[AuditEvent]) -> bool:
+    return any(
+        event.action == "executed"
+        and event.detail.get("tool") == "route_approval"
+        and event.detail.get("target") == "doc_pricing_exception"
+        for event in events
+    )
+
+
+@app.get("/api/lifecycle", response_model=LifecycleState)
+def api_lifecycle(
+    user_id: str = "u_rm",
+    intent: str = "prepare_decision_brief",
+) -> LifecycleState:
+    return lifecycle_state(user_id=user_id, intent=intent)
+
+
+@app.post("/api/lifecycle/events", response_model=LifecycleState)
+def api_lifecycle_events(event: LifecycleEvent) -> LifecycleState:
+    return record_lifecycle_event(
+        event.type,
+        user_id=event.user_id,
+        intent=event.intent,
+        object_id=event.object_id,
+        detail=event.detail,
+    )
+
+
+@app.post("/api/lifecycle/reset", response_model=LifecycleState)
+def api_lifecycle_reset() -> LifecycleState:
+    return reset_lifecycle_events()
 
 
 # --------------------------------------------------------------------------- #
@@ -261,12 +335,14 @@ def get_ops_docs_chat() -> DocsChatTelemetrySummary:
 @app.get("/api/brief")
 def api_brief(user_id: str = "u_rm", intent: str = "prepare_decision_brief") -> dict:
     brief, bundle = assemble_brief(user_id, intent)
-    display_brief = build_display_brief(brief, bundle)
-    readiness = build_decision_readiness(brief, bundle)
+    state = lifecycle_state(user_id=user_id, intent=intent)
+    display_brief = build_display_brief(brief, bundle, state)
+    readiness = build_decision_readiness(brief, bundle, state)
     rulepack_id, rulepack_version = rulepack_meta()
     return {
         "decision_brief": display_brief.model_dump(mode="json"),
         "decision_readiness": readiness.model_dump(mode="json", exclude_none=True),
+        "lifecycle_state": state.model_dump(mode="json"),
         "source_count": len(bundle.sources),
         "rulepack_id": rulepack_id,
         "rulepack_version": rulepack_version,

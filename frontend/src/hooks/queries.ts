@@ -82,13 +82,59 @@ const briefData = {
   rulepack_id: mockRulepackId,
   rulepack_version: mockRulepackVersion,
 };
-export type BriefData = typeof briefData;
+export type LifecycleEventType =
+  | "decision_request_submitted"
+  | "approval_routed"
+  | "approval_returned"
+  | "source_changed"
+  | "revalidation_applied";
+
+export type LifecycleStage = "initial" | "credit_routed" | "cascade_pending" | "followups_ready";
+
+export interface LifecycleEventData {
+  id?: string;
+  type: LifecycleEventType;
+  user_id?: string;
+  intent?: string;
+  object_id?: string | null;
+  detail?: Record<string, unknown>;
+  created_at?: string;
+}
+
+export interface LifecycleStateData {
+  user_id: string;
+  intent: string;
+  routed: boolean;
+  credit_signed: boolean;
+  cs_reconciled: boolean;
+  stage: LifecycleStage;
+  cascade_available: boolean;
+  changes_count: number;
+  event_count: number;
+  events: LifecycleEventData[];
+}
+
+const initialLifecycleState: LifecycleStateData = {
+  user_id: "u_rm",
+  intent: "prepare_decision_brief",
+  routed: false,
+  credit_signed: false,
+  cs_reconciled: false,
+  stage: "initial",
+  cascade_available: false,
+  changes_count: 0,
+  event_count: 0,
+  events: [],
+};
+
+export type BriefData = typeof briefData & { lifecycle_state?: LifecycleStateData };
 
 interface LiveBriefResponse {
   decision_brief: Partial<typeof mockBrief> & {
     required_approvals?: { requirements: Array<{ role: string; present: boolean }> };
   };
   decision_readiness?: DecisionReadiness;
+  lifecycle_state?: LifecycleStateData;
   source_count?: number;
   rulepack_id?: string;
   rulepack_version?: number;
@@ -207,10 +253,60 @@ export function useBriefQuery() {
         ...briefData,
         decision_brief: mergedBrief,
         decision_readiness: live.decision_readiness ?? deriveDecisionReadiness(mergedBrief),
+        lifecycle_state: live.lifecycle_state ?? initialLifecycleState,
         source_count: live.source_count ?? briefData.source_count,
         rulepack_id: live.rulepack_id ?? briefData.rulepack_id,
         rulepack_version: live.rulepack_version ?? briefData.rulepack_version,
       };
+    },
+  });
+}
+
+export function useLifecycleStateQuery() {
+  return useQuery({
+    queryKey: ["lifecycle", "u_rm", "prepare_decision_brief"],
+    initialData: initialLifecycleState,
+    staleTime: STALE,
+    queryFn: async (): Promise<LifecycleStateData> => {
+      if (!LIVE) return initialLifecycleState;
+      return getJSON<LifecycleStateData>(
+        "/api/lifecycle?user_id=u_rm&intent=prepare_decision_brief",
+      );
+    },
+  });
+}
+
+export function useLifecycleEventMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (event: LifecycleEventData): Promise<LifecycleStateData> => {
+      if (!LIVE) return initialLifecycleState;
+      return postJSON<LifecycleStateData>("/api/lifecycle/events", {
+        user_id: "u_rm",
+        intent: "prepare_decision_brief",
+        detail: {},
+        ...event,
+      });
+    },
+    onSuccess: (state) => {
+      qc.setQueryData(["lifecycle", "u_rm", "prepare_decision_brief"], state);
+      qc.invalidateQueries({ queryKey: ["brief"] });
+      qc.invalidateQueries({ queryKey: ["actions"] });
+    },
+  });
+}
+
+export function useLifecycleResetMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<LifecycleStateData> => {
+      if (!LIVE) return initialLifecycleState;
+      return postJSON<LifecycleStateData>("/api/lifecycle/reset", {});
+    },
+    onSuccess: (state) => {
+      qc.setQueryData(["lifecycle", "u_rm", "prepare_decision_brief"], state);
+      qc.invalidateQueries({ queryKey: ["brief"] });
+      qc.invalidateQueries({ queryKey: ["actions"] });
     },
   });
 }
@@ -305,9 +401,19 @@ function stagedRemediationQueryKey(reference: StagedRemediationReference) {
   ];
 }
 
+export type StagedRemediationQueryState = {
+  actions: OriginatedAction[];
+  pending: boolean;
+  errorByRowId: Record<string, string>;
+};
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "live validation unavailable";
+}
+
 export function useStagedRemediationActions(
   references: StagedRemediationReference[],
-): OriginatedAction[] {
+): StagedRemediationQueryState {
   const results = useQueries({
     queries: LIVE
       ? references.map((reference) => ({
@@ -322,13 +428,24 @@ export function useStagedRemediationActions(
       : [],
   });
 
-  if (!LIVE) return [];
-  return results.flatMap((result, index) => {
+  if (!LIVE) return { actions: [], pending: false, errorByRowId: {} };
+  const errorByRowId: Record<string, string> = {};
+  results.forEach((result, index) => {
+    const reference = references[index];
+    if (!reference || !result.isError) return;
+    errorByRowId[reference.origin.row_id] = errorMessage(result.error);
+  });
+  const actions = results.flatMap((result, index) => {
     const action = result.data;
     const reference = references[index];
     if (!action || !reference) return [];
     return [withStagedOrigin(action, reference)];
   });
+  return {
+    actions,
+    pending: results.some((result) => result.isPending || result.isFetching),
+    errorByRowId,
+  };
 }
 
 /* --------------------------------- Agent Ops (surface 4) --------------------------------- */
@@ -532,6 +649,7 @@ export interface ServerAuditEvent {
 // audit. Live-only (the drawer keeps its client-side simulation for offline/mock). Used to prove
 // the anti-bypass guarantee: approve every index, the blocked ones still come back `skipped`.
 export function useExecuteActionsMutation() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { approved_indices: number[] }): Promise<ServerAuditEvent[]> => {
       const res = await fetch(`${API_BASE}/actions/execute`, {
@@ -545,6 +663,49 @@ export function useExecuteActionsMutation() {
       });
       if (!res.ok) throw new Error(`/actions/execute → ${res.status}`);
       return (await res.json()) as ServerAuditEvent[];
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lifecycle"] });
+      qc.invalidateQueries({ queryKey: ["brief"] });
+      qc.invalidateQueries({ queryKey: ["actions"] });
+    },
+  });
+}
+
+export interface StagedRemediationExecuteResponse {
+  action: Action;
+  audit_events: ServerAuditEvent[];
+  lifecycle_state: LifecycleStateData;
+}
+
+export function stagedRemediationExecuteRequestBody(reference: StagedRemediationReference) {
+  return {
+    ...stagedRemediationRequestBody(reference),
+    approved: true,
+  };
+}
+
+export function useExecuteStagedRemediationMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      references: StagedRemediationReference[];
+    }): Promise<StagedRemediationExecuteResponse[]> => {
+      if (!LIVE) return [];
+      return Promise.all(
+        input.references.map((reference) =>
+          postJSON<StagedRemediationExecuteResponse>(
+            "/actions/staged-remediation/execute",
+            stagedRemediationExecuteRequestBody(reference),
+          ),
+        ),
+      );
+    },
+    onSuccess: (responses) => {
+      const state = responses.at(-1)?.lifecycle_state;
+      if (state) qc.setQueryData(["lifecycle", "u_rm", "prepare_decision_brief"], state);
+      qc.invalidateQueries({ queryKey: ["brief"] });
+      qc.invalidateQueries({ queryKey: ["actions"] });
     },
   });
 }

@@ -25,7 +25,11 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
-from actions.composer import SafeActionComposer, StagedRemediation
+from actions.composer import (
+    SafeActionComposer,
+    StagedRemediation,
+    action_from_staged_remediation,
+)
 from actions.engine import ActionValidationEngine, WorkspaceExecutor
 from actions.loop import ControlledWorkLoop, LoopState
 from actions.personas import LLMPersonaClient, PersonaClient, StubPersonaClient
@@ -53,6 +57,8 @@ from lifecycle.revalidation import (
     build_dependency_graph,
     on_source_change,
 )
+from api.lifecycle_events import lifecycle_state
+from api.presentation import build_decision_readiness
 from recipes.catalog import EvalRow, run_three_vertical
 from verification.engine import DeterministicVerifier
 from verification.rulepacks import get_rulepack
@@ -107,115 +113,105 @@ def assemble_brief(user_id: str, intent: str) -> tuple[DecisionBrief, ContextBun
 # --------------------------------------------------------------------------- #
 # Action composition + execution: WS-E
 # --------------------------------------------------------------------------- #
-class AcmeFollowupProposer:
-    """Deterministic (no-LLM) proposer for the API layer. Surfaces a representative Acme
-    follow-up set — draftable work, approval routes, plus the two gate-demonstrating actions
-    (a status-advance that depends on missing evidence, and a public+private mosaic synthesis).
-    Each candidate is still validated by the REAL WS-E engine, which sets every `blocked_reason`.
-    """
+class ReadinessFollowupProposer:
+    """Deterministic API proposer derived from Decision Readiness rows plus labeled fixtures."""
 
     def propose(self, brief: DecisionBrief, bundle: ContextBundle) -> list[Action]:
-        return [
-            Action(
-                tool="create_task",
-                reason="Final covenant tracker is required before the committee can decide.",
-                sources=[SourceRef(object_id="wf_approval"),
-                         SourceRef(object_id="doc_credit_memo")],
-                risk="low",
-                side_effect="write",
-                diff=ActionDiff(
-                    target_object_id="task_new_1",
-                    after={
-                        "title": "Upload final covenant tracker",
-                        "assignee": "Priya N. (Analyst)",
-                        "due": "2026-06-22",
-                        "status": "open",
-                    },
-                ),
+        readiness = build_decision_readiness(
+            brief,
+            bundle,
+            lifecycle_state(user_id=bundle.user_id, intent=bundle.intent),
+        )
+        actions: list[Action] = []
+        for row in readiness.rows:
+            if not row.action:
+                continue
+            actions.append(
+                action_from_staged_remediation(
+                    StagedRemediation(
+                        row_id=row.id,
+                        tool=row.action.tool,
+                        target_object_id=row.action.target_object_id,
+                        required_approver=row.action.required_approver,
+                        source_ids=row.source_ids,
+                        reason=row.details,
+                        parameters=row.action.parameters,
+                    )
+                )
+            )
+        actions.extend(_explicit_batch_fixtures())
+        return actions
+
+
+def _explicit_batch_fixtures() -> list[Action]:
+    """Explicit demo-only batch proposals that are not Decision Readiness row remediations."""
+    return [
+        Action(
+            tool="draft_internal_note",
+            reason="Batch fixture: summarize open risks for the committee pre-read.",
+            sources=[
+                SourceRef(object_id="doc_financials"),
+                SourceRef(object_id="doc_credit_memo"),
+            ],
+            risk="low",
+            side_effect="draft",
+            diff=ActionDiff(
+                target_object_id="note_new_1",
+                after={
+                    "title": "Acme renewal — open risks",
+                    "body": (
+                        "Revenue forecast revised to $38M. Discount (22%) exceeds standard "
+                        "threshold. Credit Officer approval and final covenant tracker "
+                        "outstanding."
+                    ),
+                    "key_points": [
+                        "Revenue forecast revised to $38M.",
+                        "22% discount exceeds standard threshold.",
+                        "Credit Officer approval and final covenant tracker are outstanding.",
+                    ],
+                    "status": "draft",
+                },
             ),
-            Action(
-                tool="draft_internal_note",
-                reason="Summarize open risks for the committee pre-read.",
-                sources=[SourceRef(object_id="doc_financials"),
-                         SourceRef(object_id="doc_credit_memo")],
-                risk="low",
-                side_effect="draft",
-                diff=ActionDiff(
-                    target_object_id="note_new_1",
-                    after={
-                        "title": "Acme renewal — open risks",
-                        "body": (
-                            "Revenue forecast revised to $38M. Discount (22%) exceeds standard "
-                            "threshold. Credit Officer approval and final covenant tracker "
-                            "outstanding."
-                        ),
-                        "key_points": [
-                            "Revenue forecast revised to $38M.",
-                            "22% discount exceeds standard threshold.",
-                            "Credit Officer approval and final covenant tracker are outstanding.",
-                        ],
-                        "status": "draft",
-                    },
-                ),
+        ),
+        Action(
+            tool="schedule_meeting",
+            reason="Batch fixture: book the final committee decision once prerequisites clear.",
+            sources=[SourceRef(object_id="mtg_committee_0612")],
+            risk="low",
+            side_effect="write",
+            diff=ActionDiff(
+                target_object_id="mtg_new_1",
+                after={
+                    "title": "Acme — final committee decision",
+                    "attendees": ["Dana R.", "Chris O.", "Priya N.", "Sam L."],
+                    "proposed": "2026-06-24 14:00",
+                },
             ),
-            Action(
-                tool="route_approval",
-                reason="The 22% discount exceeds the RM's delegated authority.",
-                sources=[SourceRef(object_id="doc_pricing_exception")],
-                required_approver="credit_officer",
-                risk="medium",
-                side_effect="propose",
-                diff=ActionDiff(
-                    target_object_id="doc_pricing_exception",
-                    after={"approval_route": "Credit Officer", "state": "routed"},
-                ),
+        ),
+        Action(
+            tool="draft_internal_note",
+            reason=(
+                "Batch fixture: synthesize public-side sector research with the private-side "
+                "model."
             ),
-            Action(
-                tool="route_approval",
-                reason="Legal approval is still pending and must complete before decision.",
-                sources=[SourceRef(object_id="wf_approval")],
-                required_approver="legal",
-                risk="medium",
-                side_effect="propose",
-                diff=ActionDiff(
-                    target_object_id="wf_approval",
-                    after={"legal_status": "requested"},
-                ),
+            sources=[
+                SourceRef(object_id="doc_research_publicside"),
+                SourceRef(object_id="doc_financials"),
+            ],
+            risk="high",
+            side_effect="draft",
+            diff=ActionDiff(
+                target_object_id="note_mnpi_1",
+                after={"topic": "sector + borrower synthesis"},
             ),
-            Action(
-                tool="schedule_meeting",
-                reason="Book the final committee decision once prerequisites clear.",
-                sources=[SourceRef(object_id="mtg_committee_0612")],
-                risk="low",
-                side_effect="write",
-                diff=ActionDiff(
-                    target_object_id="mtg_new_1",
-                    after={
-                        "title": "Acme — final committee decision",
-                        "attendees": ["Dana R.", "Chris O.", "Priya N.", "Sam L."],
-                        "proposed": "2026-06-24 14:00",
-                    },
-                ),
-            ),
-            Action(
-                tool="draft_internal_note",
-                reason="Synthesize public-side sector research with the private-side model.",
-                sources=[SourceRef(object_id="doc_research_publicside"),
-                         SourceRef(object_id="doc_financials")],
-                risk="high",
-                side_effect="draft",
-                diff=ActionDiff(
-                    target_object_id="note_mnpi_1",
-                    after={"topic": "sector + borrower synthesis"},
-                ),
-            ),
-        ]
+        ),
+    ]
 
 
 def _composer(workspace: list[WorkspaceObject]) -> SafeActionComposer:
     return SafeActionComposer(
         engine=ActionValidationEngine(workspace=workspace),
-        proposer=AcmeFollowupProposer(),
+        proposer=ReadinessFollowupProposer(),
     )
 
 
@@ -237,6 +233,23 @@ def compose_staged_remediation(
 ) -> Action:
     """Validate one staged Decision Brief row through the same composer/engine path."""
     return _composer(_action_workspace()).compose_staged_remediation(remediation, brief, bundle)
+
+
+def compose_and_execute_staged_remediation(
+    brief: DecisionBrief,
+    bundle: ContextBundle,
+    remediation: StagedRemediation,
+    *,
+    approved: bool,
+) -> tuple[Action, list[AuditEvent]]:
+    """Validate and execute exactly one staged readiness-row remediation."""
+    workspace = _action_workspace()
+    composer = _composer(workspace)
+    action = composer.compose_staged_remediation(remediation, brief, bundle)
+    executor = WorkspaceExecutor(workspace=workspace)
+    approved_indices = [0] if approved else []
+    events = executor.execute(ActionPlan(actions=[action]), approved_indices)
+    return action, events
 
 
 def execute_actions(plan: ActionPlan, approved_indices: list[int]) -> list[AuditEvent]:
@@ -294,7 +307,7 @@ def run_loop(
 
     The loop's five-node logic (distribute → collect → escalate → schedule → close) is NOT
     duplicated here — this only wires the orchestrator's brief and the API's gated composer
-    (corpus workspace + `AcmeFollowupProposer`, the same plan as `/actions/compose`) into the
+    (corpus workspace + `ReadinessFollowupProposer`, the same plan as `/actions/compose`) into the
     loop, with the shared executor workspace so re-validation and execution agree.
 
     Deterministic + offline by default (stub personas). `approved_indices=None` uses the loop's
@@ -304,7 +317,7 @@ def run_loop(
     """
     brief, bundle = assemble_brief(user_id, intent)
     executor = WorkspaceExecutor(workspace=_action_workspace())
-    composer = SafeActionComposer(engine=executor.engine, proposer=AcmeFollowupProposer())
+    composer = SafeActionComposer(engine=executor.engine, proposer=ReadinessFollowupProposer())
     approver = (lambda _plan: list(approved_indices)) if approved_indices is not None else None
     loop = ControlledWorkLoop(
         executor=executor,

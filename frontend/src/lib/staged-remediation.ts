@@ -94,12 +94,14 @@ export function deriveDrawerActions({
   mode,
   staged_remediations,
   stagedValidatedActions = [],
+  stagedValidationErrors = {},
   validationActions,
   creditSigned,
 }: {
   mode: DrawerActionMode;
   staged_remediations: StagedRemediationReference[];
   stagedValidatedActions?: OriginatedAction[];
+  stagedValidationErrors?: Record<string, string>;
   validationActions: Action[];
   creditSigned: boolean;
 }): OriginatedAction[] {
@@ -108,11 +110,14 @@ export function deriveDrawerActions({
       stagedValidatedActions.map((action) => [action.origin.row_id, action]),
     );
     return staged_remediations
-      .map(
-        (reference) =>
+      .map((reference) => {
+        const error = stagedValidationErrors[reference.origin.row_id];
+        if (error) return blockedStagedAction(reference, `live validation unavailable: ${error}`);
+        return (
           validatedByRow.get(reference.origin.row_id) ??
-          composeStagedRemediationCard(reference, validationActions),
-      )
+          composeStagedRemediationCard(reference, validationActions)
+        );
+      })
       .filter(hasRenderableOrigin);
   }
 

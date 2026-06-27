@@ -10,7 +10,10 @@ import {
   withStagedOrigin,
   withBatchOrigin,
 } from "../src/lib/staged-remediation";
-import { stagedRemediationRequestBody } from "../src/hooks/queries";
+import {
+  stagedRemediationExecuteRequestBody,
+  stagedRemediationRequestBody,
+} from "../src/hooks/queries";
 
 const creditOfficerRow = decision_readiness.rows.find(
   (row) => row.id === "credit_officer_approval",
@@ -188,5 +191,34 @@ describe("staged readiness remediation provenance", () => {
     expect(actions).toHaveLength(1);
     expect(actions[0].blocked_reason).toBe("server validation: route window closed");
     expect(actions[0].origin).toEqual(reference.origin);
+  });
+
+  it("renders a live validation failure as a blocked staged card", () => {
+    const reference = requireReference();
+
+    const actions = deriveDrawerActions({
+      mode: "staged_remediation",
+      staged_remediations: [reference],
+      stagedValidatedActions: [],
+      stagedValidationErrors: {
+        credit_officer_approval: "/actions/staged-remediation → 409",
+      },
+      validationActions: action_plan.actions,
+      creditSigned: false,
+    });
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0].origin).toEqual(reference.origin);
+    expect(actions[0].blocked_reason).toContain("live validation unavailable");
+    expect(actions[0].blocked_reason).toContain("409");
+  });
+
+  it("builds the live staged-remediation execute request from the row reference", () => {
+    const reference = requireReference();
+
+    expect(stagedRemediationExecuteRequestBody(reference)).toEqual({
+      ...stagedRemediationRequestBody(reference),
+      approved: true,
+    });
   });
 });

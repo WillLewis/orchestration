@@ -45,6 +45,12 @@ def default_toolcards() -> list[ToolCard]:
             side_effect=SideEffectClass.propose,
             input_schema={"topic": "str", "attendees": "list[str]"},
         ),
+        ToolCard(
+            name="edit_document",
+            description="Apply a targeted, human-approved edit to reconcile a source document.",
+            side_effect=SideEffectClass.write,
+            input_schema={"target_object_id": "str", "after": "dict"},
+        ),
     ]
 
 

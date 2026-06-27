@@ -39,7 +39,7 @@ RM = "u_rm"
 # --------------------------------------------------------------------------- #
 # ToolCard registry — a named check per tool
 # --------------------------------------------------------------------------- #
-def test_registry_exposes_the_five_tools():
+def test_registry_exposes_the_registered_tools():
     reg = ToolCardRegistry()
     assert set(reg.names()) == {
         "create_task",
@@ -47,6 +47,7 @@ def test_registry_exposes_the_five_tools():
         "route_approval",
         "draft_internal_note",
         "schedule_meeting",
+        "edit_document",
     }
 
 

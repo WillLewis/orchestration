@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from api.lifecycle_events import reset_lifecycle_events
 from api.main import app
 
 client = TestClient(app)
@@ -34,10 +35,13 @@ BASELINE = json.loads(
 @pytest.fixture(autouse=True)
 def _force_deterministic_demo(monkeypatch):
     """Guarantee seeded StubPersonaClient replies regardless of the ambient model environment."""
+    reset_lifecycle_events()
     monkeypatch.setenv("DEMO_DETERMINISTIC", "1")
     monkeypatch.delenv("PERSONA_MODEL", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    yield
+    reset_lifecycle_events()
 
 
 def _loop(body: dict | None = None) -> dict:

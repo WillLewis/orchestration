@@ -10,7 +10,13 @@
 //             (Dana accepts) cascade_accepted/followups_ready.
 import { useSyncExternalStore } from "react";
 
-import { useBriefQuery, type BriefData } from "@/hooks/queries";
+import {
+  LIVE,
+  useBriefQuery,
+  useLifecycleStateQuery,
+  type BriefData,
+  type LifecycleStateData,
+} from "@/hooks/queries";
 import type {
   DecisionConflict,
   DecisionReadiness,
@@ -58,12 +64,31 @@ export function useRevalidation(): RevalidationState & {
   cascadeAvailable: boolean;
 } {
   const s = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  // LIVE is a module-level feature flag; mock mode must remain QueryClient-free for SSR docs.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const live = LIVE ? useLifecycleStateQuery().data : null;
+  if (LIVE && live) {
+    return {
+      routed: live.routed,
+      creditSigned: live.credit_signed,
+      csReconciled: live.cs_reconciled,
+      stage: stageOfLifecycle(live),
+      cascadeAvailable: live.cascade_available,
+    };
+  }
   return { ...s, stage: stageOf(s), cascadeAvailable: s.creditSigned && !s.csReconciled };
 }
 
 export function stageOf(s: RevalidationState = state): RevalStage {
   if (s.csReconciled) return "followups_ready";
   if (s.creditSigned) return "cascade_pending";
+  if (s.routed) return "credit_routed";
+  return "initial";
+}
+
+function stageOfLifecycle(s: LifecycleStateData): RevalStage {
+  if (s.cs_reconciled) return "followups_ready";
+  if (s.credit_signed) return "cascade_pending";
   if (s.routed) return "credit_routed";
   return "initial";
 }
@@ -260,10 +285,43 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
   };
 }
 
+export function buildLiveGovernedBrief(base: BriefData, live: LifecycleStateData): GovernedBrief {
+  const state = {
+    routed: live.routed,
+    creditSigned: live.credit_signed,
+    csReconciled: live.cs_reconciled,
+  };
+  const sources =
+    state.creditSigned && !state.csReconciled
+      ? markDiscountSources(base.sources, "conflicting")
+      : markDiscountSources(base.sources, "used");
+  return {
+    ...base,
+    sources,
+    stage: stageOfLifecycle(live),
+    cascadeAvailable: live.cascade_available,
+    workflow_status: state.creditSigned ? "Approved · discount exception" : null,
+    banner_subtitle: state.creditSigned
+      ? "Final covenant tracker missing · Legal sign-off on the covenant modification pending."
+      : state.routed
+        ? "Credit Officer route pending · final covenant tracker still missing."
+        : "Credit Officer approval missing · discount exceeds delegated authority.",
+    path_to_ready: [
+      { label: "Route to Credit Officer", done: state.creditSigned },
+      { label: "Complete Legal approval", done: false },
+      { label: "Upload final covenant tracker", done: false },
+    ],
+  };
+}
+
 // The governed brief: base brief data (mock or live) overlaid with the current demo stage. Every
 // brief surface reads THIS, not `useBriefQuery` directly, so the recompute is consistent everywhere.
 export function useGovernedBrief(): GovernedBrief {
   const base = useBriefQuery().data;
   const s = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  // LIVE is a module-level feature flag; mock mode must remain QueryClient-free for SSR docs.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const live = LIVE ? useLifecycleStateQuery().data : null;
+  if (LIVE && live) return buildLiveGovernedBrief(base, live);
   return buildGovernedBrief(base, s);
 }

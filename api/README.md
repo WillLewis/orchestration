@@ -24,7 +24,11 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 | POST | `/chat` | `ChatResponse` | WS-B→C (+ injectable LLM) | InputBar / "Ask about this packet" |
 | POST | `/actions/compose` | `ActionPlan` | WS-E (+B,C,D) | Action Diff Drawer ([actions.ts](../frontend/src/data/actions.ts)) |
 | POST | `/actions/staged-remediation` | `Action` | WS-E (+B,C,D) | one staged Decision Brief row → one validated drawer card |
+| POST | `/actions/staged-remediation/execute` | `StagedRemediationExecuteResponse` | WS-E (+B,C,D) | execute one validated staged row by origin |
 | POST | `/actions/execute` | `list[AuditEvent]` | WS-E | Action Diff Drawer |
+| GET | `/api/lifecycle` | `LifecycleState` | API-local event store | live Acme lifecycle state |
+| POST | `/api/lifecycle/events` | `LifecycleState` | API-local event store | simulated approval return / revalidation applied |
+| POST | `/api/lifecycle/reset` | `LifecycleState` | API-local event store | reset live demo state |
 | POST | `/revalidate` | `RevalidationResult` | WS-F (+B,C,D) | Stale-decision alert |
 | POST | `/workproducts/mint` | `MintResponse` | WS-B→D + WS-F snapshot | Seal as governed record |
 | GET | `/workproducts/{record_id}` | `GovernedRecord` | (in-memory store) | Governed-record page |

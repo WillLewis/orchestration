@@ -111,21 +111,21 @@ export const loop_state: LoopState = {
     },
     {
       action_index: 1,
-      owner_role: "analyst",
-      tool: "draft_internal_note",
-      message: "To Credit Analyst: Summarize open risks for the committee pre-read.",
-    },
-    {
-      action_index: 2,
       owner_role: "credit_officer",
       tool: "route_approval",
       message: "To Credit Officer: The 22% discount exceeds the RM's delegated authority.",
     },
     {
-      action_index: 3,
+      action_index: 2,
       owner_role: "legal",
       tool: "route_approval",
       message: "To Legal: Legal approval is still pending and must complete before decision.",
+    },
+    {
+      action_index: 3,
+      owner_role: "analyst",
+      tool: "draft_internal_note",
+      message: "To Credit Analyst: Summarize open risks for the committee pre-read.",
     },
     {
       action_index: 5,
@@ -143,22 +143,22 @@ export const loop_state: LoopState = {
       message: "Credit Analyst: acknowledged, noted for the record.",
     },
     {
-      role: "analyst",
-      action_index: 1,
-      decision: "acknowledge",
-      message: "Credit Analyst: acknowledged, noted for the record.",
-    },
-    {
       role: "credit_officer",
-      action_index: 2,
+      action_index: 1,
       decision: "sign_off",
       message: "Credit Officer: reviewed and signed off — proceed.",
     },
     {
       role: "legal",
-      action_index: 3,
+      action_index: 2,
       decision: "escalate",
       message: "Legal: this exceeds my authority; escalating to Compliance for review.",
+    },
+    {
+      role: "analyst",
+      action_index: 3,
+      decision: "acknowledge",
+      message: "Credit Analyst: acknowledged, noted for the record.",
     },
     {
       role: "analyst",
@@ -169,7 +169,7 @@ export const loop_state: LoopState = {
   ],
   escalations: [
     {
-      action_index: 3,
+      action_index: 2,
       to: "compliance",
       reason: "legal escalate",
     },

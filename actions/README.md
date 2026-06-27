@@ -7,7 +7,8 @@ never override a gate** (proven in [`tests/test_redteam_gate_override.py`](tests
 
 ## Phase 1 — deterministic engine (no LLM) · [`engine.py`](engine.py) · [`toolcards.py`](toolcards.py)
 - **`ToolCardRegistry`** — `create_task`, `update_project_status`, `route_approval`,
-  `draft_internal_note`, `schedule_meeting` (each a `ToolCard` with `side_effect` + `input_schema`).
+  `draft_internal_note`, `schedule_meeting`, `edit_document` (each a `ToolCard` with
+  `side_effect` + `input_schema`).
 - **`ActionValidationEngine.validate_action(action, bundle, recipe=None, *, approvals=None)`** —
   re-derives `blocked_reason` from five gates (model-supplied values are ignored):
   - **permission** — every `action.sources` object must be accessible (not in the bundle's

@@ -7,8 +7,10 @@ lifecycle revalidation, and the three-vertical eval proof — plus shape-conform
 frontend data modules. Fully offline: no LLM, no network (FastAPI TestClient over the app).
 """
 from fastapi.testclient import TestClient
+import pytest
 
 from api.main import app
+from api.lifecycle_events import reset_lifecycle_events
 
 client = TestClient(app)
 
@@ -28,6 +30,13 @@ ACTION_KEYS = {  # frontend/src/data/actions.ts → Action
 OPS_KEYS = {  # frontend/src/data/ops.ts exports consumed by Agent Ops
     "vertical_scores", "eval_rows", "telemetry_sample", "eval_source_mix", "failure_taxonomy",
 }
+
+
+@pytest.fixture(autouse=True)
+def _reset_lifecycle_state():
+    reset_lifecycle_events()
+    yield
+    reset_lifecycle_events()
 
 
 # --------------------------------------------------------------------------- #
@@ -79,9 +88,7 @@ def test_api_brief_returns_display_readiness_view():
     assert brief["permission_limitations"] == [
         "Legal memo is restricted — its contents were not used."
     ]
-    assert brief["conflicts"][0]["description"] == (
-        "Pricing doc and customer success plan show different discount levels (22% vs 18%)."
-    )
+    assert brief["conflicts"] == []
 
     rows = {row["id"]: row for row in readiness["rows"]}
     assert list(rows) == [

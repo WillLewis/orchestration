@@ -78,6 +78,36 @@ class StagedRemediation(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
+def action_from_staged_remediation(
+    remediation: StagedRemediation,
+    registry: ToolCardRegistry | None = None,
+) -> Action:
+    """Build the candidate action for one staged readiness-row remediation."""
+    tool_registry = registry or ToolCardRegistry()
+    side_effect = tool_registry.get(remediation.tool).side_effect
+    parameters = remediation.parameters
+    reason = (
+        _string_param(parameters, "route_note")
+        or remediation.reason
+        or f"Stage remediation for {remediation.row_id}."
+    )
+    after = _after_for_staged_remediation(remediation)
+    risk = "medium" if remediation.tool == "route_approval" else "low"
+    sources = [
+        SourceRef(object_id=object_id)
+        for object_id in (remediation.source_ids or [remediation.target_object_id])
+    ]
+    return Action(
+        tool=remediation.tool,
+        reason=reason,
+        sources=sources,
+        required_approver=remediation.required_approver,
+        risk=risk,
+        side_effect=side_effect,
+        diff=ActionDiff(target_object_id=remediation.target_object_id, after=after),
+    )
+
+
 class HeuristicActionProposer:
     """Deterministic, offline proposer (default). Maps each ``brief.next_steps`` line to a
     ToolCard-backed action by keyword — no network, no API key."""
@@ -304,28 +334,7 @@ class SafeActionComposer:
         return self.engine.validate_action(diffed, bundle, approvals=brief.required_approvals)
 
     def _action_from_staged_remediation(self, remediation: StagedRemediation) -> Action:
-        side_effect = self.registry.get(remediation.tool).side_effect
-        parameters = remediation.parameters
-        reason = (
-            _string_param(parameters, "route_note")
-            or remediation.reason
-            or f"Stage remediation for {remediation.row_id}."
-        )
-        after = _after_for_staged_remediation(remediation)
-        risk = "medium" if remediation.tool == "route_approval" else "low"
-        sources = [
-            SourceRef(object_id=object_id)
-            for object_id in (remediation.source_ids or [remediation.target_object_id])
-        ]
-        return Action(
-            tool=remediation.tool,
-            reason=reason,
-            sources=sources,
-            required_approver=remediation.required_approver,
-            risk=risk,
-            side_effect=side_effect,
-            diff=ActionDiff(target_object_id=remediation.target_object_id, after=after),
-        )
+        return action_from_staged_remediation(remediation, self.registry)
 
 
 def _string_param(parameters: dict[str, Any], key: str) -> str | None:

@@ -86,29 +86,6 @@ export const action_plan: { actions: Action[] } = {
       },
     },
     {
-      tool: "draft_internal_note",
-      reason: "Summarize open risks for the committee pre-read.",
-      sources: [{ object_id: "doc_financials" }, { object_id: "doc_credit_memo" }],
-      side_effect: "draft",
-      risk: "low",
-      required_approver: null,
-      blocked_reason: null,
-      diff: {
-        target_object_id: "note_new_1",
-        before: {},
-        after: {
-          title: "Acme renewal — open risks",
-          body: "Revenue forecast revised to $38M. Discount (22%) exceeds standard threshold. Credit Officer approval and final covenant tracker outstanding.",
-          key_points: [
-            "Revenue forecast revised to $38M.",
-            "22% discount exceeds standard threshold.",
-            "Credit Officer approval and final covenant tracker are outstanding.",
-          ],
-          status: "draft",
-        },
-      },
-    },
-    {
       tool: "route_approval",
       reason: "The 22% discount exceeds the RM's delegated authority.",
       sources: [{ object_id: "doc_pricing_exception" }],
@@ -134,6 +111,29 @@ export const action_plan: { actions: Action[] } = {
         target_object_id: "wf_approval",
         before: { legal_status: "pending" },
         after: { legal_status: "requested" },
+      },
+    },
+    {
+      tool: "draft_internal_note",
+      reason: "Summarize open risks for the committee pre-read.",
+      sources: [{ object_id: "doc_financials" }, { object_id: "doc_credit_memo" }],
+      side_effect: "draft",
+      risk: "low",
+      required_approver: null,
+      blocked_reason: null,
+      diff: {
+        target_object_id: "note_new_1",
+        before: {},
+        after: {
+          title: "Acme renewal — open risks",
+          body: "Revenue forecast revised to $38M. Discount (22%) exceeds standard threshold. Credit Officer approval and final covenant tracker outstanding.",
+          key_points: [
+            "Revenue forecast revised to $38M.",
+            "22% discount exceeds standard threshold.",
+            "Credit Officer approval and final covenant tracker are outstanding.",
+          ],
+          status: "draft",
+        },
       },
     },
     {

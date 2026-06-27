@@ -12,12 +12,20 @@ the same snake_case the mock mirrors, with no remapping.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, model_serializer
 
-from core.schemas import AgentRecipe, DecisionBrief, SourceRef, StaleSectionState, TelemetryEvent
+from core.schemas import (
+    Action,
+    AgentRecipe,
+    AuditEvent,
+    DecisionBrief,
+    SourceRef,
+    StaleSectionState,
+    TelemetryEvent,
+)
 from lifecycle.revalidation import ReapprovalRoute
 from recipes.catalog import EvalRow, VerticalScore
 
@@ -251,6 +259,61 @@ class StagedRemediationRequest(BriefRequest):
     row_gate: str = ""
     row_details: str = ""
     source_ids: list[str] = Field(default_factory=list)
+
+
+class StagedRemediationExecuteRequest(StagedRemediationRequest):
+    """Body for `/actions/staged-remediation/execute`.
+
+    The server validates the row descriptor against the current brief, composes exactly one action,
+    and executes index 0 only when the human explicitly approved it.
+    """
+
+    approved: bool = True
+
+
+LifecycleEventType = Literal[
+    "decision_request_submitted",
+    "approval_routed",
+    "approval_returned",
+    "source_changed",
+    "revalidation_applied",
+]
+LifecycleStage = Literal["initial", "credit_routed", "cascade_pending", "followups_ready"]
+
+
+class LifecycleEvent(BaseModel):
+    """API-local demo lifecycle event. No raw document or transcript content belongs here."""
+
+    id: str = ""
+    type: LifecycleEventType
+    user_id: str = "u_rm"
+    intent: str = "prepare_decision_brief"
+    object_id: str | None = None
+    detail: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class LifecycleState(BaseModel):
+    """Current event-derived Acme demo lifecycle state."""
+
+    user_id: str = "u_rm"
+    intent: str = "prepare_decision_brief"
+    routed: bool = False
+    credit_signed: bool = False
+    cs_reconciled: bool = False
+    stage: LifecycleStage = "initial"
+    cascade_available: bool = False
+    changes_count: int = 0
+    event_count: int = 0
+    events: list[LifecycleEvent] = Field(default_factory=list)
+
+
+class StagedRemediationExecuteResponse(BaseModel):
+    """Response for staged execution: the exact validated row action plus executor audit."""
+
+    action: Action
+    audit_events: list[AuditEvent] = Field(default_factory=list)
+    lifecycle_state: LifecycleState = Field(default_factory=LifecycleState)
 
 
 # --------------------------------------------------------------------------- #

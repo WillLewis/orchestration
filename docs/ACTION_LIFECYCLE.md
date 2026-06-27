@@ -16,16 +16,17 @@ Do not edit `core/schemas.py` or `core/pipeline.py` for this work.
 
 ## Current repo reality
 
-The lifecycle primitives mostly exist, but the anti-drift wiring is not complete.
+The lifecycle primitives mostly exist, and the Acme live demo now has an API-local anti-drift seam.
+The remaining gap is a general `EventTrigger` dispatcher and persistent event log.
 
 | Claim | Current state |
 |---|---|
 | Typed lifecycle primitives | Present in `core/schemas.py`, including `EventTrigger`, `PolicyGraph`, `WorkProductContract`, revalidation types, action types. |
 | Safe action validation | Present in `actions/composer.py` and `actions/engine.py`. The composer validates every proposed action through the deterministic engine. |
 | Rollback | Present on `WorkspaceExecutor.rollback()` in `actions/engine.py`. It is not the main capability of `actions/loop.py`. |
-| Brief and drawer share one source | Partially true. Frontend staged rows carry provenance, and `/actions/staged-remediation` validates one staged row through the composer. The API batch/demo plan still uses `AcmeFollowupProposer` for the broader follow-up list. |
-| Event log / dispatcher | Not wired. `EventTrigger` is a type, but no backend event dispatcher fans events into one recompute loop yet. |
-| Demo revalidation | Mostly frontend overlay state in `frontend/src/lib/revalidation-store.ts`. It now requires a visible simulated counterparty response, but it is still not the final backend event dispatcher. |
+| Brief and drawer share one source | Live staged rows are verified server-side against the current readiness row before composition; `/api/actions` derives row actions from `DecisionReadiness.rows[*].action` plus explicitly labeled batch fixtures. |
+| Event log / dispatcher | API-local in-memory lifecycle events exist for the Acme demo. `EventTrigger` is still only a type; no general backend dispatcher fans events into one recompute loop yet. |
+| Demo revalidation | Live mode derives routed/signed/reconciled state from API lifecycle events. Mock mode keeps the deterministic frontend store for offline demo parity. |
 
 The strongest lifecycle claims below are therefore **design invariants to enforce**, not statements
 that the current repo already satisfies end to end.
@@ -73,8 +74,9 @@ Acceptance test:
 6. The drawer must not render an orphan action without `origin`, except for a deliberately labeled
    batch proposal path.
 
-This is the direct fix for the current `AcmeFollowupProposer` drift problem: the drawer cannot be
-another source of truth.
+This is the direct fix for the old `AcmeFollowupProposer` drift problem: the drawer cannot be
+another source of truth. The server also rejects stale or forged staged descriptors before
+composition.
 
 ### 3. The home memo is not the Decision Brief.
 
@@ -392,32 +394,34 @@ Acceptance tests for Phase 1:
 
 ### Phase 2 - backend anti-drift seam
 
-1. Replace the API demo path's fixed `AcmeFollowupProposer` for staged-row flows.
+1. Replace the API demo path's fixed `AcmeFollowupProposer` for staged-row flows. **Done.**
 2. Add a composer entrypoint that accepts one staged remediation and returns one validated
-   `Action`.
-3. Route brief-row staging through that entrypoint.
-4. Keep batch proposals labeled separately and traceable to their proposal origin.
-5. Add API tests that prove `brief.next_steps` / row remediations and drawer actions cannot drift.
+   `Action`. **Done.**
+3. Route brief-row staging through that entrypoint. **Done.**
+4. Execute staged rows by verified origin instead of ActionPlan index. **Done for
+   `/actions/staged-remediation/execute`.**
+5. Keep batch proposals labeled separately and traceable to their proposal origin. **Done for the
+   Acme batch fixtures.**
+6. Add API tests that prove row remediations and drawer actions cannot drift. **Done.**
 
 ### Phase 3 - event dispatch and live parity
 
-1. Wire an `EventTrigger` dispatcher.
-2. Store or derive an event log for decision requests, source changes, and approval returns.
+1. Wire a general `EventTrigger` dispatcher.
+2. Replace the API-local in-memory Acme event store with the eventual lifecycle store.
 3. Revalidate work products from `WorkProductContract.source_dependencies`.
 4. Emit `Changes` notifications from source-change and approval-return events.
-5. Move the Acme cascade from special-cased frontend data to lifecycle/action primitives.
+5. Move the remaining mock-mode cascade presentation from special-cased frontend data to
+   lifecycle/action primitives.
 
 ## Known current gaps to avoid overclaiming
 
 | Gap | Current location |
 |---|---|
-| API batch action path uses fixed Acme plan instead of `brief.next_steps`. | `api/orchestrator.py` with `AcmeFollowupProposer`. |
-| Generic composer maps `brief.next_steps`, but the API batch/demo path overrides it. | `actions/composer.py`, `api/orchestrator.py`. |
-| Single-row staged remediation -> one validated drawer card is frontend/API-supported and live-wired to `/actions/staged-remediation`. Execute-by-origin is still not first-class. | `frontend/src/hooks/queries.ts`, `frontend/src/lib/staged-remediation.ts`, `actions/composer.py`, `/actions/staged-remediation`. |
-| Event dispatcher for `EventTrigger` is not wired. | Lifecycle/API gap. |
-| Demo revalidation is a frontend overlay. | `frontend/src/lib/revalidation-store.ts`. |
+| General event dispatcher for `EventTrigger` is not wired. | Lifecycle/API gap. |
+| Persistent lifecycle event storage is not wired. | `api/lifecycle_events.py` is intentionally in-memory for the prototype. |
+| Mock mode still uses the deterministic frontend revalidation store. | `frontend/src/lib/revalidation-store.ts`. |
 | Changes counter is not fully first-class. | `frontend/src/lib/actions-store.ts` and drawer wiring. |
-| Cascade action is special-cased. | `frontend/src/data/actions.ts`. |
+| Cascade presentation still has a mock fixture. | `frontend/src/data/actions.ts`; live readiness row carries the edit descriptor. |
 
 ## Demo-safety rules
 

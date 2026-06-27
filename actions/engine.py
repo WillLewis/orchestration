@@ -53,7 +53,7 @@ RESTRICTED_CLEARANCE_ROLES: frozenset[str] = frozenset({"legal", "compliance"})
 # decision advanced while blocking evidence is unresolved.
 STATUS_ADVANCING_TOOLS: frozenset[str] = frozenset({"update_project_status"})
 # Writes that are remediation/prep and do NOT presuppose the decision (never evidence-gated).
-EVIDENCE_SAFE_WRITE_TOOLS: frozenset[str] = frozenset({"create_task"})
+EVIDENCE_SAFE_WRITE_TOOLS: frozenset[str] = frozenset({"create_task", "edit_document"})
 # Hidden-instruction patterns scanned in source content (injection gate).
 INJECTION_PATTERNS: tuple[str, ...] = (
     "ignore previous instructions",
