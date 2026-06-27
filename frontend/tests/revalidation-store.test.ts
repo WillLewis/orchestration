@@ -11,6 +11,7 @@ import {
 } from "../src/data/brief";
 import {
   buildGovernedBrief,
+  buildLiveGovernedBrief,
   getRevalidationState,
   resetRevalidation,
   routeToCreditOfficer,
@@ -82,5 +83,34 @@ describe("revalidation counterparty state", () => {
     expect(
       signed.decision_readiness.rows.find((row) => row.id === "covenant_tracker"),
     ).toMatchObject({ status: "blocking" });
+  });
+
+  it("removes the live Credit Officer route action immediately after routing", () => {
+    const routed = buildLiveGovernedBrief(baseBrief, {
+      user_id: "u_rm",
+      intent: "prepare_decision_brief",
+      routed: true,
+      credit_signed: false,
+      cs_reconciled: false,
+      stage: "credit_routed",
+      cascade_available: false,
+      changes_count: 0,
+      event_count: 1,
+      events: [],
+    });
+    const row = routed.decision_readiness.rows.find(
+      (item) => item.id === "credit_officer_approval",
+    );
+
+    expect(row).toMatchObject({
+      status: "pending",
+      details: "Routed — pending Credit Officer sign-off on the 22% exception.",
+      action: null,
+    });
+    expect(routed.decision_brief.conflicts).toHaveLength(0);
+    expect(routed.path_to_ready[0]).toMatchObject({
+      label: "Route to Credit Officer",
+      done: true,
+    });
   });
 });

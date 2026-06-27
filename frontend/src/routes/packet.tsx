@@ -347,6 +347,12 @@ const READINESS_TAXONOMY_ICON: Record<
 const READINESS_GRID =
   "grid-cols-[minmax(170px,1fr)_128px_minmax(220px,1.5fr)_minmax(180px,0.9fr)]";
 
+function readinessActionLabel(label: string): string {
+  const stripped = label.replace(/^Stage:\s*/i, "").trim();
+  if (!stripped) return label;
+  return stripped[0].toUpperCase() + stripped.slice(1);
+}
+
 function findThreshold(
   brief: typeof briefTemplate,
   ruleId: string,
@@ -396,7 +402,7 @@ function DecisionReadinessTable({
             <div>Gate</div>
             <div>Status</div>
             <div>Details</div>
-            <div className="text-right">Action</div>
+            <div className="text-right">Stage Action</div>
           </div>
           <div className="divide-y divide-border bg-background">
             {readiness.rows.map((row) => {
@@ -487,7 +493,7 @@ function DecisionReadinessTable({
                         onClick={() => stageDecisionReadinessRemediation(row)}
                         className="inline-flex h-8 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        <span className="truncate">{row.action.label}</span>
+                        <span className="truncate">{readinessActionLabel(row.action.label)}</span>
                         <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                       </button>
                     ) : (

@@ -6,6 +6,7 @@ import { ChatThread, type Turn } from "./ChatThread";
 import {
   LIVE,
   useChatMutation,
+  useLifecycleEventMutation,
   useLifecycleResetMutation,
   useMeetingQuery,
   type ChatAction,
@@ -149,11 +150,13 @@ export function AgentPanel({
 }) {
   const [messages, setMessages] = useState<Turn[]>(() => seedMeetingTurns());
   const chat = useChatMutation();
+  const lifecycleEvent = useLifecycleEventMutation();
   const lifecycleReset = useLifecycleResetMutation();
   const { entry_actions } = useMeetingQuery().data;
   // The revalidation arc's deterministic state (CO sign-off, cascade) drives store-pushed turns.
   const reval = useRevalidation();
   const governed = useGovernedBrief();
+  const routedRef = useRef(false);
   const signedRef = useRef(false);
   const reconciledRef = useRef(false);
   const handledBriefRequestRef = useRef(0);
@@ -174,6 +177,7 @@ export function AgentPanel({
   // revalidation arc so the demo can be re-run cleanly.
   const reset = useCallback(() => {
     setMessages(seedMeetingTurns());
+    routedRef.current = false;
     signedRef.current = false;
     reconciledRef.current = false;
     handledBriefRequestRef.current = 0;
@@ -296,12 +300,43 @@ export function AgentPanel({
         ),
         privateUserTurn(agentPrompt("Simulate Credit Officer response")),
       ]);
+      if (LIVE) {
+        lifecycleEvent.mutate(
+          {
+            type: "approval_returned",
+            object_id: "doc_pricing_exception",
+            detail: { approver: "credit_officer", approved: true },
+          },
+          {
+            onSuccess: () => recordReturnedChangeNotification(),
+            onError: () =>
+              toast.error("Couldn't simulate the Credit Officer response", {
+                description: "The lifecycle gateway didn't respond.",
+              }),
+          },
+        );
+        return;
+      }
       if (simulateCreditOfficerResponse()) {
         recordReturnedChangeNotification();
       }
     },
-    [reval.creditSigned, reval.routed],
+    [lifecycleEvent, reval.creditSigned, reval.routed],
   );
+
+  // Route sent from Agent Actions → surface the pending counterparty and the simulation affordance.
+  useEffect(() => {
+    if (!reval.routed) {
+      if (!reval.creditSigned) routedRef.current = false;
+      return;
+    }
+    if (routedRef.current) return;
+    routedRef.current = true;
+    setMessages((m) => [
+      ...m,
+      privateAssistantTurn(FLOW.routed.reply, FLOW.routed, PENDING_CREDIT_OFFICER),
+    ]);
+  }, [reval.creditSigned, reval.routed]);
 
   // Visible CO response → push the honest partial-recompute turn + the cascade dependency.
   useEffect(() => {

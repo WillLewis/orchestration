@@ -276,9 +276,11 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     workflow_status: s.creditSigned ? "Approved · discount exception" : null,
     banner_subtitle: s.creditSigned
       ? "Final covenant tracker missing · Legal sign-off on the covenant modification pending."
-      : "Credit Officer approval missing · discount exceeds delegated authority.",
+      : s.routed
+        ? "Credit Officer route pending · final covenant tracker still missing."
+        : "Credit Officer approval missing · discount exceeds delegated authority.",
     path_to_ready: [
-      { label: "Route to Credit Officer", done: s.creditSigned },
+      { label: "Route to Credit Officer", done: s.routed || s.creditSigned },
       { label: "Complete Legal approval", done: false },
       { label: "Upload final covenant tracker", done: false },
     ],
@@ -291,13 +293,9 @@ export function buildLiveGovernedBrief(base: BriefData, live: LifecycleStateData
     creditSigned: live.credit_signed,
     csReconciled: live.cs_reconciled,
   };
-  const sources =
-    state.creditSigned && !state.csReconciled
-      ? markDiscountSources(base.sources, "conflicting")
-      : markDiscountSources(base.sources, "used");
+  const governed = buildGovernedBrief(base, state);
   return {
-    ...base,
-    sources,
+    ...governed,
     stage: stageOfLifecycle(live),
     cascadeAvailable: live.cascade_available,
     workflow_status: state.creditSigned ? "Approved · discount exception" : null,
@@ -307,7 +305,7 @@ export function buildLiveGovernedBrief(base: BriefData, live: LifecycleStateData
         ? "Credit Officer route pending · final covenant tracker still missing."
         : "Credit Officer approval missing · discount exceeds delegated authority.",
     path_to_ready: [
-      { label: "Route to Credit Officer", done: state.creditSigned },
+      { label: "Route to Credit Officer", done: state.routed || state.creditSigned },
       { label: "Complete Legal approval", done: false },
       { label: "Upload final covenant tracker", done: false },
     ],
