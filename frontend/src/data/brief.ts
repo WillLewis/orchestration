@@ -37,6 +37,11 @@ export type DecisionReadiness = {
   rows: DecisionReadinessRow[];
 };
 
+export type DecisionConflict = {
+  description: string;
+  sources: Array<{ object_id: string }>;
+};
+
 export const decision_brief = {
   decision_needed:
     "Approve or reject the pricing exception and covenant modification for Acme Corp.",
@@ -101,13 +106,7 @@ export const decision_brief = {
       blocking: true,
     },
   ],
-  conflicts: [
-    {
-      description:
-        "Pricing doc and customer success plan show different discount levels (22% vs 18%).",
-      sources: [{ object_id: "doc_pricing_exception" }, { object_id: "doc_cs_plan" }],
-    },
-  ],
+  conflicts: [] as DecisionConflict[],
   open_questions: [
     "Will the covenant modification hold if revenue lands below $38M?",
     "Does the 22% discount require committee sign-off beyond Credit?",
@@ -217,13 +216,13 @@ export const sources: Array<{
     object_id: "doc_pricing_exception",
     title: "Pricing exception",
     type: "document",
-    status: "conflicting",
+    status: "used",
   },
   {
     object_id: "doc_cs_plan",
     title: "Customer success plan",
     type: "document",
-    status: "conflicting",
+    status: "used",
   },
   {
     object_id: "doc_research_publicside",

@@ -71,8 +71,7 @@ function MemoSpan({
 /* -------------------------------------------------------------------------- */
 
 export function SharedDocViewer({ onGenerateBrief }: { onGenerateBrief?: () => void }) {
-  // The screen-shared memo recomputes with the brief: source-status highlights and the
-  // approval/conflict sentences are driven by the governed overlay, not static data.
+  // The screen-shared memo stays authored, while governed highlights follow source status.
   const gb = useGovernedBrief();
   const reval = useRevalidation();
   const statusOf = (id: string): SourceStatus =>
@@ -143,11 +142,11 @@ export function SharedDocViewer({ onGenerateBrief }: { onGenerateBrief?: () => v
                 <span className="font-semibold">Financials. </span>
                 The updated model revises the FY revenue forecast{" "}
                 <MemoSpan sourceId="doc_financials">from $42M to $38M</MemoSpan>. Debt service
-                coverage recomputes to <MemoSpan sourceId="doc_credit_memo">1.28x</MemoSpan> from
-                net operating income over debt service.
+                coverage moved <MemoSpan sourceId="doc_credit_memo">1.42x -&gt; 1.28x</MemoSpan>{" "}
+                based on net operating income over debt service.
               </p>
               <p>
-                <span className="font-semibold">Approvals &amp; risk. </span>
+                <span className="font-semibold">Open items. </span>
                 Relationship Manager approval is recorded, but{" "}
                 {reval.creditSigned ? (
                   <>
@@ -159,46 +158,14 @@ export function SharedDocViewer({ onGenerateBrief }: { onGenerateBrief?: () => v
                     <MemoSpan sourceId="wf_approval">
                       Credit Officer approval is outstanding
                     </MemoSpan>
-                    : the 22% discount exceeds delegated authority (standard threshold 15%).{" "}
+                    .
                   </>
-                )}
-                <MemoSpan sourceId="wf_approval">Legal approval is pending</MemoSpan>, and the{" "}
+                )}{" "}
+                The{" "}
                 <MemoSpan sourceId="doc_covenant_tracker">
                   final covenant tracker has not been uploaded
                 </MemoSpan>
                 .
-              </p>
-              <p>
-                <span className="font-semibold">Note. </span>
-                The{" "}
-                <MemoSpan sourceId="doc_cs_plan" status={statusOf("doc_cs_plan")}>
-                  customer success plan
-                </MemoSpan>{" "}
-                {reval.csReconciled ? (
-                  <>
-                    now reflects the approved 22% discount, reconciled with the{" "}
-                    <MemoSpan
-                      sourceId="doc_pricing_exception"
-                      status={statusOf("doc_pricing_exception")}
-                    >
-                      pricing exception
-                    </MemoSpan>
-                    .
-                  </>
-                ) : (
-                  <>
-                    references an 18% discount — conflicting with the 22% in the{" "}
-                    <MemoSpan
-                      sourceId="doc_pricing_exception"
-                      status={statusOf("doc_pricing_exception")}
-                    >
-                      pricing exception
-                    </MemoSpan>
-                    .
-                  </>
-                )}{" "}
-                A restricted <MemoSpan sourceId="doc_legal_memo">legal memo</MemoSpan> exists but is
-                outside the preparer&apos;s access.
               </p>
               <p className="rounded-md border border-[var(--danger)]/20 bg-[var(--danger-bg)] px-3 py-2 font-medium text-[var(--danger)]">
                 Recommendation: review — not approval-ready.
