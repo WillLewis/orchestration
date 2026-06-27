@@ -75,6 +75,8 @@ _assembler = PermissionAwareContextAssembler()
 _verifier = DeterministicVerifier()
 _synthesizer = GroundedBriefSynthesizer()
 
+_TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
 
 def _action_workspace() -> list[WorkspaceObject]:
     """Fresh, mutable corpus workspace for action validation/execution (both barrier sides)."""
@@ -251,9 +253,21 @@ def compose_and_execute(
 # Controlled work loop: WS-E (distribute → collect → escalate → schedule → close)
 # --------------------------------------------------------------------------- #
 def _persona_client() -> PersonaClient:
-    """Offline `StubPersonaClient` by default (deterministic, no key). Promote to
-    `LLMPersonaClient` ONLY when both `PERSONA_MODEL` and the provider key (`ANTHROPIC_API_KEY`)
-    are present in the environment — so tests/CI stay offline and reproducible."""
+    """Offline `StubPersonaClient` by default (deterministic, no key).
+
+    `DEMO_DETERMINISTIC=1` is an explicit hard override for walkthrough/runtime parity: it keeps
+    seeded persona replies even when a developer has model credentials in their environment.
+    Without that override, promote to `LLMPersonaClient` only when both `PERSONA_MODEL` and the
+    provider key (`ANTHROPIC_API_KEY`) are present.
+    """
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except Exception:
+        pass
+    if os.environ.get("DEMO_DETERMINISTIC", "").strip().lower() in _TRUTHY_ENV_VALUES:
+        return StubPersonaClient()
     if os.environ.get("PERSONA_MODEL") and os.environ.get("ANTHROPIC_API_KEY"):
         try:
             return LLMPersonaClient()

@@ -4,12 +4,14 @@ api/tests/test_loop_endpoint.py — the Work Loop surface (`POST /actions/loop`,
 Proves the controlled work loop through the HTTP boundary on the Acme scenario: distribute →
 collect → escalate → schedule → close with seeded stub personas, and the hard gates still holding
 so a blocked action never executes — even when its index is explicitly approved. Fully offline and
-deterministic: the autouse fixture strips any ambient LLM env so the `StubPersonaClient` path runs.
+deterministic: the autouse fixture enables `DEMO_DETERMINISTIC` so `StubPersonaClient` runs.
 
 Contract note: `closed=True` means the loop CYCLE completed, NOT that every item is resolved.
 'Open — escalation in flight' is derived from `escalations` + remaining blocked actions.
 """
 import copy
+import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,11 +26,15 @@ ACME = {"user_id": "u_rm", "intent": "prepare_decision_brief"}
 LOOP_KEYS = {
     "assignments", "replies", "escalations", "scheduled", "approved_indices", "audit", "closed",
 }
+BASELINE = json.loads(
+    (Path(__file__).parent / "fixtures" / "beats_7_8_baseline.json").read_text()
+)
 
 
 @pytest.fixture(autouse=True)
-def _force_offline(monkeypatch):
-    """Guarantee the deterministic StubPersonaClient path regardless of the ambient environment."""
+def _force_deterministic_demo(monkeypatch):
+    """Guarantee seeded StubPersonaClient replies regardless of the ambient model environment."""
+    monkeypatch.setenv("DEMO_DETERMINISTIC", "1")
     monkeypatch.delenv("PERSONA_MODEL", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -36,6 +42,12 @@ def _force_offline(monkeypatch):
 
 def _loop(body: dict | None = None) -> dict:
     res = client.post("/actions/loop", json=body or ACME)
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def _actions() -> dict:
+    res = client.get("/api/actions", params=ACME)
     assert res.status_code == 200, res.text
     return res.json()
 
@@ -63,37 +75,83 @@ def _normalize(dossier: dict) -> dict:
     return scrub(copy.deepcopy(dossier))
 
 
+def _action_state(action: dict) -> str:
+    if action["blocked_reason"]:
+        return "blocked"
+    if action["required_approver"]:
+        return "route"
+    return "ready"
+
+
+def _action_baseline_projection(actions: list[dict]) -> list[dict]:
+    return [
+        {
+            "tool": action["tool"],
+            "state": _action_state(action),
+            "required_approver": action["required_approver"],
+            "blocked_reason": action["blocked_reason"],
+        }
+        for action in actions
+    ]
+
+
+def _select(items: list[dict], keys: tuple[str, ...]) -> list[dict]:
+    return [{key: item[key] for key in keys} for item in items]
+
+
+def _loop_baseline_projection(dossier: dict) -> dict:
+    return {
+        "assignments": _select(dossier["assignments"], ("action_index", "owner_role", "tool")),
+        "replies": _select(
+            dossier["replies"], ("action_index", "role", "decision", "message")
+        ),
+        "escalations": _select(dossier["escalations"], ("action_index", "to", "reason")),
+        "scheduled": _select(dossier["scheduled"], ("topic", "reason", "attendees")),
+        "approved_indices": dossier["approved_indices"],
+        "closed": dossier["closed"],
+    }
+
+
+def _baseline_counts(actions: list[dict]) -> dict[str, int]:
+    return {
+        state: sum(1 for action in actions if action["state"] == state)
+        for state in ("ready", "route", "blocked")
+    }
+
+
 # --------------------------------------------------------------------------- #
-# 1. Contract-shaped LoopState
+# 1. Exact Beats 7/8 API baseline
 # --------------------------------------------------------------------------- #
-def test_loop_returns_contract_shaped_dossier():
+def test_api_actions_matches_exact_beats_7_8_baseline():
+    projected = _action_baseline_projection(_actions()["actions"])
+    assert projected == BASELINE["actions"]
+    assert _baseline_counts(projected) == {"ready": 2, "route": 2, "blocked": 2}
+
+
+def test_loop_matches_exact_beats_7_8_baseline():
     d = _loop()
-    assert LOOP_KEYS <= set(d)
+    assert _loop_baseline_projection(d) == BASELINE["loop"]
 
-    # Assignments fan out to the approver-bound owners + the default analyst owner.
-    owners = {a["owner_role"] for a in d["assignments"]}
-    assert {"credit_officer", "legal", "analyst"} <= owners
+    escalation_targets = {e["to"] for e in d["escalations"]}
+    assert escalation_targets == {"compliance", "human"}
+    assert d["scheduled"][0]["reason"].startswith("3 item(s) unresolved")
 
-    # Seeded persona decisions.
-    decisions = {}
-    for r in d["replies"]:
-        decisions.setdefault(r["role"], set()).add(r["decision"])
-    assert "sign_off" in decisions["credit_officer"]
-    assert "escalate" in decisions["legal"]
-    assert "acknowledge" in decisions["analyst"]
-
-    # At least one escalation routes to compliance; at least one follow-up is scheduled.
-    assert any(e["to"] == "compliance" for e in d["escalations"])
-    assert len(d["scheduled"]) >= 1
-
-    # Audit contains executed entries, and everything executed was approved + non-blocked.
     executed = _executed_indices(d)
-    assert executed
+    assert executed == set(BASELINE["loop"]["approved_indices"])
     assert executed <= set(d["approved_indices"])
     for i in executed:
         assert d["plan"]["actions"][i]["blocked_reason"] is None
 
     assert d["closed"] is True
+
+
+def test_demo_deterministic_forces_stub_personas_when_model_env_present(monkeypatch):
+    monkeypatch.setenv("DEMO_DETERMINISTIC", "1")
+    monkeypatch.setenv("PERSONA_MODEL", "would-use-llm-without-demo-override")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-that-must-not-be-used")
+
+    replies = _loop_baseline_projection(_loop())["replies"]
+    assert replies == BASELINE["loop"]["replies"]
 
 
 # --------------------------------------------------------------------------- #
@@ -131,8 +189,8 @@ def test_closed_means_cycle_complete_not_fully_resolved():
     d = _loop()
     assert d["closed"] is True
     # Unresolved state is represented by escalations (and remaining blocked actions), not closed.
-    assert len(d["escalations"]) >= 1
-    assert _blocked_indices(d)
+    assert len(d["escalations"]) == 3
+    assert _blocked_indices(d) == [4, 5]
 
 
 # --------------------------------------------------------------------------- #
