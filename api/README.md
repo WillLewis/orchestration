@@ -74,6 +74,12 @@ phrase bonus, and a real-corpus relevance threshold that filters stray single bo
 no chunk clears the threshold, the endpoint returns `status="no_results"`. Answer confidence is a
 pure deterministic band (`grounded` / `partial` / `weak`) derived from ranking margin, query-aspect
 coverage, threshold status, missing coverage, and safe support count; model output never affects it.
+When live LLM prose is enabled, the prompt asks for one concise paragraph close to the retrieved
+context and states that governed fields (`status`, citations, confidence, missing fields, access
+labels, tiers, and fallback metadata) are deterministic wrapper-owned fields. The live client uses
+a bounded timeout, one wrapper-level retry for transient provider failures, deterministic
+`client_error` fallback, and compact redacted diagnostics that do not include prompts, responses,
+documents, environment dumps, or provider exception bodies.
 
 Privacy-safe docs-chat observability is exposed at `GET /ops/docs-chat`. It is an in-process
 aggregate only: surface, requested/effective mode, fallback reason, status, model configured yes/no,
