@@ -3,6 +3,7 @@ import { load } from "cheerio";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React, { type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -136,7 +137,16 @@ export async function renderRouteHtml(route: LiveDocsRoute): Promise<string> {
     throw new Error(`Route ${route} does not expose a component`);
   }
 
-  return renderToStaticMarkup(React.createElement(Component));
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return renderToStaticMarkup(
+    React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(Component),
+    ),
+  );
 }
 
 export function extractSectionsFromHtml(html: string): DocsCorpusSection[] {
