@@ -90,7 +90,7 @@ Readiness labels:
 |---|---|---|---|---|
 | Refusal / fail-closed | `When does the agent refuse to act?` | Works but not preferred | Observed live 2026-06-27: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Safe fake-client paraphrases can still return `effective_mode=llm`. | Shows fail-closed safety and discard-on-drift behavior. |
 | Sealed record | `What happens after a record is sealed?` | Works but not preferred | Observed live 2026-06-27: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Raw sealed spans did not appear. | Shows sealed derivatives and stable governed fields. |
-| Restricted source | `How does the agent handle restricted source material?` | Blocked for visible LLM-toggle proof; safe as fallback narration | Observed live 2026-06-27: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Without config: deterministic `not_configured`. | Do not use as the main LLM-toggle proof until prompt/guard tuning makes accepted live prose reliable. |
+| Restricted source | `How does the agent handle restricted source material?` | Needs live approval; final accepted-LLM proof candidate | Observed live 2026-06-27 before guard/prompt tuning: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Post-fix offline fake-client coverage expects `effective_mode=llm` and `fallback_reason=null` for stage-safe restricted-source wording. | Use as the main LLM-toggle proof only after the approval-gated live smoke below confirms accepted LLM prose through `/docs/chat`. |
 | Policy gate backup | `How does the policy gate decide blocks_commit?` | Not reliable enough for stage | Observed live 2026-06-27: one direct `answer()` probe accepted LLM prose with stable governed fields; follow-up `/docs/chat` endpoint probes fell back with `grounding_guard`. | Confirms the provider path can accept a live draft, but not reliably enough for the visible demo. |
 | Unrelated / no-results | `What is the cafeteria menu for next Tuesday?` | Safe for stage | `status=no_results`, `citations=[]`, `effective_mode=deterministic`. `fallback_reason` should stay null when the model is configured because no evidence is sent. | Shows honest no-results behavior. |
 | Unavailable path | Unset `CHAT_MODEL` and/or `ANTHROPIC_API_KEY`, then ask any grounded question with `mode="llm"` | Safe for stage | `effective_mode=deterministic`, `llm_available=false`, `fallback_reason=not_configured`. | Shows the backend fails closed when LLM phrasing is unavailable. |
@@ -110,10 +110,11 @@ Presenter UI cues:
   visible after the header scrolls away.
 - The toggle affects prose only. Continue narrating `status`, citations, confidence, and missing
   evidence as deterministic governed fields.
-- As of the 2026-06-27 live smoke, do not rely on the restricted-source question for the visible
-  accepted-LLM proof. It is currently a safe `grounding_guard` fallback example.
+- Final post-fix accepted-LLM proof candidate: `How does the agent handle restricted source
+  material?`. Do not present it as live-green until the approval-gated smoke confirms
+  `effective_mode="llm"` and `fallback_reason=null`.
 
-Manual probe for a single question:
+Manual probe for the final accepted-LLM proof candidate:
 
 ```bash
 curl -sS localhost:8000/docs/chat \
@@ -224,10 +225,13 @@ Last approved run: 2026-06-27. Artifact: `.context/ws-l0-live-smoke.md`.
       secret, or restricted snippet appears in the API response, UI, logs, or telemetry.
 - [x] Save the live-smoke result summary under `.context/` and reference it in the final handoff.
 
-Observed live gap on 2026-06-27: Q3 restricted-source returned
+Observed live gap on 2026-06-27 before the guard/prompt follow-up: Q3 restricted-source returned
 `effective_mode="deterministic"` with `fallback_reason="grounding_guard"`. One direct backup
-policy-gate probe accepted live LLM prose, but follow-up endpoint probes fell back. Treat accepted
-LLM prose as not stage-reliable until retested after prompt or guard tuning.
+policy-gate probe accepted live LLM prose, but follow-up endpoint probes fell back. After the
+follow-up, the final smoke question is still
+`How does the agent handle restricted source material?`; treat it as stage-ready only if the next
+approved live smoke returns `effective_mode="llm"` and `fallback_reason=null` while governed fields
+match deterministic mode.
 
 Real demo failures:
 

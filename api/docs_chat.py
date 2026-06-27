@@ -485,6 +485,12 @@ _FAQ_GROUNDED_FEW_SHOTS: tuple[tuple[str, str], ...] = (
         "control.",
     ),
     (
+        "How does the agent handle restricted source material?",
+        "Restricted sources are acknowledged as unavailable and never summarized. The answer "
+        "stays scoped to the permission-filtered bundle, cites accessible sources, surfaces "
+        "missing evidence, and refuses to fill the gap with restricted material.",
+    ),
+    (
         "What happens when a restricted revenue document matches my question?",
         "The assistant can acknowledge a restricted source only through allowed metadata. It can "
         "name the document and owner when policy permits, point the user to the access contact, "
@@ -592,6 +598,7 @@ _WEAK_NAME_TOKENS: frozenset[str] = frozenset(
     {
         "agent",
         "assistant",
+        "automation",
         "connectwork",
         "doc",
         "docs",
@@ -777,6 +784,7 @@ def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
 def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> float:
     name_tokens = _support_terms(_name_text(chunk))
     body_tokens = _support_terms(_body_text(chunk))
+    query_set = set(query)
     name_hits = sum(
         1 for token in query if token not in _WEAK_NAME_TOKENS and token in name_tokens
     )
@@ -785,6 +793,9 @@ def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> f
     score = _NAME_WEIGHT * name_hits + body_score
     if chunk.access == "sealed" and {"override", "attempt", "survive"} & set(query):
         score += _SEALED_BONUS
+    if chunk.access == "locked" and {"reveal", "show", "display", "disclose"} & query_set:
+        if name_tokens & query_set:
+            score += 12.0
     if len(query) > 1 and norm_message and norm_message in _search_text(chunk):
         score += _PHRASE_BONUS
     score += _domain_phrase_bonus(chunk, query)
@@ -1047,6 +1058,54 @@ _GROUNDING_GLUE_TOKENS: frozenset[str] = frozenset(
     }
 )
 
+# Common safe paraphrase terms are allowed for lexical flexibility, but they are not added to
+# `safe_terms`, so a sentence still needs support from the retrieved context to pass.
+_GROUNDING_PARAPHRASE_TOKENS: frozenset[str] = frozenset(
+    {
+        "affordance",
+        "affordances",
+        "allowed",
+        "allows",
+        "body",
+        "chunk",
+        "chunks",
+        "contribute",
+        "contributes",
+        "describ",
+        "describe",
+        "describes",
+        "deriv",
+        "derive",
+        "derives",
+        "exist",
+        "existence",
+        "exists",
+        "exclud",
+        "exclude",
+        "excluded",
+        "expos",
+        "expose",
+        "exposes",
+        "fill",
+        "gap",
+        "gaps",
+        "infer",
+        "inferred",
+        "infers",
+        "match",
+        "matches",
+        "metadata",
+        "prompt",
+        "prompts",
+        "reveal",
+        "reveals",
+        "scope",
+        "scoped",
+        "summary",
+        "summaries",
+    }
+)
+
 _LOCKED_REFUSAL_TERMS: frozenset[str] = frozenset(
     {
         "access",
@@ -1151,7 +1210,7 @@ def _grounding_guard(response: str, view: DocsChatEvidenceView) -> _GuardDecisio
 
     safe_terms = _support_terms(_safe_context_for_guard(view))
     message_terms = _support_terms(view.message)
-    allowed = safe_terms | message_terms | _GROUNDING_GLUE_TOKENS
+    allowed = safe_terms | message_terms | _GROUNDING_GLUE_TOKENS | _GROUNDING_PARAPHRASE_TOKENS
     body_unsupported = body_terms - allowed
     body_sensitive_category = _unsupported_sensitive_category(body_unsupported)
     if body_sensitive_category is not None:

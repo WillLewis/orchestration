@@ -102,8 +102,9 @@ ACCEPTED_DRAFTS: tuple[AcceptedDraftCase, ...] = (
         id="Q3-restricted-source",
         question="How does the agent handle restricted source material?",
         draft=(
-            "The assistant acknowledges restricted sources as unavailable and never summarizes "
-            "restricted material."
+            "Restricted sources are acknowledged as unavailable and never summarized. The answer "
+            "stays scoped to the permission-filtered bundle, cites accessible sources, surfaces "
+            "missing evidence, and refuses to fill the gap with restricted material."
         ),
     ),
 )

@@ -12,11 +12,16 @@ def test_docs_corpus_loads_expected_seed_docs():
     docs = _docs_by_id()
 
     assert set(docs) == {
+        "commercial-faq",
         "employee-directory",
+        "engineering-faq",
         "design-rationale",
         "gating",
+        "product-faq",
         "red-team-eval",
         "revenue-fy26",
+        "sharp-followups-faq",
+        "ux-faq",
     }
 
 
@@ -74,6 +79,30 @@ def test_design_rationale_reads_as_documentation_not_interview_prep():
     )
     for phrase in forbidden_phrases:
         assert phrase not in body
+
+
+def test_faq_docs_are_open_acl_safe_documentation():
+    docs = _docs_by_id()
+    expected_section_counts = {
+        "product-faq": 10,
+        "commercial-faq": 19,
+        "engineering-faq": 45,
+        "ux-faq": 29,
+        "sharp-followups-faq": 32,
+    }
+
+    for doc_id, section_count in expected_section_counts.items():
+        doc = docs[doc_id]
+        body = doc.body.lower()
+
+        assert doc.viewer_permitted is True
+        assert doc.in_nav is False
+        assert doc.access == "open"
+        assert doc.tier == 2
+        assert doc.route is None
+        assert doc.body.count("\n## ") == section_count
+        for phrase in ("panel", "interview", "crib sheet", "question bank"):
+            assert phrase not in body
 
 
 def test_load_chunks_adds_generated_page_sections_with_anchors():
