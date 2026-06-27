@@ -280,6 +280,60 @@ def test_grounding_guard_accepts_restricted_source_paraphrase():
     assert llm.phrasing.fallback_reason is None
 
 
+@pytest.mark.parametrize(
+    "draft",
+    [
+        (
+            "When restricted source material matches a question, Docs RAG treats it as "
+            "unavailable evidence: it can acknowledge the permission-scoped gap, but it will not "
+            "reveal, summarize, or infer the source contents."
+        ),
+        (
+            "Restricted source material is filtered before it reaches prompts or summaries. The "
+            "system can acknowledge that a permission-scoped gap exists when policy allows, while "
+            "claims depending only on excluded content become missing evidence instead of an "
+            "answer."
+        ),
+        (
+            "Restricted sources are acknowledged as unavailable and never summarized. The answer "
+            "stays scoped to the permission-filtered bundle, cites accessible sources, surfaces "
+            "missing evidence, and refuses to fill the gap with restricted material."
+        ),
+    ],
+)
+def test_grounding_guard_accepts_stage_safe_restricted_source_wording(draft):
+    query = "How does the agent handle restricted source material?"
+    deterministic = answer("chat", query)
+    llm = answer("chat", query, client=_Drafts(draft), mode="llm")
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is True
+    assert guard.diagnostics.category == "accepted"
+    assert _governed_payload(llm) == _governed_payload(deterministic)
+    assert llm.response == draft
+    assert llm.phrasing.effective_mode == "llm"
+    assert llm.phrasing.fallback_reason is None
+
+
+def test_grounding_guard_still_rejects_unretrieved_restricted_source_mechanics():
+    query = "How does the agent handle restricted source material?"
+    draft = (
+        "Restricted source material is handled by applying permission-aware retrieval before "
+        "generation: open chunks may be used, sealed chunks use only cleared derivatives, and "
+        "locked chunks contribute metadata for refusal and access affordances without exposing "
+        "their body."
+    )
+    deterministic = answer("chat", query)
+    guarded = answer("chat", query, client=_Drafts(draft), mode="llm")
+    guard = _grounding_guard(draft, _view_for(query))
+
+    assert guard.passed is False
+    assert guard.diagnostics.category == "low_source_overlap"
+    assert _governed_payload(guarded) == _governed_payload(deterministic)
+    assert guarded.response == deterministic.response
+    assert guarded.phrasing.fallback_reason == "grounding_guard"
+
+
 def test_grounding_guard_diagnostics_accept_safe_paraphrase_without_fallback():
     query = "How does the agent handle restricted source material?"
     draft = (

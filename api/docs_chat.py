@@ -485,6 +485,12 @@ _FAQ_GROUNDED_FEW_SHOTS: tuple[tuple[str, str], ...] = (
         "control.",
     ),
     (
+        "How does the agent handle restricted source material?",
+        "Restricted sources are acknowledged as unavailable and never summarized. The answer "
+        "stays scoped to the permission-filtered bundle, cites accessible sources, surfaces "
+        "missing evidence, and refuses to fill the gap with restricted material.",
+    ),
+    (
         "What happens when a restricted revenue document matches my question?",
         "The assistant can acknowledge a restricted source only through allowed metadata. It can "
         "name the document and owner when policy permits, point the user to the access contact, "
@@ -1047,6 +1053,54 @@ _GROUNDING_GLUE_TOKENS: frozenset[str] = frozenset(
     }
 )
 
+# Common safe paraphrase terms are allowed for lexical flexibility, but they are not added to
+# `safe_terms`, so a sentence still needs support from the retrieved context to pass.
+_GROUNDING_PARAPHRASE_TOKENS: frozenset[str] = frozenset(
+    {
+        "affordance",
+        "affordances",
+        "allowed",
+        "allows",
+        "body",
+        "chunk",
+        "chunks",
+        "contribute",
+        "contributes",
+        "describ",
+        "describe",
+        "describes",
+        "deriv",
+        "derive",
+        "derives",
+        "exist",
+        "existence",
+        "exists",
+        "exclud",
+        "exclude",
+        "excluded",
+        "expos",
+        "expose",
+        "exposes",
+        "fill",
+        "gap",
+        "gaps",
+        "infer",
+        "inferred",
+        "infers",
+        "match",
+        "matches",
+        "metadata",
+        "prompt",
+        "prompts",
+        "reveal",
+        "reveals",
+        "scope",
+        "scoped",
+        "summary",
+        "summaries",
+    }
+)
+
 _LOCKED_REFUSAL_TERMS: frozenset[str] = frozenset(
     {
         "access",
@@ -1151,7 +1205,7 @@ def _grounding_guard(response: str, view: DocsChatEvidenceView) -> _GuardDecisio
 
     safe_terms = _support_terms(_safe_context_for_guard(view))
     message_terms = _support_terms(view.message)
-    allowed = safe_terms | message_terms | _GROUNDING_GLUE_TOKENS
+    allowed = safe_terms | message_terms | _GROUNDING_GLUE_TOKENS | _GROUNDING_PARAPHRASE_TOKENS
     body_unsupported = body_terms - allowed
     body_sensitive_category = _unsupported_sensitive_category(body_unsupported)
     if body_sensitive_category is not None:
