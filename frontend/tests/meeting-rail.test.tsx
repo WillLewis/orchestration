@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { Turn } from "../src/components/agent/ChatThread";
 
 type RouterStateSelector = {
@@ -30,6 +30,8 @@ const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query
 const { AgentPanel } = await import("../src/components/agent/AgentPanel");
 const { ChatThread } = await import("../src/components/agent/ChatThread");
 const { SharedDocViewer } = await import("../src/components/meeting/SharedDocViewer");
+const { resetRevalidation, routeToCreditOfficer, simulateCreditOfficerResponse } =
+  await import("../src/lib/revalidation-store");
 const {
   agentPrompt,
   getAgentInvocation,
@@ -47,6 +49,10 @@ function renderWithQuery(node: React.ReactNode) {
     <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>,
   );
 }
+
+beforeEach(() => {
+  resetRevalidation();
+});
 
 describe("meeting rail agent invocation", () => {
   it("requires @Agent for private agent turns", () => {
@@ -140,5 +146,68 @@ describe("meeting rail rendering", () => {
 
     expect(html).toContain("Generate Decision Brief");
     expect(html).toContain("Acme credit memo · v3");
+  });
+
+  it("does not reveal the CS-plan conflict in the initial shared memo", () => {
+    const html = renderWithQuery(<SharedDocViewer />);
+
+    expect(html).toContain("Credit Officer approval is outstanding");
+    expect(html).toContain("final covenant tracker has not been uploaded");
+    expect(html).not.toContain("customer success plan");
+    expect(html).not.toContain("18% discount");
+    expect(html).not.toContain("conflicting with the approved 22%");
+  });
+
+  it("does not reveal the CS-plan conflict in the initial brief preview", () => {
+    const messages: Turn[] = [
+      privateUserTurn(agentPrompt("generate decision brief")),
+      {
+        role: "assistant",
+        content: "Decision Brief · Draft",
+        author: "Agent",
+        visibility: "private",
+        kind: "brief_preview",
+      },
+    ];
+    const html = renderWithQuery(<ChatThread messages={messages} pending={false} />);
+
+    expect(html).toContain("Decision Brief · Draft");
+    expect(html).toContain("Credit Officer approval");
+    expect(html).toContain("Legal approval");
+    expect(html).not.toContain("customer success plan");
+    expect(html).not.toContain("18% discount");
+    expect(html).not.toContain("Source conflict");
+  });
+
+  it("reveals the CS-plan conflict only after the visible Credit Officer response", () => {
+    routeToCreditOfficer();
+
+    const pendingMemo = renderWithQuery(<SharedDocViewer />);
+    expect(pendingMemo).toContain("Credit Officer approval is outstanding");
+    expect(pendingMemo).not.toContain("customer success plan");
+    expect(pendingMemo).not.toContain("18% discount");
+
+    expect(simulateCreditOfficerResponse()).toBe(true);
+
+    const signedMemo = renderWithQuery(<SharedDocViewer />);
+    expect(signedMemo).toContain("the Credit Officer has signed off");
+    expect(signedMemo).toContain("customer success plan");
+    expect(signedMemo).toContain("references an 18% discount");
+    expect(signedMemo).toContain("conflicting with the approved 22%");
+
+    const messages: Turn[] = [
+      privateUserTurn(agentPrompt("generate decision brief")),
+      {
+        role: "assistant",
+        content: "Decision Brief · Draft",
+        author: "Agent",
+        visibility: "private",
+        kind: "brief_preview",
+      },
+    ];
+    const signedBrief = renderWithQuery(<ChatThread messages={messages} pending={false} />);
+    expect(signedBrief).toContain("Source conflict");
+    expect(signedBrief).toContain("customer success plan");
+    expect(signedBrief).toContain("18% discount assumption");
   });
 });
