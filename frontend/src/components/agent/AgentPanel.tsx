@@ -14,6 +14,7 @@ import {
   useGovernedBrief,
   useRevalidation,
   routeToCreditOfficer,
+  simulateCreditOfficerResponse,
   resetRevalidation,
   type GovernedBrief,
 } from "@/lib/revalidation-store";
@@ -240,7 +241,7 @@ export function AgentPanel({
             privateUserTurn(agentPrompt("Route to Credit Officer")),
             privateAssistantTurn(FLOW.routed.reply, FLOW.routed, PENDING_CREDIT_OFFICER),
           ]);
-          routeToCreditOfficer(); // arms the deterministic CO sign-off (store-owned timer)
+          routeToCreditOfficer();
           break;
         case "apply_capped":
           setMessages((m) => [
@@ -260,7 +261,22 @@ export function AgentPanel({
     [submitAgent],
   );
 
-  // CO signs off (store timer) → push the honest partial-recompute turn + the cascade dependency.
+  const simulatePendingResponse = useCallback(
+    (pending: string) => {
+      if (pending !== PENDING_CREDIT_OFFICER) return;
+      if (!reval.routed || reval.creditSigned) return;
+      setMessages((m) => [
+        ...m.map((turn) =>
+          turn.pending === PENDING_CREDIT_OFFICER ? { ...turn, pending: undefined } : turn,
+        ),
+        privateUserTurn(agentPrompt("Simulate Credit Officer response")),
+      ]);
+      simulateCreditOfficerResponse();
+    },
+    [reval.creditSigned, reval.routed],
+  );
+
+  // Visible CO response → push the honest partial-recompute turn + the cascade dependency.
   useEffect(() => {
     if (reval.creditSigned && !signedRef.current) {
       signedRef.current = true;
@@ -287,7 +303,12 @@ export function AgentPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <ChatThread messages={messages} pending={chat.isPending} onAction={onAction} />
+        <ChatThread
+          messages={messages}
+          pending={chat.isPending}
+          onAction={onAction}
+          onSimulatePending={simulatePendingResponse}
+        />
       </div>
 
       <div className="shrink-0 bg-background/95 backdrop-blur">

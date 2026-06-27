@@ -53,12 +53,14 @@ export function ChatThread({
   messages,
   pending,
   onAction,
+  onSimulatePending,
 }: {
   messages: Turn[];
   pending: boolean;
   // When provided, an assistant turn's `meta.actions` render as buttons (meeting panel only; the
   // packet's read-only "Ask" omits this so no demo buttons appear there).
   onAction?: (action: ChatAction) => void;
+  onSimulatePending?: (pending: string) => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   // Scroll to the latest turn — and when the typing indicator appears.
@@ -69,7 +71,7 @@ export function ChatThread({
   return (
     <div className="space-y-3 px-5 py-4" aria-live="polite">
       {messages.map((m, i) => (
-        <ChatTurn key={i} turn={m} onAction={onAction} />
+        <ChatTurn key={i} turn={m} onAction={onAction} onSimulatePending={onSimulatePending} />
       ))}
       {pending && (
         <div className="flex items-center gap-2 px-1 text-[12.5px] text-[var(--muted-fg)]">
@@ -82,7 +84,15 @@ export function ChatThread({
   );
 }
 
-function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatAction) => void }) {
+function ChatTurn({
+  turn,
+  onAction,
+  onSimulatePending,
+}: {
+  turn: Turn;
+  onAction?: (action: ChatAction) => void;
+  onSimulatePending?: (pending: string) => void;
+}) {
   if (turn.kind === "brief_preview") {
     return <BriefPreviewTurn turn={turn} />;
   }
@@ -156,6 +166,16 @@ function ChatTurn({ turn, onAction }: { turn: Turn; onAction?: (action: ChatActi
               <Clock className="h-3 w-3" />
               Pending approval · {turn.pending}
             </span>
+            {onSimulatePending && (
+              <button
+                type="button"
+                onClick={() => onSimulatePending(turn.pending!)}
+                className="inline-flex h-6 items-center gap-1 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-2 text-[11px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Simulate {turn.pending} response
+              </button>
+            )}
           </div>
         )}
 

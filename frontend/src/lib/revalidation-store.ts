@@ -6,7 +6,7 @@
 // `useGovernedBrief()` — a deep overlay on `useBriefQuery().data` so EVERY surface (meeting rail,
 // packet, shared memo) shows ONE consistent recompute. Outcomes are pinned, never model-derived.
 //
-// Stage flow: initial → credit_routed → (CO signs off) credit_signed/cascade_pending →
+// Stage flow: initial → credit_routed → (visible CO response) credit_signed/cascade_pending →
 //             (Dana accepts) cascade_accepted/followups_ready.
 import { useSyncExternalStore } from "react";
 
@@ -21,7 +21,7 @@ export type RevalStage =
   | "cascade_accepted"
   | "followups_ready";
 
-type State = {
+export type RevalidationState = {
   // Route clicked, CO not yet signed (pending approval chip).
   routed: boolean;
   // Credit Officer signed off on the 22% exception (authority + CO-approval gates clear).
@@ -30,13 +30,10 @@ type State = {
   csReconciled: boolean;
 };
 
-const initial: State = { routed: false, creditSigned: false, csReconciled: false };
+const initial: RevalidationState = { routed: false, creditSigned: false, csReconciled: false };
 
-let state: State = initial;
+let state: RevalidationState = initial;
 const listeners = new Set<() => void>();
-// Store-owned so the deterministic CO sign-off survives meeting→packet navigation (a component-local
-// timer would die on unmount). Idempotent: re-routing never stacks timers.
-let coTimer: ReturnType<typeof setTimeout> | null = null;
 
 function emit() {
   state = { ...state };
@@ -50,12 +47,15 @@ function getSnapshot() {
   return state;
 }
 
-export function useRevalidation(): State & { stage: RevalStage; cascadeAvailable: boolean } {
+export function useRevalidation(): RevalidationState & {
+  stage: RevalStage;
+  cascadeAvailable: boolean;
+} {
   const s = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return { ...s, stage: stageOf(s), cascadeAvailable: s.creditSigned && !s.csReconciled };
 }
 
-export function stageOf(s: State = state): RevalStage {
+export function stageOf(s: RevalidationState = state): RevalStage {
   if (s.csReconciled) return "followups_ready";
   if (s.creditSigned) return "cascade_pending";
   if (s.routed) return "credit_routed";
@@ -64,24 +64,24 @@ export function stageOf(s: State = state): RevalStage {
 
 /* -------- transitions -------- */
 
-// Beat 3 — route the 22% exception to the Credit Officer; arm the deterministic sign-off.
-export function routeToCreditOfficer(delayMs = 1500) {
+export function getRevalidationState(): RevalidationState {
+  return getSnapshot();
+}
+
+// Beat 3 — route the 22% exception to the Credit Officer. The route stays pending until the
+// presenter clicks the visible simulated counterparty response control.
+export function routeToCreditOfficer() {
   if (state.creditSigned || state.routed) return; // idempotent
   state = { ...state, routed: true };
   emit();
-  if (coTimer) clearTimeout(coTimer);
-  coTimer = setTimeout(creditOfficerSignsOff, delayMs);
 }
 
-// Beat 3→4 — the Credit Officer persona signs off (deterministic); revalidation recomputes the brief.
-export function creditOfficerSignsOff() {
-  if (coTimer) {
-    clearTimeout(coTimer);
-    coTimer = null;
-  }
-  if (state.creditSigned) return;
+// Beat 3→4 — visible simulated Credit Officer response; revalidation recomputes the brief.
+export function simulateCreditOfficerResponse(): boolean {
+  if (!state.routed || state.creditSigned) return false;
   state = { ...state, routed: false, creditSigned: true };
   emit();
+  return true;
 }
 
 // Beat 5 — Dana accepts the cascade edit; the 22-vs-18 conflict clears.
@@ -93,10 +93,6 @@ export function acceptCascadeEdit() {
 
 // Repeat-demo reset (wired to the agent panel's "start over").
 export function resetRevalidation() {
-  if (coTimer) {
-    clearTimeout(coTimer);
-    coTimer = null;
-  }
   state = { ...initial };
   emit();
 }
@@ -115,13 +111,24 @@ export type GovernedBrief = BriefData & {
 
 const RECONCILED_IDS = new Set(["doc_cs_plan", "doc_pricing_exception"]);
 
+function markDiscountSources(sources: BriefData["sources"], status: SourceStatus) {
+  return sources.map((src) => (RECONCILED_IDS.has(src.object_id) ? { ...src, status } : src));
+}
+
 // Deep, immutable overlay of the base brief data with the current demo stage. The static mock won't
 // auto-clear from `present`, so we EXPLICITLY rewrite readiness rows, firings, approvals, conflicts,
 // and source statuses. approval_ready stays false the whole arc (covenant tracker + Legal remain).
-function overlay(base: BriefData, s: State): GovernedBrief {
+export function buildGovernedBrief(base: BriefData, s: RevalidationState): GovernedBrief {
   let brief = base.decision_brief;
   let readiness: DecisionReadiness = base.decision_readiness;
   let sources = base.sources;
+
+  if (!s.creditSigned) {
+    brief = { ...brief, conflicts: [] };
+    sources = markDiscountSources(sources, "used");
+  } else if (!s.csReconciled) {
+    sources = markDiscountSources(sources, "conflicting");
+  }
 
   if (s.creditSigned) {
     brief = {
@@ -186,9 +193,7 @@ function overlay(base: BriefData, s: State): GovernedBrief {
 
   if (s.csReconciled) {
     brief = { ...brief, conflicts: [] };
-    sources = sources.map((src) =>
-      RECONCILED_IDS.has(src.object_id) ? { ...src, status: "used" as SourceStatus } : src,
-    );
+    sources = markDiscountSources(sources, "used");
   }
 
   return {
@@ -215,5 +220,5 @@ function overlay(base: BriefData, s: State): GovernedBrief {
 export function useGovernedBrief(): GovernedBrief {
   const base = useBriefQuery().data;
   const s = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return overlay(base, s);
+  return buildGovernedBrief(base, s);
 }

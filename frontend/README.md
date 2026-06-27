@@ -55,7 +55,7 @@ explicit offline fallback/error state instead of relabeling that failure as dete
 ## Demo runbook
 
 Keep `VITE_USE_MOCKS=true` for the interview walkthrough. Mock mode powers the scripted hero arc
-end-to-end: the 22% chat block, Credit Officer signoff, live revalidation, cascade edit, Agent
-Actions drawer, Agent Batch handoff, and governed-record epilogue stay deterministic. Live API mode
-(`VITE_USE_MOCKS=false`) is for proving the backend contracts and eval endpoints against the same
-UI shapes.
+end-to-end: the 22% chat block, visible simulated Credit Officer response, live revalidation,
+cascade edit, Agent Actions drawer, Agent Batch handoff, and governed-record epilogue stay
+deterministic. Live API mode (`VITE_USE_MOCKS=false`) is for proving the backend contracts and eval
+endpoints against the same UI shapes.
