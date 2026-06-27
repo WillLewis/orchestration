@@ -121,6 +121,32 @@ def test_staged_execute_runs_exactly_one_validated_row_action():
     assert payload["lifecycle_state"]["credit_signed"] is False
 
 
+def test_staged_execute_applies_cs_plan_revalidation_event():
+    client.post(
+        "/api/lifecycle/events",
+        json={**ACME, "type": "approval_routed", "object_id": "doc_pricing_exception"},
+    )
+    client.post(
+        "/api/lifecycle/events",
+        json={**ACME, "type": "approval_returned", "object_id": "doc_pricing_exception"},
+    )
+
+    response = client.post(
+        "/actions/staged-remediation/execute",
+        json={**_staged_body("customer_success_plan_conflict"), "approved": True},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["action"]["tool"] == "edit_document"
+    assert payload["action"]["diff"]["target_object_id"] == "doc_cs_plan"
+    assert payload["lifecycle_state"]["cs_reconciled"] is True
+    assert payload["lifecycle_state"]["cascade_available"] is False
+    assert "customer_success_plan_conflict" not in {
+        row["id"] for row in _api_brief()["decision_readiness"]["rows"]
+    }
+
+
 def test_staged_execute_without_approval_is_skipped_not_executed():
     response = client.post(
         "/actions/staged-remediation/execute",

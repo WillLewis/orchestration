@@ -1,7 +1,15 @@
 import { describe, expect, it } from "bun:test";
 
 import { action_plan, type Action } from "../src/data/actions";
-import { decision_readiness, type DecisionReadinessRow } from "../src/data/brief";
+import {
+  decision_brief,
+  decision_readiness,
+  rulepack_id,
+  rulepack_version,
+  source_count,
+  sources,
+  type DecisionReadinessRow,
+} from "../src/data/brief";
 import {
   buildStagedRemediationReference,
   composeStagedRemediationCard,
@@ -10,6 +18,7 @@ import {
   withStagedOrigin,
   withBatchOrigin,
 } from "../src/lib/staged-remediation";
+import { buildGovernedBrief } from "../src/lib/revalidation-store";
 import {
   stagedRemediationExecuteRequestBody,
   stagedRemediationRequestBody,
@@ -193,6 +202,49 @@ describe("staged readiness remediation provenance", () => {
       row_gate: "Credit Officer approval",
       row_details: "Requested discount is 22%, above the RM approval threshold of 15%.",
       source_ids: ["doc_pricing_exception", "wf_approval"],
+    });
+  });
+
+  it("builds the live staged-remediation request for the post-CO CS-plan conflict", () => {
+    const governed = buildGovernedBrief(
+      {
+        decision_brief,
+        decision_readiness,
+        sources,
+        source_count,
+        rulepack_id,
+        rulepack_version,
+      },
+      { routed: true, creditSigned: true, csReconciled: false },
+    );
+    const row = governed.decision_readiness.rows.find(
+      (item) => item.id === "customer_success_plan_conflict",
+    );
+    if (!row) throw new Error("customer_success_plan_conflict row missing");
+    const reference = requireReference(row);
+
+    expect(stagedRemediationRequestBody(reference)).toEqual({
+      user_id: "u_rm",
+      intent: "prepare_decision_brief",
+      origin: {
+        surface: "decision_readiness",
+        row_id: "customer_success_plan_conflict",
+        remediation_tool: "edit_document",
+        target_object_id: "doc_cs_plan",
+        required_approver: null,
+      },
+      remediation: {
+        label: "Stage: reconcile CS plan",
+        tool: "edit_document",
+        target_object_id: "doc_cs_plan",
+        parameters: {
+          after: { assumed_discount: "22%" },
+        },
+      },
+      row_gate: "Customer success plan conflict",
+      row_details:
+        "Revalidation found the approved 22% pricing exception against the CS plan's 18% assumption.",
+      source_ids: ["doc_pricing_exception", "doc_cs_plan"],
     });
   });
 

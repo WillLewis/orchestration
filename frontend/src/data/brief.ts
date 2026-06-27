@@ -21,6 +21,7 @@ export type DecisionReadinessAction = {
     business_label?: string;
     requested_discount_percent?: number;
     route_note?: string;
+    after?: Record<string, unknown>;
   };
 };
 

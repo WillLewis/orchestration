@@ -157,6 +157,9 @@ const CS_PLAN_CONFLICT_ROW: DecisionReadinessRow = {
     label: "Stage: reconcile CS plan",
     tool: "edit_document",
     target_object_id: "doc_cs_plan",
+    parameters: {
+      after: { assumed_discount: "22%" },
+    },
   },
 };
 

@@ -198,6 +198,14 @@ def post_actions_staged_remediation_execute(
             object_id=action.diff.target_object_id if action.diff else None,
             detail={"row_id": remediation.row_id, "tool": action.tool},
         )
+    elif _executed_cs_plan_reconciliation(audit_events):
+        state = record_lifecycle_event(
+            "revalidation_applied",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id=action.diff.target_object_id if action.diff else None,
+            detail={"row_id": remediation.row_id, "tool": action.tool},
+        )
     else:
         state = lifecycle_state(user_id=req.user_id, intent=req.intent)
     return StagedRemediationExecuteResponse(
@@ -228,6 +236,15 @@ def _executed_credit_officer_route(events: list[AuditEvent]) -> bool:
         event.action == "executed"
         and event.detail.get("tool") == "route_approval"
         and event.detail.get("target") == "doc_pricing_exception"
+        for event in events
+    )
+
+
+def _executed_cs_plan_reconciliation(events: list[AuditEvent]) -> bool:
+    return any(
+        event.action == "executed"
+        and event.detail.get("tool") == "edit_document"
+        and event.detail.get("target") == "doc_cs_plan"
         for event in events
     )
 
