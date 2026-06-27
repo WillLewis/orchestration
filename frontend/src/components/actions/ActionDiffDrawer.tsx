@@ -420,10 +420,16 @@ export function ActionDiffDrawer() {
   );
   const overrideCount = overriddenBlocked.length;
   const canSend = pendingCount > 0 || overrideCount > 0;
+  const stagedSendLabel =
+    drawer.mode === "staged_remediation" && pendingCount === 1
+      ? primaryLabelFor(nextPending[0])
+      : `Send staged (${pendingCount})`;
   const sendLabel =
     overrideCount > 0
       ? `Send all + ${overrideCount} override${overrideCount === 1 ? "" : "s"}`
-      : `Send all (${pendingCount})`;
+      : drawer.mode === "staged_remediation"
+        ? stagedSendLabel
+        : `Send all (${pendingCount})`;
 
   function approvedIndices(actions: Action[]) {
     return actions
@@ -756,6 +762,13 @@ export function ActionDiffDrawer() {
                       user={user_status[k] ?? "proposed"}
                       setRef={(el) => (cardRefs.current[k] = el)}
                       focused={drawer.focus_key === k}
+                      directExecute={
+                        drawer.mode === "staged_remediation" &&
+                        !execute.isPending &&
+                        !executeStaged.isPending
+                          ? onSendAll
+                          : undefined
+                      }
                     />
                   );
                 })}
@@ -1113,11 +1126,13 @@ function NextActionCard({
   user,
   setRef,
   focused,
+  directExecute,
 }: {
   action: Action;
   user: UserStatus;
   setRef: (el: HTMLDivElement | null) => void;
   focused: boolean;
+  directExecute?: () => void;
 }) {
   const k = action_key(action);
   const after = getEffectiveAfter(action);
@@ -1292,6 +1307,10 @@ function NextActionCard({
               <button
                 type="button"
                 onClick={() => {
+                  if (directExecute) {
+                    directExecute();
+                    return;
+                  }
                   approveAction(k);
                   toast.success(`${primary} staged`, { description: targetLabel });
                 }}
@@ -1302,7 +1321,12 @@ function NextActionCard({
                     : "bg-primary text-white hover:bg-[var(--primary-hover)]",
                 ].join(" ")}
               >
-                {isStaged ? (
+                {directExecute ? (
+                  <>
+                    {primary}
+                    <ArrowRight className="h-3 w-3" />
+                  </>
+                ) : isStaged ? (
                   <>
                     <CheckCircle2 className="h-3 w-3" />
                     Staged
