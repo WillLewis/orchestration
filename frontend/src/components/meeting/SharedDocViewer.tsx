@@ -168,38 +168,38 @@ export function SharedDocViewer({ onGenerateBrief }: { onGenerateBrief?: () => v
                 </MemoSpan>
                 .
               </p>
-              <p>
-                <span className="font-semibold">Note. </span>
-                The{" "}
-                <MemoSpan sourceId="doc_cs_plan" status={statusOf("doc_cs_plan")}>
-                  customer success plan
-                </MemoSpan>{" "}
-                {reval.csReconciled ? (
-                  <>
-                    now reflects the approved 22% discount, reconciled with the{" "}
-                    <MemoSpan
-                      sourceId="doc_pricing_exception"
-                      status={statusOf("doc_pricing_exception")}
-                    >
-                      pricing exception
-                    </MemoSpan>
-                    .
-                  </>
-                ) : (
-                  <>
-                    references an 18% discount — conflicting with the 22% in the{" "}
-                    <MemoSpan
-                      sourceId="doc_pricing_exception"
-                      status={statusOf("doc_pricing_exception")}
-                    >
-                      pricing exception
-                    </MemoSpan>
-                    .
-                  </>
-                )}{" "}
-                A restricted <MemoSpan sourceId="doc_legal_memo">legal memo</MemoSpan> exists but is
-                outside the preparer&apos;s access.
-              </p>
+              {reval.creditSigned && (
+                <p>
+                  <span className="font-semibold">Note. </span>
+                  The{" "}
+                  <MemoSpan sourceId="doc_cs_plan" status={statusOf("doc_cs_plan")}>
+                    customer success plan
+                  </MemoSpan>{" "}
+                  {reval.csReconciled ? (
+                    <>
+                      now reflects the approved 22% discount, reconciled with the{" "}
+                      <MemoSpan
+                        sourceId="doc_pricing_exception"
+                        status={statusOf("doc_pricing_exception")}
+                      >
+                        pricing exception
+                      </MemoSpan>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      references an 18% discount — conflicting with the approved 22% in the{" "}
+                      <MemoSpan
+                        sourceId="doc_pricing_exception"
+                        status={statusOf("doc_pricing_exception")}
+                      >
+                        pricing exception
+                      </MemoSpan>
+                      .
+                    </>
+                  )}
+                </p>
+              )}
               <p className="rounded-md border border-[var(--danger)]/20 bg-[var(--danger-bg)] px-3 py-2 font-medium text-[var(--danger)]">
                 Recommendation: review — not approval-ready.
               </p>
