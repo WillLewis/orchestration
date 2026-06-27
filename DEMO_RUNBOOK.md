@@ -88,13 +88,14 @@ Readiness labels:
 
 | Case | Question / Probe | Readiness | Expected current result | Purpose |
 |---|---|---|---|---|
-| Refusal / fail-closed | `When does the agent refuse to act?` | Works but not preferred; needs live approval for LLM mode | Safe fake-client paraphrases can return `effective_mode=llm`; live prose may also fall back with `fallback_reason=grounding_guard`. Either is acceptable only if governed fields match deterministic mode. | Shows fail-closed safety and discard-on-drift behavior. |
-| Sealed record | `What happens after a record is sealed?` | Works but not preferred; needs live approval for LLM mode | Safe fake-client paraphrases can return `effective_mode=llm`; live prose may also fall back with `fallback_reason=grounding_guard`. Raw sealed spans must never appear. | Shows sealed derivatives and stable governed fields. |
-| Restricted source | `How does the agent handle restricted source material?` | Safe for stage; needs live approval for LLM mode | With live LLM configured and approved: `effective_mode=llm`, `fallback_reason=null`. Without config: deterministic `not_configured`. | Main visible LLM-toggle proof: prose changes while governed fields remain fixed. |
+| Refusal / fail-closed | `When does the agent refuse to act?` | Works but not preferred | Observed live 2026-06-27: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Safe fake-client paraphrases can still return `effective_mode=llm`. | Shows fail-closed safety and discard-on-drift behavior. |
+| Sealed record | `What happens after a record is sealed?` | Works but not preferred | Observed live 2026-06-27: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Raw sealed spans did not appear. | Shows sealed derivatives and stable governed fields. |
+| Restricted source | `How does the agent handle restricted source material?` | Blocked for visible LLM-toggle proof; safe as fallback narration | Observed live 2026-06-27: deterministic fallback with `fallback_reason=grounding_guard`; governed fields matched deterministic mode. Without config: deterministic `not_configured`. | Do not use as the main LLM-toggle proof until prompt/guard tuning makes accepted live prose reliable. |
+| Policy gate backup | `How does the policy gate decide blocks_commit?` | Not reliable enough for stage | Observed live 2026-06-27: one direct `answer()` probe accepted LLM prose with stable governed fields; follow-up `/docs/chat` endpoint probes fell back with `grounding_guard`. | Confirms the provider path can accept a live draft, but not reliably enough for the visible demo. |
 | Unrelated / no-results | `What is the cafeteria menu for next Tuesday?` | Safe for stage | `status=no_results`, `citations=[]`, `effective_mode=deterministic`. `fallback_reason` should stay null when the model is configured because no evidence is sent. | Shows honest no-results behavior. |
 | Unavailable path | Unset `CHAT_MODEL` and/or `ANTHROPIC_API_KEY`, then ask any grounded question with `mode="llm"` | Safe for stage | `effective_mode=deterministic`, `llm_available=false`, `fallback_reason=not_configured`. | Shows the backend fails closed when LLM phrasing is unavailable. |
 | Backend unreachable | Stop `make serve`, then use the frontend docs-chat UI | Works but not preferred | Frontend shows offline/backend fallback instead of claiming LLM prose. | Backup explanation for local demo setup failure. |
-| Full live smoke | Run the live LLM matrix against the configured provider | Blocked until explicit approval | Do not run from WS-L0 without approval. | Sends ACL-filtered docs context to the external provider. |
+| Full live smoke | Run the live LLM matrix against the configured provider | Run on 2026-06-27 after explicit approval; not green for visible LLM proof | Safety checks passed, but Q3 and endpoint backup probes fell back with `grounding_guard`. | Sends ACL-filtered docs context to the external provider. |
 
 Presenter UI cues:
 
@@ -109,6 +110,8 @@ Presenter UI cues:
   visible after the header scrolls away.
 - The toggle affects prose only. Continue narrating `status`, citations, confidence, and missing
   evidence as deterministic governed fields.
+- As of the 2026-06-27 live smoke, do not rely on the restricted-source question for the visible
+  accepted-LLM proof. It is currently a safe `grounding_guard` fallback example.
 
 Manual probe for a single question:
 
@@ -120,10 +123,116 @@ curl -sS localhost:8000/docs/chat \
   | jq '{status, phrasing, citations, confidence, missing, response}'
 ```
 
+## Final WS-L0 Test Checklist
+
+WS-L0 ran the final offline integration pass on 2026-06-27. A follow-up live LLM smoke was run
+after explicit approval; see the approval-gated checklist below.
+
+- [x] Focused docs-chat tests:
+
+  ```bash
+  python -m pytest api/tests/test_docs_chat.py -q
+  ```
+
+  Result: `69 passed`.
+
+- [x] Offline docs-chat eval harness:
+
+  ```bash
+  python -m pytest api/tests/test_docs_chat_eval.py -q
+  ```
+
+  Result: `18 passed`.
+
+- [x] Docs-chat telemetry and privacy boundary:
+
+  ```bash
+  python -m pytest api/tests/test_docs_chat_telemetry.py tests/test_privacy.py -q
+  ```
+
+  Result: `20 passed`.
+
+- [x] Frontend docs-chat inset static-render states:
+
+  ```bash
+  cd frontend
+  bun test tests/docs-chat-inset.test.tsx
+  ```
+
+  Result: `24 passed`.
+
+- [x] Full Python suite and lint:
+
+  ```bash
+  make test
+  make lint
+  ```
+
+  Results: `428 passed`; `ruff check .` all checks passed.
+
+- [x] Safe unavailable-path HTTP check, with live env vars forced empty.
+
+```bash
+CHAT_MODEL= ANTHROPIC_API_KEY= python - <<'PY'
+from fastapi.testclient import TestClient
+from api.main import app
+
+client = TestClient(app)
+res = client.post(
+    "/docs/chat",
+    json={
+        "surface": "chat",
+        "message": "How does the agent handle restricted source material?",
+        "mode": "llm",
+    },
+)
+payload = res.json()
+print(res.status_code)
+print(
+    {
+        "status": payload["status"],
+        "effective_mode": payload["phrasing"]["effective_mode"],
+        "llm_available": payload["phrasing"]["llm_available"],
+        "fallback_reason": payload["phrasing"]["fallback_reason"],
+    }
+)
+PY
+```
+
+Result: HTTP `200`, `status="answered"`, `effective_mode="deterministic"`,
+`llm_available=false`, `fallback_reason="not_configured"`.
+
+## Approval-Gated Live Smoke Checklist
+
+Do not run this section unless the user explicitly approves a live LLM smoke in the active thread.
+It sends ACL-filtered docs context to the configured external provider.
+
+Last approved run: 2026-06-27. Artifact: `.context/ws-l0-live-smoke.md`.
+
+- [x] Record explicit approval in the handoff.
+- [x] Start the backend with `CHAT_MODEL` and `ANTHROPIC_API_KEY` configured without printing
+      secrets.
+- [x] For each smoke question, call deterministic mode and LLM mode, then compare governed fields:
+      `status`, `citations`, `confidence`, and `missing`.
+- [ ] Restricted-source question proves the visible toggle:
+      `effective_mode="llm"` and `fallback_reason=null`.
+- [x] Unrelated/no-results question remains honest:
+      `status="no_results"`, `citations=[]`, `effective_mode="deterministic"`.
+- [x] Refusal and sealed-record questions may return either accepted LLM prose or
+      `grounding_guard`; either is acceptable only when governed fields match deterministic twins.
+- [x] No raw locked source body, raw sealed span, prompt, model response, document text, transcript,
+      secret, or restricted snippet appears in the API response, UI, logs, or telemetry.
+- [x] Save the live-smoke result summary under `.context/` and reference it in the final handoff.
+
+Observed live gap on 2026-06-27: Q3 restricted-source returned
+`effective_mode="deterministic"` with `fallback_reason="grounding_guard"`. One direct backup
+policy-gate probe accepted live LLM prose, but follow-up endpoint probes fell back. Treat accepted
+LLM prose as not stage-reliable until retested after prompt or guard tuning.
+
 Real demo failures:
 
-- The restricted-source toggle question returns `not_configured` or `client_error`: live LLM path
-  is not proven.
+- The restricted-source toggle question returns `not_configured`, `client_error`, or
+  `grounding_guard`: live accepted prose is not proven for the visible toggle.
 - Any question changes governed fields between deterministic and LLM mode:
   `status`, `citations`, `confidence`, or `missing`.
 - The unrelated/no-results question returns citations or `status!="no_results"`.

@@ -6,23 +6,43 @@ confidence, missing evidence, response status, and fallback behavior.
 
 ## Current Repo Snapshot
 
-As of the WS-L0 coordination pass on 2026-06-26:
+As of the WS-L0 final offline integration pass on 2026-06-27:
 
-- Root coordination docs were missing from the repo and have been materialized from the attached
-  plan/workstreams context.
-- Live LLM mode is available for `/docs/chat` when `CHAT_MODEL` and `ANTHROPIC_API_KEY` are
-  configured.
-- `DEMO_RUNBOOK.md` exists and is the source of truth for live demo questions.
-- Static inspection shows existing docs-chat tests for:
-  - governed-field stability between deterministic and fake LLM clients
-  - `not_configured`, `client_error`, and `grounding_guard` fallbacks
-  - no-results behavior with no citations
-  - safe paraphrases for refusal, sealed-record, and restricted-source questions
-  - retrieval coverage for refusal and restricted-source questions
-- Static inspection does not show a separate `api/tests/test_docs_chat_eval.py` harness, structured
-  public guard categories, live-client timeout/retry coverage, or docs-chat aggregate telemetry.
-- No live LLM smoke has been run by WS-L0. Any live LLM smoke still requires explicit user
-  approval in the thread that runs it.
+- Live LLM mode remains opt-in for `/docs/chat` when `CHAT_MODEL` and `ANTHROPIC_API_KEY` are
+  configured. The default and unavailable paths remain deterministic.
+- `DEMO_RUNBOOK.md` is the source of truth for stage questions, fallback interpretation, and the
+  approval-gated live-smoke checklist.
+- WS-L1 added an offline eval harness in `api/tests/test_docs_chat_eval.py`; it freezes the demo
+  questions at the governed-field boundary and verifies fake-client fallback stability.
+- WS-L2 retrieval updates are present and verified for refusal, sealed-record, restricted-source,
+  RAG/policy-gate, and unrelated no-results questions.
+- WS-L3 grounding guard diagnostics are local-only, category/count based, and tested for accepted
+  paraphrases, hard raw-content rejects, citation mismatch, missing locked-source refusal facts,
+  unsupported numbers/identifiers, and empty drafts.
+- WS-L4 prompt/runtime hardening is present and tested with fake clients for ACL-safe prompts,
+  deterministic `client_error` fallback, redacted timeout diagnostics, bounded timeout, and one
+  wrapper-level retry for transient provider errors.
+- WS-L5 frontend docs-chat inset tests cover the three developer surfaces, live/off toggle labels,
+  accepted LLM prose, deterministic fallback, `not_configured`, `grounding_guard`,
+  `client_error`, backend-offline copy, and locked/sealed citation treatment.
+- WS-L6 aggregate docs-chat telemetry is present in `telemetry/docs_chat.py`, exposed through
+  `/ops/docs-chat`, documented in `telemetry/README.md`, and tested to exclude raw prompts,
+  responses, documents, snippets, history, user messages, model names, and secrets.
+- Final offline verification passed:
+  - `python -m pytest api/tests/test_docs_chat.py -q` -> 69 passed
+  - `python -m pytest api/tests/test_docs_chat_eval.py -q` -> 18 passed
+  - `python -m pytest api/tests/test_docs_chat_telemetry.py tests/test_privacy.py -q` -> 20 passed
+  - `bun test tests/docs-chat-inset.test.tsx` -> 24 passed
+  - `make test` -> 428 passed
+  - `make lint` -> all checks passed
+  - safe unavailable-path HTTP check -> `effective_mode="deterministic"`,
+    `llm_available=false`, `fallback_reason="not_configured"`
+- Live LLM smoke was run by WS-L0 on 2026-06-27 after explicit user approval. The live provider was
+  configured and called. Governed fields stayed stable, no-results stayed honest, and no raw
+  locked/sealed markers were detected by the smoke script. The primary restricted-source demo
+  question did not produce accepted LLM prose; it fell back with `fallback_reason="grounding_guard"`.
+  A direct backup policy-gate probe accepted live LLM prose once, but follow-up endpoint probes
+  fell back, so accepted live prose is not reliable enough for the visible demo yet.
 
 ## Goals
 
@@ -117,8 +137,9 @@ to distinguish:
 - LLM not configured
 - backend unreachable
 
-The primary live-toggle demo should stay on `/developers/ui-chat` using:
-`How does the agent handle restricted source material?`
+The primary live-toggle demo should stay on `/developers/ui-chat`, but the specific visible proof
+question should not be the restricted-source question until live smoke shows accepted LLM prose
+reliably.
 
 ### Phase 6: Privacy-Safe Observability
 
@@ -140,27 +161,46 @@ No raw content should enter telemetry.
 
 ## Acceptance Criteria
 
-The upgrade is ready when all of these are true:
+Current final status:
 
-- `python -m pytest api/tests/test_docs_chat.py -q` passes.
-- New docs-chat eval tests pass.
-- `make test` passes.
-- `make lint` passes.
-- Safe unavailable-path HTTP check returns:
+- [x] `python -m pytest api/tests/test_docs_chat.py -q` passes.
+- [x] New docs-chat eval tests pass.
+- [x] `make test` passes.
+- [x] `make lint` passes.
+- [x] Safe unavailable-path HTTP check returns:
   - `effective_mode="deterministic"`
   - `llm_available=false`
   - `fallback_reason="not_configured"`
-- Live LLM smoke, only after explicit user approval, proves:
-  - at least one normal question returns `effective_mode="llm"`
-  - governed fields match deterministic twins for all smoke questions
-  - no-results remains honest
-  - any `grounding_guard` fallback preserves governed fields
+- [x] Live LLM smoke approval was recorded before any external provider call.
+- [x] Live LLM smoke proved governed fields match deterministic twins for compared smoke questions.
+- [x] Live LLM smoke proved no-results remains honest.
+- [x] Live LLM smoke proved `grounding_guard` fallback preserves governed fields.
+- [ ] Live LLM smoke proves the primary restricted-source demo question returns
+      `effective_mode="llm"`. Observed result: deterministic fallback with
+      `fallback_reason="grounding_guard"`.
+- [ ] Live LLM smoke proves accepted LLM prose is reliable through the endpoint. One direct
+      backup policy-gate probe accepted LLM prose, but follow-up endpoint probes fell back.
+
+## Remaining Gaps
+
+- The primary restricted-source visible-toggle proof is not live-demo-ready. It currently falls
+  back with `grounding_guard` despite stable governed fields.
+- Accepted live LLM prose is not reliable enough for a stage proof. Prompt/guard tuning should make
+  a known stage question pass repeatedly through `/docs/chat` before the visible live-toggle demo.
+- Browser visual walkthrough of `/developers/ui-chat`, `/developers/ui-meetings`, and
+  `/developers/ui-decision-brief` was not repeated in this final WS-L0 pass. The static-render
+  frontend test for those surfaces is passing and should be enough for code merge; run the browser
+  walkthrough during demo pre-flight.
+- Guard diagnostics are local-only category/count records. The aggregate telemetry currently
+  exposes public fallback-reason counts, not per-guard-category counters. This preserves the
+  no-public-schema-change boundary and is not a blocker for the current demo.
 
 ## Demo Policy
 
 Use the demo matrix in `DEMO_RUNBOOK.md`.
 
-- Use the restricted-source question as the visible LLM toggle proof.
+- Do not use the restricted-source question as the visible LLM toggle proof until it returns
+  accepted LLM prose reliably in live smoke.
 - Use the unrelated/no-results question as the no-results proof.
 - Use refusal and sealed-record questions only if you want to explain discard-on-drift or
   fail-closed behavior. They are not the preferred proof that the live toggle works.

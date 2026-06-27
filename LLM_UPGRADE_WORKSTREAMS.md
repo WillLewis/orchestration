@@ -53,28 +53,62 @@ Current state:
 
 | Workstream | Owner | Area | Primary Files | Parallel With | Status |
 |---|---|---|---|---|---|
-| WS-L0 | Coordination/docs thread | Planning and demo readiness | `LLM_UPGRADE_PLAN.md`, `LLM_UPGRADE_WORKSTREAMS.md`, `DEMO_RUNBOOK.md`, `prompts/llm_upgrade_ws_l*.md` | All | Partial |
-| WS-L1 | Eval harness thread | Offline docs-chat evals | `api/tests/`, optional fixtures under `api/` | WS-L2, WS-L3, WS-L5, WS-L6 | Planned |
-| WS-L2 | Retrieval thread | Deterministic retrieval quality | `api/docs_chat.py`, `api/tests/` | WS-L1, WS-L3 with coordination | Needs verification |
-| WS-L3 | Guard thread | Grounding guard and diagnostics | `api/docs_chat.py`, `api/tests/` | WS-L1, WS-L2 with coordination | Partial |
-| WS-L4 | Prompt/runtime thread | Prompt and live-client reliability | `api/docs_chat.py`, `api/tests/` | After WS-L3 diagnostics begin | Partial |
-| WS-L5 | Frontend demo thread | Toggle and fallback UX | `frontend/src/components/docs/`, `frontend/tests/`, `DEMO_RUNBOOK.md` | WS-L1, WS-L6 | Partial |
-| WS-L6 | Observability thread | Privacy-safe aggregate telemetry | `telemetry/`, `api/`, tests | WS-L1, WS-L5 | Planned |
+| WS-L0 | Coordination/docs thread | Planning and demo readiness | `LLM_UPGRADE_PLAN.md`, `LLM_UPGRADE_WORKSTREAMS.md`, `DEMO_RUNBOOK.md`, `prompts/llm_upgrade_ws_l*.md` | All | Complete; live smoke run with demo gap |
+| WS-L1 | Eval harness thread | Offline docs-chat evals | `api/tests/`, optional fixtures under `api/` | WS-L2, WS-L3, WS-L5, WS-L6 | Complete |
+| WS-L2 | Retrieval thread | Deterministic retrieval quality | `api/docs_chat.py`, `api/tests/` | WS-L1, WS-L3 with coordination | Complete |
+| WS-L3 | Guard thread | Grounding guard and diagnostics | `api/docs_chat.py`, `api/tests/` | WS-L1, WS-L2 with coordination | Complete |
+| WS-L4 | Prompt/runtime thread | Prompt and live-client reliability | `api/docs_chat.py`, `api/tests/` | After WS-L3 diagnostics begin | Complete |
+| WS-L5 | Frontend demo thread | Toggle and fallback UX | `frontend/src/components/docs/`, `frontend/tests/`, `DEMO_RUNBOOK.md` | WS-L1, WS-L6 | Complete |
+| WS-L6 | Observability thread | Privacy-safe aggregate telemetry | `telemetry/`, `api/`, tests | WS-L1, WS-L5 | Complete |
 
 ## Current Coordination Notes
 
-- Static inspection found docs-chat tests for refusal/restricted retrieval and safe paraphrase
-  behavior, so WS-L2 looks implementation-ready but still needs focused verification from its
-  owning thread.
-- Static inspection found hard guard fallback tests and safe paraphrase tests, but no structured
-  guard categories matching the target category list. WS-L3 remains partial.
-- Static inspection found prompt ACL/cache tests and `client_error` fallback tests, but no obvious
-  live-client timeout or retry tests. WS-L4 remains partial.
-- Static inspection found frontend fallback labels/tests, but browser verification across the three
-  docs surfaces has not been recorded. WS-L5 remains partial.
-- Static inspection found the existing telemetry privacy boundary, but no docs-chat aggregate
-  counters. WS-L6 remains planned.
-- No live LLM smoke has been approved or run by WS-L0.
+- WS-L1 is complete: `api/tests/test_docs_chat_eval.py` freezes Q1-Q4 governed fields,
+  fake-client acceptance, `not_configured`, `client_error`, `grounding_guard`, and no-results
+  behavior.
+- WS-L2 is complete: retrieval now resolves refusal, sealed-record, restricted-source, policy-gate,
+  RAG, and unrelated no-results questions without relying on generic `vision` matches.
+- WS-L3 is complete: `_grounding_guard()` returns local-only structured diagnostics with categories
+  and counts, while the public API continues to expose only `fallback_reason`.
+- WS-L4 is complete: live-client setup includes bounded timeout, one wrapper-level retry for
+  transient errors, redacted diagnostics, and deterministic `client_error` fallback. Tests use fake
+  Anthropic/client paths only.
+- WS-L5 is complete for automated verification: the docs-chat inset static-render test covers
+  `/developers/ui-chat`, `/developers/ui-meetings`, and `/developers/ui-decision-brief` states.
+  Browser walkthrough remains a demo pre-flight item.
+- WS-L6 is complete for current acceptance: `/docs/chat` records aggregate counters only, exposes
+  `/ops/docs-chat`, and rejects raw-content fields. Per-guard-category telemetry is intentionally
+  not exposed in the public response shape.
+- Live LLM smoke was approved and run by WS-L0 on 2026-06-27. Safety checks passed, but the
+  primary restricted-source visible-toggle question fell back with `grounding_guard`, so it is not
+  accepted-prose demo-ready.
+
+## Final Offline Verification
+
+WS-L0 ran the final offline integration pass on 2026-06-27. Artifact:
+`.context/ws-l0-final-integration.md`.
+
+- `python -m pytest api/tests/test_docs_chat.py -q` -> 69 passed
+- `python -m pytest api/tests/test_docs_chat_eval.py -q` -> 18 passed
+- `python -m pytest api/tests/test_docs_chat_telemetry.py tests/test_privacy.py -q` -> 20 passed
+- `bun test tests/docs-chat-inset.test.tsx` -> 24 passed
+- `make test` -> 428 passed
+- `make lint` -> all checks passed
+- `git diff --check` -> passed
+- Safe unavailable-path HTTP check with `CHAT_MODEL=` and `ANTHROPIC_API_KEY=` -> HTTP 200,
+  `status="answered"`, `effective_mode="deterministic"`, `llm_available=false`,
+  `fallback_reason="not_configured"`
+
+Live-smoke result:
+
+- Artifact: `.context/ws-l0-live-smoke.md`.
+- Explicit user approval was recorded in this thread before external provider calls.
+- Q1 refusal, Q2 sealed-record, and Q3 restricted-source all returned safe deterministic fallback
+  with `fallback_reason="grounding_guard"` and stable governed fields.
+- Q4 no-results remained `status="no_results"` with no citations.
+- A direct backup policy-gate probe accepted live LLM prose once, but follow-up endpoint probes
+  fell back. Treat accepted live prose as not reliable enough for the visible demo until tuned and
+  retested.
 
 ## Thread Prompts
 
@@ -408,23 +442,31 @@ Add aggregate observability for docs-chat LLM behavior without raw content.
 
 ## Integration Order
 
-1. WS-L0 keeps documents current and records handoffs.
-2. WS-L1 lands or confirms the offline regression baseline.
-3. WS-L2 and WS-L3 finish and verify together because both touch `api/docs_chat.py`.
-4. WS-L4 finishes after WS-L3 either exposes guard diagnostics or explicitly defers category work.
-5. WS-L5 verifies frontend demo states after the backend metadata contract is stable.
-6. WS-L6 wires aggregate-only telemetry after WS-L3 settles guard-category availability.
-7. WS-L0 runs final offline verification.
-8. WS-L0 runs live smoke only after explicit user approval.
+1. WS-L0 kept documents current and recorded handoffs.
+2. WS-L1 landed the offline regression baseline.
+3. WS-L2 and WS-L3 finished and were verified together through `api/tests/test_docs_chat.py` plus
+   eval coverage.
+4. WS-L4 finished prompt/runtime reliability with fake-provider tests.
+5. WS-L5 verified frontend demo states with the docs-chat inset static-render test.
+6. WS-L6 wired aggregate-only telemetry after WS-L3 settled guard-category availability as
+   local-only diagnostics.
+7. WS-L0 ran final offline verification.
+8. WS-L0 ran live smoke after explicit user approval and recorded the demo readiness gap.
 
 ## Final Merge Checklist
 
-- [ ] `python -m pytest api/tests/test_docs_chat.py -q` passes.
-- [ ] New docs-chat eval tests pass, if added by WS-L1.
-- [ ] `make test` passes.
-- [ ] `make lint` passes.
-- [ ] `DEMO_RUNBOOK.md` has current readiness for refusal, sealed-record, restricted-source,
+- [x] `python -m pytest api/tests/test_docs_chat.py -q` passes.
+- [x] New docs-chat eval tests pass.
+- [x] `bun test tests/docs-chat-inset.test.tsx` passes.
+- [x] `make test` passes.
+- [x] `make lint` passes.
+- [x] `DEMO_RUNBOOK.md` has current readiness for refusal, sealed-record, restricted-source,
       unrelated/no-results, toggle, and unavailable-path cases.
-- [ ] Safe unavailable-path check returns deterministic `not_configured`.
-- [ ] Live smoke approval is recorded before any external LLM call.
-- [ ] Live smoke results, if run, confirm governed fields are stable.
+- [x] Safe unavailable-path check returns deterministic `not_configured`.
+- [x] Live smoke was not run without approval.
+- [x] Live smoke approval is recorded before any external LLM call.
+- [x] Live smoke results confirm governed fields are stable.
+- [ ] Primary restricted-source live toggle returns accepted LLM prose. Observed: deterministic
+      fallback with `grounding_guard`.
+- [ ] Accepted LLM prose is reliable through `/docs/chat` endpoint smoke. Observed: direct backup
+      accepted once; endpoint follow-up probes fell back.
