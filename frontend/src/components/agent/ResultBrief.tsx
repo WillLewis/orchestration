@@ -1,22 +1,44 @@
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Calculator,
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  FileWarning,
   Lock,
   Files,
   GitCompareArrows,
+  UserCheck,
 } from "lucide-react";
 import { useMeetingQuery } from "@/hooks/queries";
 import { useGovernedBrief } from "@/lib/revalidation-store";
 import { openDrawer } from "@/lib/actions-store";
+import {
+  getReadinessTaxonomy,
+  READINESS_TAXONOMY_LABEL,
+  READINESS_TAXONOMY_STYLE,
+  type ReadinessTaxonomy,
+} from "@/lib/readiness-taxonomy";
+
+const READINESS_TAXONOMY_ICON: Record<
+  ReadinessTaxonomy,
+  React.ComponentType<{ className?: string }>
+> = {
+  approval: UserCheck,
+  artifact: FileWarning,
+  conflict: GitCompareArrows,
+  calculation: Calculator,
+  status: AlertTriangle,
+};
 
 export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => void }) {
   const { decision_brief: b, decision_readiness } = useGovernedBrief();
   const { meeting } = useMeetingQuery().data;
   const approvalReady = b.policy_gates.approval_ready;
-  const blockers = decision_readiness.rows.filter((row) => row.status === "blocking");
+  const unresolvedRows = decision_readiness.rows.filter(
+    (row) => row.status === "blocking" || row.status === "pending",
+  );
 
   return (
     <div className="px-5 pt-5 pb-2">
@@ -90,18 +112,39 @@ export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => 
           <section>
             <SectionLabel>Decision readiness</SectionLabel>
             <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-              Not ready: {blockers.map((row) => row.gate).join(" + ")}.
+              Not ready: {unresolvedRows.map((row) => row.gate).join(" + ")}.
             </p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {blockers.map((row) => (
-                <span
-                  key={row.id}
-                  className="inline-flex items-center gap-1 rounded-md bg-[var(--danger-bg)] px-2 py-1 text-[11.5px] font-medium text-[var(--danger)]"
-                >
-                  <AlertTriangle className="h-3 w-3" />
-                  {row.gate}
-                </span>
-              ))}
+            <div className="mt-2 grid gap-1.5">
+              {unresolvedRows.map((row) => {
+                const taxonomy = getReadinessTaxonomy(row);
+                const style = READINESS_TAXONOMY_STYLE[taxonomy];
+                const RowIcon = READINESS_TAXONOMY_ICON[taxonomy];
+
+                return (
+                  <div
+                    key={row.id}
+                    className={[
+                      "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-[11.5px] font-medium",
+                      style.row,
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "grid h-5 w-5 shrink-0 place-items-center rounded-md",
+                        style.icon,
+                      ].join(" ")}
+                    >
+                      <RowIcon className="h-3 w-3" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className={["mr-1 font-semibold", style.label].join(" ")}>
+                        {READINESS_TAXONOMY_LABEL[taxonomy]}
+                      </span>
+                      <span className="text-[var(--secondary-text)]">{row.gate}</span>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
@@ -123,15 +166,16 @@ export function ResultBrief({ onFollowups: _onFollowups }: { onFollowups: () => 
           ))}
 
           {/* Conflict */}
-          {b.conflicts.map((c, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-2 rounded-md bg-[var(--warning-bg)] px-3 py-2 text-[12px] leading-snug text-[var(--warning)]"
-            >
-              <GitCompareArrows className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{c.description}</span>
-            </div>
-          ))}
+          {b.conflicts.length > 0 &&
+            b.conflicts.map((c, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 rounded-md bg-[var(--danger-bg)] px-3 py-2 text-[12px] leading-snug text-[var(--danger)]"
+              >
+                <GitCompareArrows className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{c.description}</span>
+              </div>
+            ))}
         </div>
 
         {/* Footer */}

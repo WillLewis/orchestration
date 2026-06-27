@@ -36,6 +36,12 @@ import { stageDecisionReadinessRemediation } from "@/lib/actions-store";
 import { useGovernedBrief, useRevalidation } from "@/lib/revalidation-store";
 import { buildGovernanceCertificate } from "@/data/record";
 import { useChatMutation, useMintWorkProductMutation } from "@/hooks/queries";
+import {
+  getReadinessTaxonomy,
+  READINESS_TAXONOMY_LABEL,
+  READINESS_TAXONOMY_STYLE,
+  type ReadinessTaxonomy,
+} from "@/lib/readiness-taxonomy";
 
 const searchSchema = z.object({
   focus: z.enum(["next-steps"]).optional(),
@@ -327,6 +333,17 @@ const READINESS_STATUS: Record<
   },
 };
 
+const READINESS_TAXONOMY_ICON: Record<
+  ReadinessTaxonomy,
+  React.ComponentType<{ className?: string }>
+> = {
+  approval: Users,
+  artifact: FileText,
+  conflict: GitCompareArrows,
+  calculation: Calculator,
+  status: Info,
+};
+
 const READINESS_GRID =
   "grid-cols-[minmax(170px,1fr)_128px_minmax(220px,1.5fr)_minmax(180px,0.9fr)]";
 
@@ -385,6 +402,9 @@ function DecisionReadinessTable({
             {readiness.rows.map((row) => {
               const meta = READINESS_STATUS[row.status];
               const StatusIcon = meta.icon;
+              const taxonomy = getReadinessTaxonomy(row);
+              const treatment = READINESS_TAXONOMY_STYLE[taxonomy];
+              const TypeIcon = READINESS_TAXONOMY_ICON[taxonomy];
               const threshold =
                 row.explainer?.kind === "threshold"
                   ? findThreshold(brief, row.explainer.rule_id)
@@ -396,9 +416,35 @@ function DecisionReadinessTable({
               return (
                 <div
                   key={row.id}
-                  className={["grid items-center gap-4 px-4 py-3", READINESS_GRID].join(" ")}
+                  className={[
+                    "grid items-center gap-4 px-4 py-3",
+                    READINESS_GRID,
+                    treatment.row,
+                  ].join(" ")}
                 >
-                  <div className="text-[13.5px] font-semibold text-foreground">{row.gate}</div>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span
+                      className={[
+                        "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md",
+                        treatment.icon,
+                      ].join(" ")}
+                    >
+                      <TypeIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-[13.5px] font-semibold text-foreground">
+                        {row.gate}
+                      </div>
+                      <div
+                        className={[
+                          "mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em]",
+                          treatment.label,
+                        ].join(" ")}
+                      >
+                        {READINESS_TAXONOMY_LABEL[taxonomy]}
+                      </div>
+                    </div>
+                  </div>
                   <div>
                     <span
                       className={[
@@ -729,39 +775,41 @@ function PacketWorkspace() {
               </div>
 
               {/* Conflicting evidence */}
-              <section>
-                <SectionLabel>Conflicting evidence</SectionLabel>
-                <div className="mt-2.5 space-y-2">
-                  {b.conflicts.map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-4 py-3"
-                    >
-                      <GitCompareArrows className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                      <div className="flex-1 text-[13.5px] text-foreground">
-                        {c.description}
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
-                          Between
-                          {c.sources.map((s) => {
-                            const src = sources.find((x) => x.object_id === s.object_id);
-                            return (
-                              <span
-                                key={s.object_id}
-                                onMouseEnter={() => setHoveredId(s.object_id)}
-                                onMouseLeave={() => setHoveredId(null)}
-                                className="inline-flex items-center gap-1 rounded border border-[var(--warning)]/30 bg-background px-1.5 py-0.5 text-[11.5px] font-medium text-foreground"
-                              >
-                                <FileText className="h-3 w-3" />
-                                {src?.title ?? s.object_id}
-                              </span>
-                            );
-                          })}
+              {b.conflicts.length > 0 && (
+                <section>
+                  <SectionLabel>Conflicting evidence</SectionLabel>
+                  <div className="mt-2.5 space-y-2">
+                    {b.conflicts.map((c, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger-bg)] px-4 py-3"
+                      >
+                        <GitCompareArrows className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+                        <div className="flex-1 text-[13.5px] text-foreground">
+                          {c.description}
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
+                            Between
+                            {c.sources.map((s) => {
+                              const src = sources.find((x) => x.object_id === s.object_id);
+                              return (
+                                <span
+                                  key={s.object_id}
+                                  onMouseEnter={() => setHoveredId(s.object_id)}
+                                  onMouseLeave={() => setHoveredId(null)}
+                                  className="inline-flex items-center gap-1 rounded border border-[var(--danger)]/30 bg-background px-1.5 py-0.5 text-[11.5px] font-medium text-foreground"
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  {src?.title ?? s.object_id}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Key facts */}
               <section>

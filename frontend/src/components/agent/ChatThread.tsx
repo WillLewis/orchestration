@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import {
+  Calculator,
   Lock,
   ShieldAlert,
   AlertTriangle,
+  FileWarning,
   FileText,
   Loader2,
   Clock,
@@ -10,11 +12,18 @@ import {
   CheckCircle2,
   XCircle,
   GitCompareArrows,
+  UserCheck,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { sources } from "@/data/brief";
 import type { ChatAction, ChatMessage, ChatResponse } from "@/hooks/queries";
 import { useGovernedBrief } from "@/lib/revalidation-store";
+import {
+  getReadinessTaxonomy,
+  READINESS_TAXONOMY_LABEL,
+  READINESS_TAXONOMY_STYLE,
+  type ReadinessTaxonomy,
+} from "@/lib/readiness-taxonomy";
 
 // A rendered turn: the wire shape plus an assistant turn's UI-only governance `meta` and an optional
 // pending-approval chip label (Beat 3).
@@ -48,6 +57,17 @@ const GOV_CHIPS = [
     cls: "bg-[var(--warning-bg)] text-[var(--warning)]",
   },
 ] as const;
+
+const READINESS_TAXONOMY_ICON: Record<
+  ReadinessTaxonomy,
+  React.ComponentType<{ className?: string }>
+> = {
+  approval: UserCheck,
+  artifact: FileWarning,
+  conflict: GitCompareArrows,
+  calculation: Calculator,
+  status: AlertTriangle,
+};
 
 export function ChatThread({
   messages,
@@ -236,7 +256,9 @@ function ChatTurn({
 function BriefPreviewTurn({ turn }: { turn: Turn }) {
   const { decision_brief: b, decision_readiness } = useGovernedBrief();
   const approvalReady = b.policy_gates.approval_ready;
-  const blockers = decision_readiness.rows.filter((row) => row.status === "blocking");
+  const unresolvedRows = decision_readiness.rows.filter(
+    (row) => row.status === "blocking" || row.status === "pending",
+  );
 
   return (
     <div className="flex justify-start">
@@ -300,25 +322,46 @@ function BriefPreviewTurn({ turn }: { turn: Turn }) {
 
             <section>
               <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
-                Blocking
+                Decision readiness
               </div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {blockers.slice(0, 3).map((row) => (
-                  <span
-                    key={row.id}
-                    className="inline-flex items-center gap-1 rounded-md bg-[var(--danger-bg)] px-2 py-1 text-[11.5px] font-medium text-[var(--danger)]"
-                  >
-                    <AlertTriangle className="h-3 w-3" />
-                    {row.gate}
-                  </span>
-                ))}
+              <div className="mt-1.5 grid gap-1.5">
+                {unresolvedRows.slice(0, 4).map((row) => {
+                  const taxonomy = getReadinessTaxonomy(row);
+                  const style = READINESS_TAXONOMY_STYLE[taxonomy];
+                  const RowIcon = READINESS_TAXONOMY_ICON[taxonomy];
+
+                  return (
+                    <div
+                      key={row.id}
+                      className={[
+                        "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-[11.5px] font-medium",
+                        style.row,
+                      ].join(" ")}
+                    >
+                      <span
+                        className={[
+                          "grid h-5 w-5 shrink-0 place-items-center rounded-md",
+                          style.icon,
+                        ].join(" ")}
+                      >
+                        <RowIcon className="h-3 w-3" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className={["mr-1 font-semibold", style.label].join(" ")}>
+                          {READINESS_TAXONOMY_LABEL[taxonomy]}
+                        </span>
+                        <span className="text-[var(--secondary-text)]">{row.gate}</span>
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
             {b.conflicts.slice(0, 1).map((conflict, index) => (
               <div
                 key={index}
-                className="flex items-start gap-2 rounded-md bg-[var(--warning-bg)] px-3 py-2 text-[12px] leading-snug text-[var(--warning)]"
+                className="flex items-start gap-2 rounded-md bg-[var(--danger-bg)] px-3 py-2 text-[12px] leading-snug text-[var(--danger)]"
               >
                 <GitCompareArrows className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{conflict.description}</span>

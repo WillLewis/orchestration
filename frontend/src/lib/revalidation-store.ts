@@ -11,7 +11,13 @@
 import { useSyncExternalStore } from "react";
 
 import { useBriefQuery, type BriefData } from "@/hooks/queries";
-import type { DecisionReadiness, ReadinessStatus, SourceStatus } from "@/data/brief";
+import type {
+  DecisionConflict,
+  DecisionReadiness,
+  DecisionReadinessRow,
+  ReadinessStatus,
+  SourceStatus,
+} from "@/data/brief";
 
 export type RevalStage =
   | "initial"
@@ -110,6 +116,29 @@ export type GovernedBrief = BriefData & {
 };
 
 const RECONCILED_IDS = new Set(["doc_cs_plan", "doc_pricing_exception"]);
+const CS_PLAN_CONFLICT: DecisionConflict = {
+  description:
+    "Approved 22% pricing exception conflicts with the customer success plan's 18% discount assumption.",
+  sources: [{ object_id: "doc_pricing_exception" }, { object_id: "doc_cs_plan" }],
+};
+const CS_PLAN_CONFLICT_ROW: DecisionReadinessRow = {
+  id: "customer_success_plan_conflict",
+  gate: "Customer success plan conflict",
+  status: "pending",
+  details:
+    "Revalidation found the approved 22% pricing exception against the CS plan's 18% assumption.",
+  source_ids: ["doc_pricing_exception", "doc_cs_plan"],
+  action: {
+    label: "Stage: reconcile CS plan",
+    tool: "edit_document",
+    target_object_id: "doc_cs_plan",
+  },
+};
+
+function isCsPlanConflict(conflict: DecisionConflict) {
+  const ids = new Set(conflict.sources.map((source) => source.object_id));
+  return ids.has("doc_pricing_exception") && ids.has("doc_cs_plan");
+}
 
 function markDiscountSources(sources: BriefData["sources"], status: SourceStatus) {
   return sources.map((src) => (RECONCILED_IDS.has(src.object_id) ? { ...src, status } : src));
@@ -119,9 +148,17 @@ function markDiscountSources(sources: BriefData["sources"], status: SourceStatus
 // auto-clear from `present`, so we EXPLICITLY rewrite readiness rows, firings, approvals, conflicts,
 // and source statuses. approval_ready stays false the whole arc (covenant tracker + Legal remain).
 export function buildGovernedBrief(base: BriefData, s: RevalidationState): GovernedBrief {
-  let brief = base.decision_brief;
-  let readiness: DecisionReadiness = base.decision_readiness;
-  let sources = base.sources;
+  let brief = {
+    ...base.decision_brief,
+    conflicts: base.decision_brief.conflicts.filter((conflict) => !isCsPlanConflict(conflict)),
+  };
+  let readiness: DecisionReadiness = {
+    ...base.decision_readiness,
+    rows: base.decision_readiness.rows.filter((row) => row.id !== CS_PLAN_CONFLICT_ROW.id),
+  };
+  let sources = base.sources.map((src) =>
+    RECONCILED_IDS.has(src.object_id) ? { ...src, status: "used" as SourceStatus } : src,
+  );
 
   if (!s.creditSigned) {
     brief = { ...brief, conflicts: [] };
@@ -189,6 +226,16 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
           : row,
       ),
     };
+  }
+
+  if (s.creditSigned && !s.csReconciled) {
+    brief = { ...brief, conflicts: [...brief.conflicts, CS_PLAN_CONFLICT] };
+    readiness = { ...readiness, rows: [...readiness.rows, CS_PLAN_CONFLICT_ROW] };
+    sources = sources.map((src) =>
+      RECONCILED_IDS.has(src.object_id)
+        ? { ...src, status: "conflicting" as SourceStatus }
+        : src,
+    );
   }
 
   if (s.csReconciled) {
