@@ -29,6 +29,7 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 | GET | `/workproducts/{record_id}` | `GovernedRecord` | (in-memory store) | Governed-record page |
 | POST | `/workproducts/{record_id}/verify` | `RecordVerification` | WS-F | Verify record (integrity/stale) |
 | GET | `/ops/evals` | `OpsReport` | WS-I + WS-G | Agent Ops ([ops.ts](../frontend/src/data/ops.ts)) |
+| GET | `/ops/docs-chat` | `DocsChatTelemetrySummary` | WS-G | local aggregate docs-chat LLM observability |
 | GET | `/api/health` | `{ok}` | — | — |
 | GET | `/api/brief` · `/api/actions` · `/api/meeting` · `/api/ops/scorecard` | dict | real-backed | compat shims; `/api/ops/scorecard` is a core-schema projection of `/ops/evals` |
 
@@ -73,6 +74,12 @@ threshold that filters stray single body-token hits. If no chunk clears the thre
 returns `status="no_results"`. Answer confidence is a
 pure deterministic band (`grounded` / `partial` / `weak`) derived from ranking margin, query-aspect
 coverage, threshold status, missing coverage, and safe support count; model output never affects it.
+
+Privacy-safe docs-chat observability is exposed at `GET /ops/docs-chat`. It is an in-process
+aggregate only: surface, requested/effective mode, fallback reason, status, model configured yes/no,
+citation count bucket, latency bucket, LLM requested/accepted/fallback totals, and no-results total.
+It does not capture prompts, answers, history, document text, retrieved snippets, doc ids, model
+names, secrets, or per-user trace content.
 
 ## Governed record (`POST /workproducts/mint` · `/verify`)
 Seals a decision packet into a **governed record** ([`workproducts.py`](workproducts.py)) — the
