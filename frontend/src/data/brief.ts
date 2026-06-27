@@ -5,6 +5,7 @@
 // surfaces update with no remap.
 
 import { financePolicyArtifact } from "@/data/acme";
+import type { ToolKey } from "@/data/actions";
 
 export type ApprovalStatus = "approved" | "missing" | "pending";
 export type SourceStatus = "used" | "restricted" | "conflicting" | "missing";
@@ -13,9 +14,14 @@ export type ReadinessStatus = "blocking" | "pending" | "passed" | "approved";
 
 export type DecisionReadinessAction = {
   label: string;
-  tool: string;
+  tool: ToolKey;
   target_object_id: string;
   required_approver?: string | null;
+  parameters?: {
+    business_label?: string;
+    requested_discount_percent?: number;
+    route_note?: string;
+  };
 };
 
 export type DecisionReadinessExplainer =
@@ -144,10 +150,16 @@ export const decision_readiness: DecisionReadiness = {
       source_ids: ["doc_pricing_exception", "wf_approval"],
       explainer: { kind: "threshold", rule_id: "approval_threshold" },
       action: {
-        label: "Route to Credit Officer",
+        label: "Stage: route 22% to Credit Officer",
         tool: "route_approval",
         target_object_id: "doc_pricing_exception",
         required_approver: "credit_officer",
+        parameters: {
+          business_label: "22% pricing exception",
+          requested_discount_percent: 22,
+          route_note:
+            "Route the 22% pricing exception to the Credit Officer; it exceeds the RM's delegated authority.",
+        },
       },
     },
     {

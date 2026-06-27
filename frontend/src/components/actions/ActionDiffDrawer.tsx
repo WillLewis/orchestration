@@ -51,7 +51,12 @@ import {
   type UserStatus,
   openDrawer,
 } from "@/lib/actions-store";
-import { acceptCascadeEdit, useRevalidation } from "@/lib/revalidation-store";
+import {
+  acceptCascadeEdit,
+  routeToCreditOfficer,
+  simulateCreditOfficerResponse,
+  useRevalidation,
+} from "@/lib/revalidation-store";
 import { useLatestRecordId } from "@/lib/record-store";
 import {
   LIVE,
@@ -61,6 +66,7 @@ import {
   useVerifyWorkProductMutation,
   type ServerAuditEvent,
 } from "@/hooks/queries";
+import { deriveDrawerActions, type OriginatedAction } from "@/lib/staged-remediation";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -165,6 +171,20 @@ function renderedSideEffect(action: Action): SideEffect {
 type ExecRow = { tool: string; target: string; reason?: string };
 type ExecResult = { executed: ExecRow[]; refused: ExecRow[]; mode: "live" | "mock" };
 
+function isCreditOfficerRoute(action: Action) {
+  return (
+    action.tool === "route_approval" &&
+    action.required_approver === "credit_officer" &&
+    action.diff.target_object_id === "doc_pricing_exception"
+  );
+}
+
+function includesCreditOfficerRoute(rows: ExecRow[]) {
+  return rows.some(
+    (row) => row.tool === "route_approval" && row.target === "doc_pricing_exception",
+  );
+}
+
 function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
   const executed: ExecRow[] = [];
   const refused: ExecRow[] = [];
@@ -183,7 +203,7 @@ function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
 
 export function ActionDiffDrawer() {
   const store = useActionsStore();
-  const { drawer, user_status, audit } = store;
+  const { drawer, staged_remediation, user_status, audit } = store;
   const reval = useRevalidation();
   const recordId = useLatestRecordId();
   const { data: cachedVerification } = useVerification(recordId);
@@ -195,16 +215,17 @@ export function ActionDiffDrawer() {
   } = useVerifyWorkProductMutation(recordId);
   const verifyRequestKeyRef = useRef<string | null>(null);
   // Beat 6: once the Credit Officer has signed off, the route-to-CO follow-up is already done —
-  // drop it so the plan proposes only the REMAINING work (tracker, Legal, schedule). The live
-  // gateway proof below still submits the full plan to prove server-side re-gating.
-  const visibleActions = useMemo(
+  // drop it so the batch proposes only the REMAINING work (tracker, Legal, schedule). A staged
+  // brief-row remediation bypasses the batch list and renders exactly its validated row card.
+  const visibleActions = useMemo<OriginatedAction[]>(
     () =>
-      reval.creditSigned
-        ? planActions.filter(
-            (a) => !(a.tool === "route_approval" && a.required_approver === "credit_officer"),
-          )
-        : planActions,
-    [planActions, reval.creditSigned],
+      deriveDrawerActions({
+        mode: drawer.mode,
+        staged_remediation,
+        validationActions: planActions,
+        creditSigned: reval.creditSigned,
+      }),
+    [drawer.mode, planActions, reval.creditSigned, staged_remediation],
   );
   const [tab, setTab] = useState<"changes" | "next" | "notes" | "audit">("next");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -302,7 +323,7 @@ export function ActionDiffDrawer() {
   const cascadeChangeCount =
     isAfterSourceChange && (reval.cascadeAvailable || reval.csReconciled) ? 1 : 0;
   const changesCount = sourceChangeCount + gateChangeCount + cascadeChangeCount;
-  const nextCount = nextActions.length;
+  const nextCount = drawer.mode === "staged_remediation" ? ordered.length : nextActions.length;
   const pendingCount = nextPending.length;
   const notesCount = noteActions.length;
 
@@ -350,7 +371,9 @@ export function ActionDiffDrawer() {
         { approved_indices: approvedIndices([...nextPending, ...overriddenBlocked]) },
         {
           onSuccess: (events) => {
-            setExecResult(execResultFromServer(events));
+            const result = execResultFromServer(events);
+            setExecResult(result);
+            if (includesCreditOfficerRoute(result.executed)) routeToCreditOfficer();
             setTab("audit");
             const skipped = events.filter((e) => e.action === "skipped").length;
             toast.success(
@@ -370,7 +393,7 @@ export function ActionDiffDrawer() {
     nextPending.forEach((a) => approveAction(action_key(a)));
     if (overrideCount > 0) {
       // Mirror the server re-gate client-side: blocked overrides are refused, never committed.
-      const r = executeRegated();
+      const r = executeRegated("Dana R.", [...nextPending, ...overriddenBlocked]);
       setExecResult({
         executed: r.executed.map((e) => ({ tool: e.tool, target: e.target_object_id })),
         refused: r.refused.map((e) => ({
@@ -380,12 +403,21 @@ export function ActionDiffDrawer() {
         })),
         mode: "mock",
       });
+      if (
+        includesCreditOfficerRoute(
+          r.executed.map((e) => ({ tool: e.tool, target: e.target_object_id })),
+        )
+      ) {
+        routeToCreditOfficer();
+      }
       setTab("audit");
       toast.success(`Executed ${r.executed.length} · refused ${r.refused.length} (gate held)`);
       return;
     }
-    const n = executeApproved();
+    const routesCreditOfficer = nextPending.some(isCreditOfficerRoute);
+    const n = executeApproved("Dana R.", nextPending);
     if (n > 0) {
+      if (routesCreditOfficer) routeToCreditOfficer();
       toast.success(`${n} action${n === 1 ? "" : "s"} sent · audit recorded`);
       setTab("audit");
     }
@@ -473,6 +505,32 @@ export function ActionDiffDrawer() {
               </button>
             </div>
           </div>
+
+          {reval.routed && !reval.creditSigned && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-3 py-2">
+              <div className="min-w-0 text-[12px] leading-snug text-foreground">
+                <span className="font-semibold">Credit Officer pending.</span> Route is executed;
+                approval return is waiting on the simulated counterparty.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!simulateCreditOfficerResponse()) return;
+                  toast.success("Credit Officer response simulated", {
+                    description: "Revalidated packet; Legal and covenant tracker still block.",
+                  });
+                  openDrawer({
+                    mode: "revalidation_edit",
+                    source: "Credit Officer response — approval returned",
+                  });
+                }}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Simulate Credit Officer response
+              </button>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -1313,8 +1371,15 @@ function primaryLabelFor(action: Action) {
 
 function routeDescription(action: Action) {
   const destination = destinationFor(action);
+  const approvalRequest =
+    typeof action.diff.after.approval_request === "string"
+      ? action.diff.after.approval_request
+      : "";
   if (action.required_approver === "legal") {
     return "Creates a review task for Legal; sets the workflow to 'Pending Legal'.";
+  }
+  if (approvalRequest) {
+    return `Routes the ${approvalRequest} to the ${destination}; sets the workflow to 'routed'.`;
   }
   return `Creates an approval task for the ${destination}; sets the workflow to 'routed'.`;
 }
