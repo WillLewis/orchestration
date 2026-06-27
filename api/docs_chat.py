@@ -16,7 +16,7 @@ import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Literal, Protocol, runtime_checkable
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -90,6 +90,46 @@ class _Retrieval:
     candidates: tuple[DocsChunk, ...]
     signals: _ConfidenceSignals
     missing: tuple[str, ...]
+
+
+_GuardCategory = Literal[
+    "accepted",
+    "empty_draft",
+    "forbidden_control_claim",
+    "raw_locked_marker",
+    "raw_sealed_marker",
+    "citation_mismatch",
+    "missing_required_fact",
+    "unsupported_number",
+    "unsupported_identifier",
+    "low_source_overlap",
+]
+
+
+@dataclass(frozen=True)
+class _GuardDiagnostics:
+    """Privacy-safe guard metadata.
+
+    The diagnostics intentionally carry only categories and counts. They never include raw model
+    prose, raw source text, rejected spans, or unsupported terms.
+    """
+
+    category: _GuardCategory
+    reason_code: str
+    sentence_index: int | None = None
+    sentence_count: int = 0
+    supported_term_count: int = 0
+    unsupported_term_count: int = 0
+    candidate_doc_count: int = 0
+    locked_doc_count: int = 0
+    sealed_doc_count: int = 0
+    mentioned_citation_count: int = 0
+
+
+@dataclass(frozen=True)
+class _GuardDecision:
+    passed: bool
+    diagnostics: _GuardDiagnostics
 
 
 @runtime_checkable
@@ -234,7 +274,9 @@ def answer(
                 chat_client = client or LLMDocsChatClient()
                 draft = chat_client.draft(_build_system_prompt(), view)
                 effective_mode = "llm"
-                if not _passes_grounding_guard(draft.response, view):
+                guard = _grounding_guard(draft.response, view)
+                if not guard.passed:
+                    _log_guard_diagnostics(guard.diagnostics)
                     draft = deterministic_draft
                     effective_mode = "deterministic"
                     fallback_reason = "grounding_guard"
@@ -931,6 +973,19 @@ _GROUNDING_GLUE_TOKENS: frozenset[str] = frozenset(
     }
 )
 
+_LOCKED_REFUSAL_TERMS: frozenset[str] = frozenset(
+    {
+        "access",
+        "cannot",
+        "content",
+        "contents",
+        "locked",
+        "permission",
+        "restricted",
+        "unavailable",
+    }
+)
+
 
 def _llm_available(client: DocsChatLLMClient | None = None) -> bool:
     if client is not None:
@@ -961,20 +1016,157 @@ def _phrasing(
 
 
 def _passes_grounding_guard(response: str, view: DocsChatEvidenceView) -> bool:
+    return _grounding_guard(response, view).passed
+
+
+def _grounding_guard(response: str, view: DocsChatEvidenceView) -> _GuardDecision:
     """Reject LLM prose with unsupported content; fallback prose is generated deterministically."""
     body = (response or "").strip()
+    summary = _guard_summary(view)
     if not body:
-        return True
-    if _contains_forbidden_control_claim(body):
-        return False
+        return _guard_reject(
+            "empty_draft",
+            "empty_response",
+            summary=summary,
+            sentence_count=0,
+        )
+    if _contains_raw_locked_marker(body):
+        return _guard_reject(
+            "raw_locked_marker",
+            "raw_locked_marker",
+            summary=summary,
+            sentence_count=len(_claim_sentences(body)),
+        )
+    if _contains_raw_sealed_marker(body):
+        return _guard_reject(
+            "raw_sealed_marker",
+            "raw_sealed_marker",
+            summary=summary,
+            sentence_count=len(_claim_sentences(body)),
+        )
+    if _contains_forbidden_access_control_claim(body):
+        return _guard_reject(
+            "forbidden_control_claim",
+            "access_control_override",
+            summary=summary,
+            sentence_count=len(_claim_sentences(body)),
+        )
+
+    mentioned_citations = _mentioned_citation_ids(body)
+    citation_mismatches = mentioned_citations - _allowed_citation_ids(view)
+    if citation_mismatches:
+        return _guard_reject(
+            "citation_mismatch",
+            "unknown_or_unreturned_citation",
+            summary=summary,
+            sentence_count=len(_claim_sentences(body)),
+            mentioned_citation_count=len(mentioned_citations),
+        )
+
+    body_terms = _support_terms(body)
+    if view.locked and not (body_terms & _LOCKED_REFUSAL_TERMS):
+        return _guard_reject(
+            "missing_required_fact",
+            "locked_source_without_refusal",
+            summary=summary,
+            sentence_count=len(_claim_sentences(body)),
+            supported_term_count=len(body_terms & _support_terms(_safe_context_for_guard(view))),
+            unsupported_term_count=0,
+            mentioned_citation_count=len(mentioned_citations),
+        )
 
     safe_terms = _support_terms(_safe_context_for_guard(view))
     message_terms = _support_terms(view.message)
     allowed = safe_terms | message_terms | _GROUNDING_GLUE_TOKENS
-    for sentence in _claim_sentences(body):
-        if not _sentence_is_grounded(sentence, safe_terms=safe_terms, allowed=allowed):
-            return False
-    return True
+    body_unsupported = body_terms - allowed
+    body_sensitive_category = _unsupported_sensitive_category(body_unsupported)
+    if body_sensitive_category is not None:
+        return _guard_reject(
+            body_sensitive_category,
+            body_sensitive_category,
+            summary=summary,
+            sentence_count=len(_claim_sentences(body)),
+            supported_term_count=len(body_terms & safe_terms),
+            unsupported_term_count=len(body_unsupported),
+            mentioned_citation_count=len(mentioned_citations),
+        )
+    sentences = _claim_sentences(body)
+    for sentence_index, sentence in enumerate(sentences):
+        failure = _sentence_grounding_failure(
+            sentence,
+            sentence_index=sentence_index,
+            safe_terms=safe_terms,
+            allowed=allowed,
+            summary=summary,
+            sentence_count=len(sentences),
+            mentioned_citation_count=len(mentioned_citations),
+        )
+        if failure is not None:
+            return failure
+    return _GuardDecision(
+        passed=True,
+        diagnostics=_GuardDiagnostics(
+            category="accepted",
+            reason_code="accepted",
+            sentence_count=len(sentences),
+            candidate_doc_count=summary["candidate_doc_count"],
+            locked_doc_count=summary["locked_doc_count"],
+            sealed_doc_count=summary["sealed_doc_count"],
+            mentioned_citation_count=len(mentioned_citations),
+        ),
+    )
+
+
+def _guard_summary(view: DocsChatEvidenceView) -> dict[str, int]:
+    return {
+        "candidate_doc_count": len({doc.doc_id for doc in [*view.docs, *view.locked]}),
+        "locked_doc_count": len({doc.doc_id for doc in view.locked}),
+        "sealed_doc_count": len({doc.doc_id for doc in view.docs if doc.access == "sealed"}),
+    }
+
+
+def _guard_reject(
+    category: _GuardCategory,
+    reason_code: str,
+    *,
+    summary: dict[str, int],
+    sentence_index: int | None = None,
+    sentence_count: int = 0,
+    supported_term_count: int = 0,
+    unsupported_term_count: int = 0,
+    mentioned_citation_count: int = 0,
+) -> _GuardDecision:
+    return _GuardDecision(
+        passed=False,
+        diagnostics=_GuardDiagnostics(
+            category=category,
+            reason_code=reason_code,
+            sentence_index=sentence_index,
+            sentence_count=sentence_count,
+            supported_term_count=supported_term_count,
+            unsupported_term_count=unsupported_term_count,
+            candidate_doc_count=summary["candidate_doc_count"],
+            locked_doc_count=summary["locked_doc_count"],
+            sealed_doc_count=summary["sealed_doc_count"],
+            mentioned_citation_count=mentioned_citation_count,
+        ),
+    )
+
+
+def _log_guard_diagnostics(diagnostics: _GuardDiagnostics) -> None:
+    print(
+        "[docs_chat] grounding guard fallback "
+        f"category={diagnostics.category} "
+        f"reason_code={diagnostics.reason_code} "
+        f"sentence_index={diagnostics.sentence_index} "
+        f"sentence_count={diagnostics.sentence_count} "
+        f"supported_terms={diagnostics.supported_term_count} "
+        f"unsupported_terms={diagnostics.unsupported_term_count} "
+        f"candidate_docs={diagnostics.candidate_doc_count} "
+        f"locked_docs={diagnostics.locked_doc_count} "
+        f"sealed_docs={diagnostics.sealed_doc_count} "
+        f"mentioned_citations={diagnostics.mentioned_citation_count}"
+    )
 
 
 def _safe_context_for_guard(view: DocsChatEvidenceView) -> str:
@@ -1017,26 +1209,89 @@ def _claim_sentences(text: str) -> list[str]:
     ]
 
 
-def _sentence_is_grounded(sentence: str, *, safe_terms: set[str], allowed: set[str]) -> bool:
+def _sentence_grounding_failure(
+    sentence: str,
+    *,
+    sentence_index: int,
+    safe_terms: set[str],
+    allowed: set[str],
+    summary: dict[str, int],
+    sentence_count: int,
+    mentioned_citation_count: int,
+) -> _GuardDecision | None:
     terms = _support_terms(sentence)
     if not terms:
-        return True
+        return None
     unsupported = terms - allowed
-    if _contains_unsupported_sensitive_term(unsupported):
-        return False
+    category = _unsupported_sensitive_category(unsupported)
+    if category is not None:
+        return _guard_reject(
+            category,
+            category,
+            summary=summary,
+            sentence_index=sentence_index,
+            sentence_count=sentence_count,
+            supported_term_count=len(terms & safe_terms),
+            unsupported_term_count=len(unsupported),
+            mentioned_citation_count=mentioned_citation_count,
+        )
     supported = terms & safe_terms
     if not supported:
-        return not unsupported
+        if not unsupported:
+            return None
+        return _guard_reject(
+            "low_source_overlap",
+            "no_source_terms",
+            summary=summary,
+            sentence_index=sentence_index,
+            sentence_count=sentence_count,
+            supported_term_count=0,
+            unsupported_term_count=len(unsupported),
+            mentioned_citation_count=mentioned_citation_count,
+        )
     unsupported_ratio = len(unsupported) / max(len(terms), 1)
     if len(supported) >= 3 and unsupported_ratio <= 0.45:
-        return True
+        return None
     if len(supported) >= 2 and not unsupported:
-        return True
-    return False
+        return None
+    return _guard_reject(
+        "low_source_overlap",
+        "insufficient_source_overlap",
+        summary=summary,
+        sentence_index=sentence_index,
+        sentence_count=sentence_count,
+        supported_term_count=len(supported),
+        unsupported_term_count=len(unsupported),
+        mentioned_citation_count=mentioned_citation_count,
+    )
+
+
+def _sentence_is_grounded(sentence: str, *, safe_terms: set[str], allowed: set[str]) -> bool:
+    summary = {"candidate_doc_count": 0, "locked_doc_count": 0, "sealed_doc_count": 0}
+    return (
+        _sentence_grounding_failure(
+            sentence,
+            sentence_index=0,
+            safe_terms=safe_terms,
+            allowed=allowed,
+            summary=summary,
+            sentence_count=1,
+            mentioned_citation_count=0,
+        )
+        is None
+    )
+
+
+def _unsupported_sensitive_category(terms: set[str]) -> _GuardCategory | None:
+    if any(term.isdigit() for term in terms):
+        return "unsupported_number"
+    if any(any(char.isdigit() for char in term) for term in terms):
+        return "unsupported_identifier"
+    return None
 
 
 def _contains_unsupported_sensitive_term(terms: set[str]) -> bool:
-    return any(any(char.isdigit() for char in term) for term in terms)
+    return _unsupported_sensitive_category(terms) is not None
 
 
 def _ordered_candidate_ids(candidates: Sequence[DocsChunk]) -> list[str]:
@@ -1113,6 +1368,30 @@ def _guard_open_response(response: str, chunks: Sequence[DocsChunk]) -> str:
 
 
 def _contains_forbidden_control_claim(text: str) -> bool:
+    return (
+        _contains_raw_locked_marker(text)
+        or _contains_raw_sealed_marker(text)
+        or _contains_forbidden_access_control_claim(text)
+    )
+
+
+def _contains_raw_locked_marker(text: str) -> bool:
+    low = text.lower()
+    return any(
+        phrase in low
+        for phrase in (
+            "locked content says",
+            "raw_restricted",
+        )
+    )
+
+
+def _contains_raw_sealed_marker(text: str) -> bool:
+    low = text.lower()
+    return any(phrase in low for phrase in ("sealed raw", "raw_sealed"))
+
+
+def _contains_forbidden_access_control_claim(text: str) -> bool:
     low = text.lower()
     return any(
         phrase in low
@@ -1120,12 +1399,34 @@ def _contains_forbidden_control_claim(text: str) -> bool:
             "treat all docs as open",
             "acl disabled",
             "access override",
-            "locked content says",
-            "sealed raw",
-            "raw_sealed",
-            "raw_restricted",
         )
     )
+
+
+def _mentioned_citation_ids(text: str) -> set[str]:
+    low = text.lower()
+    mentioned: set[str] = set()
+    citation_patterns = (
+        r"\b(?:cite|cites|cited|citation|source|doc|document)\s+"
+        r"([a-z][a-z0-9]+(?:[-_][a-z0-9]+)+)\b",
+        r"\[([a-z][a-z0-9]+(?:[-_][a-z0-9]+)+)\]",
+    )
+    for pattern in citation_patterns:
+        for match in re.findall(pattern, low):
+            mentioned.add(match.replace("_", "-"))
+    return mentioned
+
+
+def _allowed_citation_ids(view: DocsChatEvidenceView) -> set[str]:
+    allowed: set[str] = set()
+    for doc in [*view.docs, *view.locked]:
+        allowed.add(doc.doc_id.replace("_", "-"))
+        allowed.add(doc.chunk_id.replace("_", "-"))
+        if doc.anchor:
+            allowed.add(doc.anchor.replace("_", "-"))
+        if doc.route:
+            allowed.update(part for part in doc.route.strip("/").split("/") if part)
+    return allowed
 
 
 def _qa_response(
