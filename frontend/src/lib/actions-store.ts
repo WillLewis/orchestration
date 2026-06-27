@@ -1,5 +1,10 @@
 import { useSyncExternalStore } from "react";
 import { action_plan, action_key, derive_status, type Action } from "@/data/actions";
+import type { DecisionReadinessRow } from "@/data/brief";
+import {
+  buildStagedRemediationReference,
+  type StagedRemediationReference,
+} from "@/lib/staged-remediation";
 
 export type UserStatus = "proposed" | "approved" | "edited" | "rejected" | "committed" | "reverted";
 
@@ -12,9 +17,10 @@ export type AuditEvent = {
   reverted?: boolean;
 };
 
-// "plan" = the multi-action follow-ups drawer (the existing six). "revalidation_edit" = the
-// single-mutation cascade drawer (Beat 5) — same diff component, one card only.
-export type DrawerMode = "plan" | "revalidation_edit";
+// "plan" = the multi-action follow-ups drawer (the existing six). "staged_remediation" = one
+// Decision Brief row reference validated into one card. "revalidation_edit" = the single-mutation
+// cascade drawer (Beat 5) — same diff component, one card only.
+export type DrawerMode = "plan" | "staged_remediation" | "revalidation_edit";
 
 export type DrawerState = {
   open: boolean;
@@ -25,6 +31,7 @@ export type DrawerState = {
 
 type State = {
   drawer: DrawerState;
+  staged_remediation: StagedRemediationReference | null;
   // per-action user status (proposed | approved | edited | rejected | committed | reverted)
   user_status: Record<string, UserStatus>;
   // user edits override `after` fields
@@ -34,6 +41,7 @@ type State = {
 
 const initial: State = {
   drawer: { open: false, mode: "plan", focus_key: null, source: "" },
+  staged_remediation: null,
   user_status: Object.fromEntries(
     action_plan.actions.map((a) => [action_key(a), "proposed"] as const),
   ),
@@ -80,6 +88,20 @@ export function closeDrawer() {
   emit();
 }
 
+export function stageDecisionReadinessRemediation(row: DecisionReadinessRow) {
+  const staged = buildStagedRemediationReference(row);
+  if (!staged) return null;
+  state.staged_remediation = staged;
+  state.drawer = {
+    open: true,
+    mode: "staged_remediation",
+    focus_key: null,
+    source: `Decision readiness — ${row.gate}`,
+  };
+  emit();
+  return staged;
+}
+
 /* -------- per-action actions -------- */
 
 export function approveAction(key: string) {
@@ -114,11 +136,11 @@ export function approveAllReady() {
   emit();
 }
 
-export function executeApproved(actor = "Dana R.") {
+export function executeApproved(actor = "Dana R.", actions: Action[] = action_plan.actions) {
   const committed: Action[] = [];
   const next = { ...state.user_status };
   const audit = [...state.audit];
-  action_plan.actions.forEach((a) => {
+  actions.forEach((a) => {
     const k = action_key(a);
     const s = next[k];
     if ((s === "approved" || s === "edited") && !a.blocked_reason) {
@@ -144,7 +166,10 @@ export type RefusedItem = { tool: string; target_object_id: string; reason: stri
 // Mock mirror of the server re-gate (POST /actions/execute): commit approved/edited NON-blocked
 // actions, and REFUSE approved/edited blocked ones (never commit). Proves the gate holds even when
 // a client approves a blocked index — the same executed-vs-skipped split the gateway returns live.
-export function executeRegated(actor = "Dana R."): {
+export function executeRegated(
+  actor = "Dana R.",
+  actions: Action[] = action_plan.actions,
+): {
   executed: { tool: string; target_object_id: string }[];
   refused: RefusedItem[];
 } {
@@ -152,7 +177,7 @@ export function executeRegated(actor = "Dana R."): {
   const audit = [...state.audit];
   const executed: { tool: string; target_object_id: string }[] = [];
   const refused: RefusedItem[] = [];
-  action_plan.actions.forEach((a) => {
+  actions.forEach((a) => {
     const k = action_key(a);
     const s = next[k];
     if (s !== "approved" && s !== "edited") return;
