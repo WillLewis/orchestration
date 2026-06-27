@@ -17,6 +17,11 @@ export function setLatestRecordId(recordId: string) {
   emit();
 }
 
+export function resetLatestRecordId() {
+  latestRecordId = "gwp_acme_001";
+  emit();
+}
+
 export function useLatestRecordId() {
   return useSyncExternalStore(
     (listener) => {

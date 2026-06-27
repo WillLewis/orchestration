@@ -2,8 +2,13 @@ import { LogOut, ArrowLeft } from "lucide-react";
 import { meeting } from "@/lib/meeting-data";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ConnectWorkHomeLink, MainRouteNav } from "@/components/navigation/MainRouteNav";
+import { useLifecycleResetMutation } from "@/hooks/queries";
+import { resetActions } from "@/lib/actions-store";
+import { resetLatestRecordId } from "@/lib/record-store";
+import { resetRevalidation } from "@/lib/revalidation-store";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,12 +43,27 @@ type TopBarProps = {
 
 export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: TopBarProps) {
   const timer = useRunningTimer(42 * 60 + 18);
+  const queryClient = useQueryClient();
+  const lifecycleReset = useLifecycleResetMutation();
+  const [isResettingDemo, setIsResettingDemo] = useState(false);
 
-  function leaveDemo() {
-    window.close();
-    window.setTimeout(() => {
-      toast("Your browser blocked tab close. You can close this tab manually.");
-    }, 150);
+  async function resetDemo() {
+    if (isResettingDemo) return;
+    setIsResettingDemo(true);
+    resetActions();
+    resetRevalidation();
+    resetLatestRecordId();
+    window.sessionStorage.removeItem("connectwork:lastNonDocsHref");
+    try {
+      await lifecycleReset.mutateAsync();
+      queryClient.clear();
+      window.location.assign("/");
+    } catch {
+      setIsResettingDemo(false);
+      toast.error("Couldn't reset the live demo state", {
+        description: "The lifecycle gateway did not respond. Try again once the API is running.",
+      });
+    }
   }
 
   return (
@@ -112,18 +132,22 @@ export function TopBar({ onToggleAgent, showBackToMeeting = false, rightSlot }: 
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Leave the demo?</AlertDialogTitle>
+                  <AlertDialogTitle>Leave and reset the demo?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will close the demo tab if your browser allows it.
+                    This will reset the demo state and return to the beginning.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Stay</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={leaveDemo}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void resetDemo();
+                    }}
                     className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
+                    disabled={isResettingDemo || lifecycleReset.isPending}
                   >
-                    Leave demo
+                    {isResettingDemo || lifecycleReset.isPending ? "Resetting…" : "Leave demo"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
