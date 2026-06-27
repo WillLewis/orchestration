@@ -46,8 +46,8 @@ DEMO_QUESTIONS: tuple[DemoQuestionCase, ...] = (
         citation_ids=("gating",),
         citation_access=("open",),
         citation_tiers=(1,),
-        confidence="partial",
-        missing=("refuse",),
+        confidence="grounded",
+        missing=(),
     ),
     DemoQuestionCase(
         id="Q2-sealed-record",
@@ -56,18 +56,18 @@ DEMO_QUESTIONS: tuple[DemoQuestionCase, ...] = (
         citation_ids=("sealed-records",),
         citation_access=("open",),
         citation_tiers=(1,),
-        confidence="partial",
-        missing=("after",),
+        confidence="grounded",
+        missing=(),
     ),
     DemoQuestionCase(
         id="Q3-restricted-source",
         question="How does the agent handle restricted source material?",
         status="answered",
-        citation_ids=("design-rationale",),
+        citation_ids=("rag",),
         citation_access=("open",),
-        citation_tiers=(2,),
-        confidence="partial",
-        missing=("handle", "material"),
+        citation_tiers=(1,),
+        confidence="grounded",
+        missing=(),
     ),
     DemoQuestionCase(
         id="Q4-no-results",
@@ -102,8 +102,8 @@ ACCEPTED_DRAFTS: tuple[AcceptedDraftCase, ...] = (
         id="Q3-restricted-source",
         question="How does the agent handle restricted source material?",
         draft=(
-            "The assistant can acknowledge restricted material only through allowed metadata "
-            "and must not summarize or infer the restricted body."
+            "The assistant acknowledges restricted sources as unavailable and never summarizes "
+            "restricted material."
         ),
     ),
 )

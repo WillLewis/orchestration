@@ -473,12 +473,17 @@ _WEAK_NAME_TOKENS: frozenset[str] = frozenset(
 
 _TERM_ALIASES: dict[str, tuple[str, ...]] = {
     "acknowledged": ("acknowledge",),
+    "acknowledges": ("acknowledge",),
     "blocks": ("block",),
     "blocked": ("block",),
     "commits": ("commit",),
     "gating": ("gate",),
     "governed": ("govern",),
+    "handles": ("handle",),
     "policies": ("policy",),
+    "refused": ("refuse",),
+    "refuses": ("refuse",),
+    "refusal": ("refuse",),
     "summarized": ("summarize",),
     "summarizes": ("summarize",),
 }
@@ -499,6 +504,60 @@ _POLICY_GATE_ALIASES = (
     "gating deterministic policy gate blocks blocked commit policy_gate_failed compliance trace "
     "rule firing"
 )
+
+_INTENT_PHRASES: dict[str, tuple[str, ...]] = {
+    "refusal": (
+        "policy gate",
+        "gate blocks",
+        "blocked action",
+        "missing evidence",
+        "cannot override",
+        "refuses execution",
+        "non blocked actions",
+    ),
+    "restricted_source": (
+        "restricted material",
+        "restricted source",
+        "restricted sources",
+        "permission filtered",
+        "permission scoped",
+        "permission boundary",
+        "unavailable and never summarized",
+        "never summarized",
+        "missing evidence",
+    ),
+    "sealed_record": (
+        "sealed record",
+        "governed work product",
+        "source version snapshot",
+        "permission omissions",
+        "dependency map",
+        "integrity seal",
+        "stale later",
+    ),
+    "policy_gate": (
+        "policy gate",
+        "deterministic gate",
+        "blocked commits",
+        "policy gate failed",
+        "rule blocks",
+        "compliance trace",
+    ),
+}
+
+_INTENT_DOC_BONUSES: dict[str, dict[str, float]] = {
+    "refusal": {"gating": 4.0, "action-packets": 3.0, "audit-log": 2.0},
+    "restricted_source": {"rag": 8.0, "ui-chat": 4.0, "design-rationale": 2.0},
+    "sealed_record": {"sealed-records": 5.0, "revalidation": 2.0},
+    "policy_gate": {"gating": 4.0, "compliance-trace": 3.0, "action-packets": 2.0},
+}
+
+_ASPECT_ALIASES: dict[str, tuple[str, ...]] = {
+    "act": ("action", "write", "commit", "execute", "execution"),
+    "handle": ("acknowledge", "acknowledged", "unavailable", "refuse", "summarize"),
+    "material": ("content", "source", "sources", "document", "documents"),
+    "refuse": ("block", "blocked", "cannot", "unavailable", "refuses"),
+}
 
 
 def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
@@ -596,6 +655,7 @@ def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> f
         score += _SEALED_BONUS
     if len(query) > 1 and norm_message and norm_message in _search_text(chunk):
         score += _PHRASE_BONUS
+    score += _domain_phrase_bonus(chunk, query)
     return score
 
 
@@ -612,6 +672,30 @@ def _ranking_query_tokens(message: str) -> list[str]:
     if {"policy", "gate"} <= base_set:
         aliases.extend(_ordered_support_terms(_POLICY_GATE_ALIASES))
     return list(dict.fromkeys([*base, *aliases]))
+
+
+def _domain_phrase_bonus(chunk: DocsChunk, query: Sequence[str]) -> float:
+    """Boost high-signal governance phrases without changing ACL-safe evidence text."""
+    query_set = set(query)
+    intent_keys: list[str] = []
+    if "act" in query_set and "refuse" in query_set:
+        intent_keys.append("refusal")
+    if {"restricted", "source"} <= query_set:
+        intent_keys.append("restricted_source")
+    if {"sealed", "record"} <= query_set:
+        intent_keys.append("sealed_record")
+    if {"policy", "gate"} <= query_set:
+        intent_keys.append("policy_gate")
+    if not intent_keys:
+        return 0.0
+
+    search_text = _search_text(chunk)
+    phrase_hits = 0
+    doc_bonus = 0.0
+    for intent_key in intent_keys:
+        phrase_hits += sum(1 for phrase in _INTENT_PHRASES[intent_key] if phrase in search_text)
+        doc_bonus += _INTENT_DOC_BONUSES[intent_key].get(chunk.doc_id, 0.0)
+    return float(phrase_hits * 3.0) + doc_bonus
 
 
 def _signals(
@@ -683,10 +767,13 @@ _STOPWORDS: frozenset[str] = frozenset(
     {
         "a",
         "about",
+        "after",
+        "agent",
         "all",
         "and",
         "are",
         "as",
+        "assistant",
         "at",
         "be",
         "but",
@@ -713,6 +800,7 @@ _STOPWORDS: frozenset[str] = frozenset(
         "tell",
         "to",
         "what",
+        "when",
         "why",
         "with",
         "you",
@@ -793,7 +881,13 @@ def _query_aspects(text: str) -> list[str]:
 
 def _missing(aspects: Sequence[str], chunks: Sequence[DocsChunk]) -> tuple[str, ...]:
     support_text = _normalized(" ".join(_search_text(chunk) for chunk in chunks))
-    return tuple(aspect for aspect in aspects if aspect not in support_text)
+    return tuple(aspect for aspect in aspects if not _aspect_supported(aspect, support_text))
+
+
+def _aspect_supported(aspect: str, support_text: str) -> bool:
+    if aspect in support_text:
+        return True
+    return any(alias in support_text for alias in _ASPECT_ALIASES.get(aspect, ()))
 
 
 def _normalized(text: str) -> str:
