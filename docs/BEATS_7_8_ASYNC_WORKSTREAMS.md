@@ -13,8 +13,7 @@ Shared target: Beats 7 and 8 must match the deterministic live Acme plan:
 
 - Do not edit `core/schemas.py` or `core/pipeline.py`.
 - Do not change `actions/engine.py` to make the demo numbers fit. The gates are the point.
-- Treat `WORKSTREAMS.md` as absent on this branch unless another thread adds it; use this file as
-  the temporary boundary document.
+- Use this file as the workstream boundary document for this walkthrough upgrade.
 - Keep unrelated dirty files untouched.
 - All threads should cite the same baseline from `docs/BEATS_7_8_WALKTHROUGH_UPGRADE_PLAN.md`.
 

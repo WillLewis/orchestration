@@ -26,8 +26,7 @@ Read these files before writing:
 
 If Workstream A has landed, read its cold-open decision.
 
-`WORKSTREAMS.md` may be absent on this branch. If it is absent, use
-`docs/BEATS_7_8_ASYNC_WORKSTREAMS.md` as the temporary boundary reference.
+Use `docs/BEATS_7_8_ASYNC_WORKSTREAMS.md` as the workstream boundary reference.
 
 ## Canonical story
 

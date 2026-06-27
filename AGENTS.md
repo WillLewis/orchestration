@@ -1,7 +1,7 @@
 # AGENTS.md — operating guide for Codex
 
-You are working in the **ConnectWork Command Agent** prototype. Read `WORKSTREAMS.md` and the
-dir `README.md` for your active branch before writing code.
+You are working in the **ConnectWork Command Agent** prototype. Read the relevant directory
+`README.md` and any task-specific plan or workstream docs under `docs/` before writing code.
 
 ## Your lanes (Codex-owned)
 WS-A `corpus/` · WS-C `verification/` · WS-E (action engine) `actions/` · WS-F `lifecycle/` ·
@@ -11,9 +11,10 @@ design lanes (`context/`, `brief/`, the WS-E loop, `evals/` harness, `frontend/`
 
 ## Non-negotiable rules
 1. **Contracts are locked.** Do NOT edit `core/schemas.py` or `core/pipeline.py`. Build against
-   them. If you believe a contract must change, leave a note in your PR and in `WORKSTREAMS.md`
-   for the WS-0 owner (Claude) to make the change — do not edit `core/` yourself.
-2. **Stay in your directory.** One owner per dir (see `WORKSTREAMS.md`).
+   them. If you believe a contract must change, leave a note in your PR and the relevant
+   task-specific workstream doc for the WS-0 owner (Claude) to make the change — do not edit
+   `core/` yourself.
+2. **Stay in your directory.** Respect the task-specific workstream boundary doc when one exists.
 3. **Build against `fixtures/acme.py`.** For WS-C, your `verify()` on `fixtures.acme.acme_bundle()`
    should reproduce `fixtures.acme.acme_expected_decision()` (not approval-ready: missing Credit
    Officer + threshold breach). For WS-A, keep `corpus.load("finance")` shape-compatible with

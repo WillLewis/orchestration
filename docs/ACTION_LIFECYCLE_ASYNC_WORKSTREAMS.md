@@ -26,8 +26,7 @@ Primary references:
 - Do not summarize restricted legal source contents.
 - Do not use hidden timers for counterparty approvals.
 - Keep unrelated dirty files untouched.
-- Treat `WORKSTREAMS.md` as absent on this branch unless another thread adds it; use this file as
-  the temporary boundary document.
+- Use this file as the workstream boundary document for this walkthrough upgrade.
 
 ## Phase map
 

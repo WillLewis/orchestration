@@ -58,6 +58,10 @@ Out of scope:
 4. Run backend checks if API/action code changed.
 5. Verify `demo-walkthrough.html` matches the final UI behavior.
 
+Browser smoke is useful but not required if the in-app Browser fails before navigation with a
+tooling metadata error such as `sandboxCwd must be an absolute file URI`. In that case, record the
+tooling failure and rely on static guards plus build/test checks for the handoff.
+
 ## Acceptance
 
 - A reintroduced early CS-plan conflict fails a guard.

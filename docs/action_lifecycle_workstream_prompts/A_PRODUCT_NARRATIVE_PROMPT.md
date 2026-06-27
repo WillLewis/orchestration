@@ -26,8 +26,7 @@ Read before writing:
 - `docs/ACTION_LIFECYCLE_ASYNC_WORKSTREAMS.md`
 - `demo-walkthrough.html`
 
-`WORKSTREAMS.md` may be absent on this branch. If absent, use
-`docs/ACTION_LIFECYCLE_ASYNC_WORKSTREAMS.md` as the boundary source.
+Use `docs/ACTION_LIFECYCLE_ASYNC_WORKSTREAMS.md` as the workstream boundary source.
 
 ## Scope
 
@@ -43,6 +42,7 @@ Out of scope:
 - lifecycle engine implementation
 - `core/schemas.py`
 - `core/pipeline.py`
+- in-app Browser smoke checks
 
 ## Tasks
 
@@ -59,6 +59,12 @@ Out of scope:
    - post-CO revalidation
    - `Changes` / CS-plan reconciliation
 5. Keep Legal and covenant tracker unresolved after CO approval.
+
+## Validation
+
+This workstream is docs/copy only. Use static checks such as `rg` against
+`demo-walkthrough.html`; do not run the in-app Browser for this workstream. Browser smoke belongs
+to Workstream F after the implementation workstreams land.
 
 ## Acceptance
 

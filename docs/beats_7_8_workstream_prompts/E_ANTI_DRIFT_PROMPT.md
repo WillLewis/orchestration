@@ -30,8 +30,7 @@ Read these files before writing:
 
 If Workstreams B-D have landed, read their changed files before adding guards.
 
-`WORKSTREAMS.md` may be absent on this branch. If it is absent, use
-`docs/BEATS_7_8_ASYNC_WORKSTREAMS.md` as the temporary boundary reference.
+Use `docs/BEATS_7_8_ASYNC_WORKSTREAMS.md` as the workstream boundary reference.
 
 ## Scope
 
