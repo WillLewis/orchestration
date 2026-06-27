@@ -32,7 +32,7 @@ import {
   type SourceStatus,
   type SourceType,
 } from "@/data/brief";
-import { stageDecisionReadinessRemediation } from "@/lib/actions-store";
+import { openDecisionReadinessRemediation } from "@/lib/actions-store";
 import { useGovernedBrief, useRevalidation } from "@/lib/revalidation-store";
 import { buildGovernanceCertificate } from "@/data/record";
 import { useChatMutation, useMintWorkProductMutation } from "@/hooks/queries";
@@ -490,7 +490,7 @@ function DecisionReadinessTable({
                     {row.action ? (
                       <button
                         type="button"
-                        onClick={() => stageDecisionReadinessRemediation(row)}
+                        onClick={() => openDecisionReadinessRemediation(row)}
                         className="inline-flex h-8 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-md border border-primary/35 bg-[var(--primary-tint)] px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <span className="truncate">{readinessActionLabel(row.action.label)}</span>

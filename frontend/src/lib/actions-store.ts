@@ -139,6 +139,18 @@ export function stageDecisionReadinessRemediation(row: DecisionReadinessRow) {
   return staged;
 }
 
+export function openDecisionReadinessRemediation(row: DecisionReadinessRow) {
+  if (row.id === "customer_success_plan_conflict") {
+    openDrawer({
+      mode: "revalidation_edit",
+      source: `Decision readiness — ${row.gate}`,
+      change_kind: "approval_returned",
+    });
+    return null;
+  }
+  return stageDecisionReadinessRemediation(row);
+}
+
 export function clearStagedDecisionReadinessRemediation(rowId: string) {
   if (!state.staged_remediations[rowId]) return;
   const { [rowId]: _removed, ...remaining } = state.staged_remediations;
@@ -361,6 +373,10 @@ export function getCurrentAgentActionNotificationCounts(
   revalidation?: Pick<RevalidationState, "creditSigned" | "csReconciled">,
 ): AgentActionNotificationCounts {
   return getAgentActionNotificationCounts(state, revalidation);
+}
+
+export function getCurrentDrawerState(): DrawerState {
+  return state.drawer;
 }
 
 export function getEffectiveAfter(a: Action): Record<string, unknown> {

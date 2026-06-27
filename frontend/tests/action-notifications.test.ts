@@ -15,7 +15,9 @@ import {
   approveAction,
   executeApproved,
   getCurrentAgentActionNotificationCounts,
+  getCurrentDrawerState,
   markActionChipOpened,
+  openDecisionReadinessRemediation,
   recordReturnedChangeNotification,
   resetActions,
   stageDecisionReadinessRemediation,
@@ -77,6 +79,44 @@ describe("Agent Actions notifications", () => {
     expect(counts.nextUnseen).toBe(1);
     expect(counts.changesTotal).toBe(0);
     expect(counts.topNavUnseen).toBe(1);
+  });
+
+  it("routes packet Credit Officer rows to Next actions", () => {
+    openDecisionReadinessRemediation(creditOfficerRow());
+
+    const counts = getCurrentAgentActionNotificationCounts(getRevalidationState());
+
+    expect(getCurrentDrawerState()).toMatchObject({
+      open: true,
+      mode: "staged_remediation",
+      source: "Decision readiness — Credit Officer approval",
+    });
+    expect(counts.nextTotal).toBe(1);
+    expect(counts.changesTotal).toBe(0);
+  });
+
+  it("routes the CS-plan conflict row to Changes without staging a Next action", () => {
+    routeToCreditOfficer();
+    expect(simulateCreditOfficerResponse()).toBe(true);
+    recordReturnedChangeNotification();
+    const governed = buildGovernedBrief(baseBrief, getRevalidationState());
+    const conflictRow = governed.decision_readiness.rows.find(
+      (row) => row.id === "customer_success_plan_conflict",
+    );
+    if (!conflictRow) throw new Error("customer_success_plan_conflict row missing");
+
+    openDecisionReadinessRemediation(conflictRow);
+
+    const counts = getCurrentAgentActionNotificationCounts(getRevalidationState());
+
+    expect(getCurrentDrawerState()).toMatchObject({
+      open: true,
+      mode: "revalidation_edit",
+      source: "Decision readiness — Customer success plan conflict",
+      change_kind: "approval_returned",
+    });
+    expect(counts.nextTotal).toBe(0);
+    expect(counts.changesTotal).toBe(1);
   });
 
   it("clears only the relevant chip badge when that chip is opened", () => {
