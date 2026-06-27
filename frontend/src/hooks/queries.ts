@@ -125,10 +125,15 @@ function deriveDecisionReadiness(db: typeof mockBrief): DecisionReadiness {
         source_ids: ["doc_pricing_exception", "wf_approval"],
         explainer: { kind: "threshold", rule_id: "approval_threshold" },
         action: {
-          label: "Route to Credit Officer",
+          label: "Stage: route 22% to Credit Officer",
           tool: "route_approval",
           target_object_id: "doc_pricing_exception",
           required_approver: "credit_officer",
+          parameters: {
+            business_label: `${requested}% pricing exception`,
+            requested_discount_percent: requested,
+            route_note: `Route the ${requested}% pricing exception to the Credit Officer; it exceeds the RM's delegated authority.`,
+          },
         },
       },
       {
