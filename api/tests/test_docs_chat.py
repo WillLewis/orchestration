@@ -19,6 +19,7 @@ from api.docs_chat import (
     _ConfidenceSignals,
     _confidence,
     _grounding_guard,
+    _provider_error_kind,
     _retrieve,
     answer,
 )
@@ -73,6 +74,13 @@ class _Raises:
 
     def draft(self, system_prompt, view):
         raise RuntimeError("synthetic model outage")
+
+
+class _RaisesSecretTimeout:
+    model = "fake-docs-model"
+
+    def draft(self, system_prompt, view):
+        raise TimeoutError("provider timeout with ANTHROPIC_API_KEY=test-secret")
 
 
 class _ChunkInjectionFollower:
@@ -557,6 +565,26 @@ def test_llm_client_error_falls_back_without_moving_governed_fields():
     assert fallback.phrasing.fallback_reason == "client_error"
 
 
+def test_llm_timeout_fallback_logs_redacted_diagnostics(caplog, capsys):
+    query = "How does the policy gate decide blocks_commit?"
+    deterministic = answer("chat", query)
+
+    with caplog.at_level("WARNING", logger="api.docs_chat"):
+        fallback = answer("chat", query, client=_RaisesSecretTimeout(), mode="llm")
+
+    captured = capsys.readouterr()
+    assert fallback.response == deterministic.response
+    assert _governed_payload(fallback) == _governed_payload(deterministic)
+    assert fallback.phrasing.effective_mode == "deterministic"
+    assert fallback.phrasing.fallback_reason == "client_error"
+    assert _provider_error_kind(TimeoutError("synthetic")) == "timeout"
+    assert "[docs_chat] live draft failed; kind=timeout" in caplog.text
+    assert "test-secret" not in caplog.text
+    assert "ANTHROPIC_API_KEY" not in caplog.text
+    assert captured.out == ""
+    assert captured.err == ""
+
+
 def test_grounding_guard_discards_llm_prose_without_moving_governed_fields():
     query = "How does the policy gate decide blocks_commit?"
     deterministic = answer("chat", query)
@@ -578,6 +606,9 @@ def test_model_prompt_and_view_are_prose_only_and_acl_safe():
     assert capture.view is not None
     assert '"citation_ids"' not in capture.system_prompt
     assert '"response": <string>' in capture.system_prompt
+    assert "Governed fields are deterministic and not model-controlled" in capture.system_prompt
+    assert "Write prose only" in capture.system_prompt
+    assert "Do not invent examples, numbers, identifiers, citations" in capture.system_prompt
     safe_texts = [doc.safe_text for doc in [*capture.view.docs, *capture.view.locked]]
     assert all(RAW_LOCKED not in text for text in safe_texts)
 
@@ -593,7 +624,8 @@ def test_llm_client_sends_cached_stable_prefix(monkeypatch):
             return type("FakeResponse", (), {"content": [type("Text", (), {"text": "{}"})()]})()
 
     class _FakeAnthropic:
-        def __init__(self):
+        def __init__(self, **kwargs):
+            captured["client_kwargs"] = kwargs
             self.messages = _FakeMessages()
 
     monkeypatch.setattr("anthropic.Anthropic", _FakeAnthropic)
@@ -626,9 +658,13 @@ def test_llm_client_sends_cached_stable_prefix(monkeypatch):
     assert stable_prefix["type"] == "text"
     assert stable_prefix["cache_control"] == {"type": "ephemeral"}
     assert "FAQ-grounded few-shots" in stable_prefix["text"]
+    assert "Governed fields are deterministic and not model-controlled" in stable_prefix["text"]
+    assert "Stay close to the current retrieved source wording" in stable_prefix["text"]
     assert "How does the policy gate decide blocks_commit?" in stable_prefix["text"]
     assert "TRUSTED DOCS CONTEXT" not in stable_prefix["text"]
     assert "gating#errors-blocked-commits" not in stable_prefix["text"]
+    assert captured["client_kwargs"]["timeout"] == 12.0
+    assert captured["client_kwargs"]["max_retries"] == 0
 
     messages = captured["messages"]
     assert messages == [
@@ -641,6 +677,86 @@ def test_llm_client_sends_cached_stable_prefix(monkeypatch):
     assert "TRUSTED DOCS CONTEXT" in messages[0]["content"]
     assert "gating#errors-blocked-commits" in messages[0]["content"]
     assert "How does the policy gate decide blocks_commit?" in messages[0]["content"]
+
+
+def test_llm_client_retries_transient_timeout_once(monkeypatch):
+    monkeypatch.setenv("CHAT_MODEL", "fake-docs-model")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    captured = {"create_calls": 0}
+
+    class _FakeMessages:
+        def create(self, **kwargs):
+            captured["create_calls"] += 1
+            captured["create_kwargs"] = kwargs
+            if captured["create_calls"] == 1:
+                raise TimeoutError("timeout included raw secret test-key")
+            return type(
+                "FakeResponse",
+                (),
+                {
+                    "content": [
+                        type(
+                            "Text",
+                            (),
+                            {
+                                "text": (
+                                    '{"response": "Platform invokes gate; rule blocks write; '
+                                    'callers see policy_gate_failed error."}'
+                                )
+                            },
+                        )()
+                    ]
+                },
+            )()
+
+    class _FakeAnthropic:
+        def __init__(self, **kwargs):
+            captured["client_kwargs"] = kwargs
+            self.messages = _FakeMessages()
+
+    monkeypatch.setattr("anthropic.Anthropic", _FakeAnthropic)
+    view = DocsChatEvidenceView(
+        surface="chat",
+        message="How does the policy gate decide blocks_commit?",
+        history=(),
+        docs=(
+            DocsEvidenceDoc(
+                doc_id="gating",
+                chunk_id="gating#errors-blocked-commits",
+                title="Deterministic Gating",
+                route="/developers/gating",
+                anchor="errors-blocked-commits",
+                section="Errors - blocked commits",
+                access="open",
+                tier=1,
+                safe_text="The policy gate reads deterministic rule results before writes.",
+            ),
+        ),
+        locked=(),
+    )
+
+    draft = LLMDocsChatClient(timeout_seconds=2.5).draft(_build_system_prompt(), view)
+
+    assert draft.response == (
+        "Platform invokes gate; rule blocks write; callers see policy_gate_failed error."
+    )
+    assert captured["create_calls"] == 2
+    assert captured["client_kwargs"] == {"timeout": 2.5, "max_retries": 0}
+    assert captured["create_kwargs"]["model"] == "fake-docs-model"
+    assert "TRUSTED DOCS CONTEXT" in captured["create_kwargs"]["messages"][0]["content"]
+
+
+def test_provider_error_classification_uses_safe_categories():
+    class _RateLimitError(Exception):
+        status_code = 429
+
+    class _ServerError(Exception):
+        status_code = 503
+
+    assert _provider_error_kind(TimeoutError("secret")) == "timeout"
+    assert _provider_error_kind(_RateLimitError("secret")) == "transient"
+    assert _provider_error_kind(_ServerError("secret")) == "transient"
+    assert _provider_error_kind(RuntimeError("secret")) == "provider_error"
 
 
 def test_injection_in_chunk_text_cannot_move_governed_fields(monkeypatch):
