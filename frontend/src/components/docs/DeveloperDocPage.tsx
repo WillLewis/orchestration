@@ -1114,6 +1114,51 @@ function DecisionBriefPage() {
       </DocsSection>
 
       <DocsSection
+        label="events"
+        title="The brief responds to events, not just chat"
+        aside={
+          <DataTable
+            columns={[
+              { key: "event", label: "Event class" },
+              { key: "example", label: "Example" },
+              { key: "drawer", label: "Drawer implication" },
+            ]}
+            rows={[
+              {
+                event: <code className="font-mono text-zinc-200">decision_request</code>,
+                example: "Dana frames the Acme renewal decision or asks for 22%.",
+                drawer: "Generates or refreshes the brief. No drawer action until a row is staged.",
+              },
+              {
+                event: <code className="font-mono text-zinc-200">source_changed</code>,
+                example: "Customer success plan remains at 18% after a 22% approval.",
+                drawer: "Creates a Changes notification or a stageable reconciliation remediation.",
+              },
+              {
+                event: <code className="font-mono text-zinc-200">approval_returned</code>,
+                example: "Credit Officer signs the 22% exception.",
+                drawer: "Creates a Changes notification and revalidates readiness.",
+              },
+            ]}
+          />
+        }
+      >
+        <p>
+          A Decision Brief should respond to any event that affects a source dependency in its Work
+          Product Contract. The brief is the read-and-stage surface: an event refreshes its
+          readiness, but nothing executes until a human stages a row into the action drawer.
+        </p>
+      </DocsSection>
+
+      <Callout title="A brief is not chat-only">
+        <p>
+          Approval returns and source changes can update the brief even when nobody typed{" "}
+          <code>@Agent</code>. When the Credit Officer signs, or a dependent source moves, the brief
+          revalidates on its own, so the decision stays current without being re-asked.
+        </p>
+      </Callout>
+
+      <DocsSection
         label="readiness"
         title="Readiness rows explain what blocks the packet"
         aside={
