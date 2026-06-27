@@ -42,8 +42,11 @@ import {
   closeDrawer,
   executeApproved,
   executeRegated,
+  getAgentActionNotificationCounts,
   getEffectiveAfter,
+  markActionChipOpened,
   rejectAction,
+  recordReturnedChangeNotification,
   resetAction,
   revertCommit,
   saveEdit,
@@ -239,6 +242,16 @@ export function ActionDiffDrawer() {
         ? cachedVerification
         : null;
   const verification = liveVerification ?? { ...verify_result_financials, record_id: recordId };
+  const changeKind =
+    drawer.change_kind ??
+    (drawer.mode === "revalidation_edit" && !reval.cascadeAvailable ? "source_change" : null);
+  const isSourceChangeReview =
+    drawer.mode === "revalidation_edit" && changeKind === "source_change";
+  const showCascadeReview = reval.cascadeAvailable;
+  const notificationCounts = useMemo(
+    () => getAgentActionNotificationCounts(store, reval),
+    [store, reval],
+  );
 
   // Open directly to the useful tab for each scenario.
   useEffect(() => {
@@ -255,7 +268,7 @@ export function ActionDiffDrawer() {
     const requestKey = `${recordId}:${drawer.mode}`;
     if (
       drawer.open &&
-      drawer.mode === "revalidation_edit" &&
+      isSourceChangeReview &&
       liveVerification?.record_id !== recordId &&
       verifyRequestKeyRef.current !== requestKey &&
       !verifyPending
@@ -263,7 +276,26 @@ export function ActionDiffDrawer() {
       verifyRequestKeyRef.current = requestKey;
       verifyMutate({ event: "financials_v2" });
     }
-  }, [drawer.open, drawer.mode, liveVerification, recordId, verifyPending, verifyMutate]);
+  }, [
+    drawer.open,
+    drawer.mode,
+    isSourceChangeReview,
+    liveVerification,
+    recordId,
+    verifyPending,
+    verifyMutate,
+  ]);
+
+  useEffect(() => {
+    if (!drawer.open) return;
+    if (tab === "next") {
+      markActionChipOpened("next", notificationCounts.nextItemIds);
+      return;
+    }
+    if (tab === "changes") {
+      markActionChipOpened("changes", notificationCounts.changesItemIds);
+    }
+  }, [drawer.open, notificationCounts.changesItemIds, notificationCounts.nextItemIds, tab]);
 
   // Scroll to focused card.
   useEffect(() => {
@@ -318,13 +350,12 @@ export function ActionDiffDrawer() {
     [nextActions, user_status],
   );
 
-  const sourceChangeCount = isAfterSourceChange && verification.changed_sources.length > 0 ? 1 : 0;
-  const gateChangeCount = isAfterSourceChange ? verification.gate_changes.length : 0;
-  const cascadeChangeCount =
-    isAfterSourceChange && (reval.cascadeAvailable || reval.csReconciled) ? 1 : 0;
+  const sourceChangeCount = isSourceChangeReview && verification.changed_sources.length > 0 ? 1 : 0;
+  const gateChangeCount = isSourceChangeReview ? verification.gate_changes.length : 0;
+  const cascadeChangeCount = showCascadeReview ? notificationCounts.changesTotal : 0;
   const changesCount = sourceChangeCount + gateChangeCount + cascadeChangeCount;
-  const nextCount = drawer.mode === "staged_remediation" ? ordered.length : nextActions.length;
   const pendingCount = nextPending.length;
+  const nextCount = pendingCount;
   const notesCount = noteActions.length;
 
   // Blocked actions the presenter can deliberately try to override (approve anyway) to prove the
@@ -353,6 +384,7 @@ export function ActionDiffDrawer() {
         mode === "revalidation_edit"
           ? "After source change — financial model v2"
           : "Acme renewal — pre-committee review",
+      change_kind: mode === "revalidation_edit" ? "source_change" : null,
     });
   }
 
@@ -496,7 +528,7 @@ export function ActionDiffDrawer() {
                 onClick={() => switchScenario("revalidation_edit")}
                 className={[
                   "rounded-[5px] px-2.5 py-1 transition-colors",
-                  isAfterSourceChange
+                  isSourceChangeReview
                     ? "bg-[var(--primary-tint)] text-primary"
                     : "text-[var(--secondary-text)] hover:text-foreground",
                 ].join(" ")}
@@ -516,12 +548,14 @@ export function ActionDiffDrawer() {
                 type="button"
                 onClick={() => {
                   if (!simulateCreditOfficerResponse()) return;
+                  recordReturnedChangeNotification();
                   toast.success("Credit Officer response simulated", {
                     description: "Revalidated packet; Legal and covenant tracker still block.",
                   });
                   openDrawer({
                     mode: "revalidation_edit",
                     source: "Credit Officer response — approval returned",
+                    change_kind: "approval_returned",
                   });
                 }}
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -540,6 +574,7 @@ export function ActionDiffDrawer() {
                 icon={GitCompareArrows}
                 label="Changes"
                 count={changesCount}
+                unseenCount={notificationCounts.changesUnseen}
                 onClick={() => setTab("changes")}
               />
               <DrawerTabButton
@@ -547,6 +582,7 @@ export function ActionDiffDrawer() {
                 icon={ClipboardList}
                 label="Next actions"
                 count={nextCount}
+                unseenCount={notificationCounts.nextUnseen}
                 onClick={() => setTab("next")}
               />
               <DrawerTabButton
@@ -554,6 +590,7 @@ export function ActionDiffDrawer() {
                 icon={FileText}
                 label="Notes"
                 count={notesCount}
+                unseenCount={0}
                 onClick={() => setTab("notes")}
               />
             </div>
@@ -581,12 +618,12 @@ export function ActionDiffDrawer() {
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-[var(--canvas)]/40">
           {tab === "changes" ? (
-            isAfterSourceChange ? (
+            changesCount > 0 ? (
               <RevalidationChanges
                 verification={verification}
-                pending={false}
-                showCascade={reval.cascadeAvailable}
-                cascadeAccepted={reval.csReconciled}
+                pending={isSourceChangeReview && verifyPending}
+                showSourceChange={isSourceChangeReview}
+                showCascade={showCascadeReview}
                 onAcceptCascade={() => {
                   acceptCascadeEdit();
                   toast.success("Edit accepted · conflict reconciled", {
@@ -718,12 +755,14 @@ function DrawerTabButton({
   icon: Icon,
   label,
   count,
+  unseenCount,
   onClick,
 }: {
   active: boolean;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   count: number;
+  unseenCount: number;
   onClick: () => void;
 }) {
   return (
@@ -743,7 +782,11 @@ function DrawerTabButton({
         <span
           className={[
             "ml-0.5 rounded-full px-1.5 text-[10px] font-semibold",
-            active ? "bg-primary text-white" : "bg-[var(--primary-tint)] text-primary",
+            unseenCount > 0
+              ? "bg-primary text-white"
+              : active
+                ? "bg-[var(--canvas)] text-primary"
+                : "bg-background text-[var(--secondary-text)]",
           ].join(" ")}
         >
           {count}
@@ -772,14 +815,14 @@ function EmptyChanges() {
 function RevalidationChanges({
   verification,
   pending,
+  showSourceChange,
   showCascade,
-  cascadeAccepted,
   onAcceptCascade,
 }: {
   verification: VerifyResult;
   pending: boolean;
+  showSourceChange: boolean;
   showCascade: boolean;
-  cascadeAccepted: boolean;
   onAcceptCascade: () => void;
 }) {
   return (
@@ -791,94 +834,95 @@ function RevalidationChanges({
         </div>
       )}
 
-      {(showCascade || cascadeAccepted) && (
-        <CascadeChangeCard accepted={cascadeAccepted} onAccept={onAcceptCascade} />
-      )}
+      {showCascade && <CascadeChangeCard onAccept={onAcceptCascade} />}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
-          <div>
-            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
-              Source change
-            </div>
-            <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
-              Acme financial model
-            </h3>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Stale</Chip>
-            <Chip className="bg-[var(--canvas)] text-[var(--secondary-text)] border border-border">
-              Needs recompute
-            </Chip>
-          </div>
-        </div>
-
-        <div className="px-4 pt-2">
-          <p className="text-[12.5px] leading-snug text-[var(--secondary-text)]">
-            The financial source changed after the record was sealed. Factual sections are stale; no
-            reapproval route is created for this data-only change.
-          </p>
-          <div className="mt-3 overflow-hidden rounded-md border border-border bg-background">
-            {verification.changed_sources.map((change) => (
-              <DiffView
-                key={`${change.object_id}:${change.field}`}
-                before={{ [labelForField(change.field)]: change.before }}
-                after={{ [labelForField(change.field)]: change.after }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-3 border-t border-border bg-[var(--canvas)]/50 px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
-              stale sections
-            </span>
-            {verification.stale_sections.map((s) => (
-              <span
-                key={s.section}
-                className="inline-flex rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]"
-              >
-                {labelForField(s.section)}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {verification.gate_changes.map((gate) => (
-        <div
-          key={gate.rule_id}
-          className="overflow-hidden rounded-xl border border-border bg-card shadow-card"
-        >
+      {showSourceChange && (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
           <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
             <div>
               <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
-                Gate change
+                Source change
               </div>
               <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
-                {labelForField(gate.rule_id)}
+                Acme financial model
               </h3>
             </div>
-            <Chip className="bg-[var(--danger-bg)] text-[var(--danger)]">Blocking</Chip>
-          </div>
-          <div className="px-4 py-3">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-              <GateState passed={gate.before_passed} label="Before" />
-              <ArrowRight className="h-3.5 w-3.5 text-[var(--muted-fg)]" />
-              <GateState passed={gate.after_passed} label="After" />
+            <div className="flex flex-wrap gap-1">
+              <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Stale</Chip>
+              <Chip className="bg-[var(--canvas)] text-[var(--secondary-text)] border border-border">
+                Needs recompute
+              </Chip>
             </div>
-            <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-              {gate.detail}
+          </div>
+
+          <div className="px-4 pt-2">
+            <p className="text-[12.5px] leading-snug text-[var(--secondary-text)]">
+              The financial source changed after the record was sealed. Factual sections are stale;
+              no reapproval route is created for this data-only change.
             </p>
+            <div className="mt-3 overflow-hidden rounded-md border border-border bg-background">
+              {verification.changed_sources.map((change) => (
+                <DiffView
+                  key={`${change.object_id}:${change.field}`}
+                  before={{ [labelForField(change.field)]: change.before }}
+                  after={{ [labelForField(change.field)]: change.after }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-border bg-[var(--canvas)]/50 px-4 py-2.5">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                stale sections
+              </span>
+              {verification.stale_sections.map((s) => (
+                <span
+                  key={s.section}
+                  className="inline-flex rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]"
+                >
+                  {labelForField(s.section)}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-      ))}
+      )}
+
+      {showSourceChange &&
+        verification.gate_changes.map((gate) => (
+          <div
+            key={gate.rule_id}
+            className="overflow-hidden rounded-xl border border-border bg-card shadow-card"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
+              <div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--muted-fg)]">
+                  Gate change
+                </div>
+                <h3 className="mt-0.5 text-[14px] font-semibold leading-tight text-foreground">
+                  {labelForField(gate.rule_id)}
+                </h3>
+              </div>
+              <Chip className="bg-[var(--danger-bg)] text-[var(--danger)]">Blocking</Chip>
+            </div>
+            <div className="px-4 py-3">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                <GateState passed={gate.before_passed} label="Before" />
+                <ArrowRight className="h-3.5 w-3.5 text-[var(--muted-fg)]" />
+                <GateState passed={gate.after_passed} label="After" />
+              </div>
+              <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
+                {gate.detail}
+              </p>
+            </div>
+          </div>
+        ))}
     </div>
   );
 }
 
-function CascadeChangeCard({ accepted, onAccept }: { accepted: boolean; onAccept: () => void }) {
+function CascadeChangeCard({ onAccept }: { onAccept: () => void }) {
   const a = cascade_action;
   const targetLabel = labelFor(a.diff.target_object_id);
   const fromLabel = labelFor(a.sources[0]?.object_id ?? "");
@@ -897,15 +941,7 @@ function CascadeChangeCard({ accepted, onAccept }: { accepted: boolean; onAccept
         <div className="flex flex-wrap gap-1">
           <Chip className={SIDE_CLS[a.side_effect]}>{a.side_effect}</Chip>
           <Chip className={RISK_CLS[a.risk]}>Low risk</Chip>
-          <Chip
-            className={
-              accepted
-                ? "bg-[var(--success-bg)] text-[var(--success)]"
-                : "bg-[var(--warning-bg)] text-[var(--warning)]"
-            }
-          >
-            {accepted ? "Accepted" : "Needs acceptance"}
-          </Chip>
+          <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Needs acceptance</Chip>
         </div>
       </div>
       <div className="px-4 pt-2">
@@ -923,29 +959,20 @@ function CascadeChangeCard({ accepted, onAccept }: { accepted: boolean; onAccept
         </div>
       </div>
       <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-border bg-[var(--canvas)]/50 px-4 py-2">
-        {accepted ? (
-          <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--success)]">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Accepted · conflict reconciled
-          </span>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={closeDrawer}
-              className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
-            >
-              Reject
-            </button>
-            <button
-              type="button"
-              onClick={onAccept}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
-            >
-              Accept edit
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={closeDrawer}
+          className="h-7 rounded-md px-2 text-[11.5px] font-medium text-[var(--secondary-text)] hover:bg-[var(--canvas)]"
+        >
+          Reject
+        </button>
+        <button
+          type="button"
+          onClick={onAccept}
+          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+        >
+          Accept edit
+        </button>
       </div>
     </div>
   );

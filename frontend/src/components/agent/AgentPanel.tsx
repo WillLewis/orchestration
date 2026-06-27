@@ -18,7 +18,7 @@ import {
   resetRevalidation,
   type GovernedBrief,
 } from "@/lib/revalidation-store";
-import { openDrawer } from "@/lib/actions-store";
+import { openDrawer, recordReturnedChangeNotification, resetActions } from "@/lib/actions-store";
 import {
   agentPrompt,
   getAgentInvocation,
@@ -170,6 +170,7 @@ export function AgentPanel({
     signedRef.current = false;
     reconciledRef.current = false;
     handledBriefRequestRef.current = 0;
+    resetActions();
     resetRevalidation();
   }, []);
 
@@ -251,7 +252,11 @@ export function AgentPanel({
           ]);
           break;
         case "open_cascade":
-          openDrawer({ mode: "revalidation_edit", source: "Revalidation — Acme renewal" });
+          openDrawer({
+            mode: "revalidation_edit",
+            source: "Credit Officer response — approval returned",
+            change_kind: "approval_returned",
+          });
           break;
         case "propose_followups":
           openDrawer({ mode: "plan", source: "Acme renewal — pre-committee review" });
@@ -271,7 +276,9 @@ export function AgentPanel({
         ),
         privateUserTurn(agentPrompt("Simulate Credit Officer response")),
       ]);
-      simulateCreditOfficerResponse();
+      if (simulateCreditOfficerResponse()) {
+        recordReturnedChangeNotification();
+      }
     },
     [reval.creditSigned, reval.routed],
   );
