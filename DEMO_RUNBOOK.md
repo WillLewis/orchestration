@@ -96,6 +96,20 @@ Readiness labels:
 | Backend unreachable | Stop `make serve`, then use the frontend docs-chat UI | Works but not preferred | Frontend shows offline/backend fallback instead of claiming LLM prose. | Backup explanation for local demo setup failure. |
 | Full live smoke | Run the live LLM matrix against the configured provider | Blocked until explicit approval | Do not run from WS-L0 without approval. | Sends ACL-filtered docs context to the external provider. |
 
+Presenter UI cues:
+
+- In the docs-chat header, use the `LLM` segmented control. `Off` requests deterministic prose;
+  `Live` requests LLM prose from the backend.
+- The status chip next to the control reports backend metadata. For a successful live proof it
+  reads `Accepted: LLM prose` with the backend-reported model.
+- When `Live` is selected but the backend falls back, the chip reads `Fallback: deterministic`
+  with `not configured`, `client error`, or `grounding guard`. Treat `grounding guard` as safety
+  behavior, not a broken toggle.
+- Each answer card repeats the same concise `Prose` metadata line so the fallback state remains
+  visible after the header scrolls away.
+- The toggle affects prose only. Continue narrating `status`, citations, confidence, and missing
+  evidence as deterministic governed fields.
+
 Manual probe for a single question:
 
 ```bash

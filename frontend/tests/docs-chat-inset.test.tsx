@@ -84,20 +84,32 @@ describe("DocsChatInset", () => {
     expect(html).toContain("/developers/gating#policy-gate");
   });
 
-  it("renders the runtime LLM phrasing toggle by default", () => {
+  it("renders the runtime LLM live/off toggle by default", () => {
     const html = renderEmptyInset("chat");
 
-    expect(html).toContain("LLM phrasing");
+    expect(html).toContain("Docs chat LLM mode");
+    expect(html).toContain("Off");
+    expect(html).toContain("Live");
+    expect(html).toContain("Selected: LLM live");
     expect(html).toContain("requested");
     expect(html).not.toContain("Phase-0 mocks");
   });
 
-  it("renders phrasing model and fallback honesty states from response metadata", () => {
+  it("renders phrasing model, deterministic, and fallback states from response metadata", () => {
+    expect(renderInset("chat", "tier3Locked")).toContain("Selected: deterministic");
     expect(renderInset("chat", "tier1Open")).toContain("docs-phrasing-mock");
-    expect(renderInset("chat", "tier2Open")).toContain("LLM not configured");
-    expect(renderInset("chat", "sealed")).toContain("Grounding fallback");
-    expect(renderInset("chat", "noResults")).toContain("Model error");
-    expect(renderInset("chat", "error")).toContain("Offline fallback");
+    expect(renderInset("chat", "tier1Open")).toContain("Accepted: LLM prose");
+    expect(renderInset("chat", "tier2Open")).toContain("not configured");
+    expect(renderInset("chat", "sealed")).toContain("grounding guard");
+    expect(renderInset("chat", "noResults")).toContain("client error");
+    expect(renderInset("chat", "error")).toContain("Backend offline");
+  });
+
+  it("keeps LLM selected when backend metadata reports an LLM fallback", () => {
+    const html = renderInset("chat", "tier2Open");
+
+    expect(html).toContain('aria-label="Use live LLM docs-chat prose" aria-pressed="true"');
+    expect(html).toContain("Fallback: deterministic");
   });
 
   it("keeps locked citations snippet-free", () => {
