@@ -104,6 +104,27 @@ describe("Agent Actions notifications", () => {
     expect(counts.nextUnseen).toBe(0);
   });
 
+  it("keeps the executed Credit Officer route pending until visible simulation", () => {
+    stageDecisionReadinessRemediation(creditOfficerRow());
+    const action = creditOfficerRouteAction();
+
+    approveAction(action_key(action));
+    expect(executeApproved("Dana R.", [action])).toBe(1);
+    routeToCreditOfficer();
+
+    const routed = buildGovernedBrief(baseBrief, getRevalidationState());
+    const counts = getCurrentAgentActionNotificationCounts(getRevalidationState());
+
+    expect(getRevalidationState()).toMatchObject({ routed: true, creditSigned: false });
+    expect(counts.nextTotal).toBe(0);
+    expect(counts.changesTotal).toBe(0);
+    expect(routed.decision_brief.conflicts).toHaveLength(0);
+    expect(routed.decision_brief.policy_gates.approval_ready).toBe(false);
+    expect(
+      routed.decision_readiness.rows.find((row) => row.id === "credit_officer_approval"),
+    ).toMatchObject({ status: "pending" });
+  });
+
   it("creates one Changes item after the visible Credit Officer response", () => {
     routeToCreditOfficer();
     expect(simulateCreditOfficerResponse()).toBe(true);

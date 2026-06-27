@@ -204,3 +204,47 @@ def test_no_stale_beats_7_8_copy_in_demo_frontend_or_generated_docs():
                 matches.append(f"{path.relative_to(ROOT)}:{line}: {label}")
 
     assert matches == []
+
+
+def test_no_stale_action_lifecycle_copy_in_demo_frontend_or_generated_docs():
+    forbidden = {
+        "can also appear immediately": re.compile(r"can also appear immediately", re.I),
+        "immediately after the 22%": re.compile(r"immediately after the 22%", re.I),
+        "early CS-plan 18% conflict": re.compile(
+            r"customer success plan references an 18% discount",
+            re.I,
+        ),
+    }
+    targets = [
+        ROOT / "demo-walkthrough.html",
+        *sorted((ROOT / "frontend/src").rglob("*.ts")),
+        *sorted((ROOT / "frontend/src").rglob("*.tsx")),
+        *sorted((ROOT / "api/docs_corpus/generated").glob("*.json")),
+    ]
+
+    matches: list[str] = []
+    for path in targets:
+        text = path.read_text()
+        for label, pattern in forbidden.items():
+            for match in pattern.finditer(text):
+                line = text.count("\n", 0, match.start()) + 1
+                matches.append(f"{path.relative_to(ROOT)}:{line}: {label}")
+
+    assert matches == []
+
+
+def test_demo_walkthrough_matches_action_lifecycle_route_and_revalidation_order():
+    html = (ROOT / "demo-walkthrough.html").read_text()
+
+    stage = html.index("Stage: route 22% to Credit Officer")
+    route = html.index("Route to Credit Officer", stage)
+    simulate = html.index("Simulate Credit Officer response", route)
+    changes = html.index("Changes · customer success plan needs reconciliation", simulate)
+    accept = html.index("Accepted. The customer success plan now reflects", changes)
+
+    assert stage < route < simulate < changes < accept
+    assert "origin: decision_readiness / credit_officer_approval" in html
+    assert "Pending · Credit Officer" in html
+    assert "Still not approval-ready." in html
+    assert "final covenant tracker is still missing and Legal is still pending" in html
+    assert "customer success plan still assumes 18%" in html
