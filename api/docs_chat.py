@@ -598,6 +598,7 @@ _WEAK_NAME_TOKENS: frozenset[str] = frozenset(
     {
         "agent",
         "assistant",
+        "automation",
         "connectwork",
         "doc",
         "docs",
@@ -783,6 +784,7 @@ def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
 def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> float:
     name_tokens = _support_terms(_name_text(chunk))
     body_tokens = _support_terms(_body_text(chunk))
+    query_set = set(query)
     name_hits = sum(
         1 for token in query if token not in _WEAK_NAME_TOKENS and token in name_tokens
     )
@@ -791,6 +793,9 @@ def _score_chunk(chunk: DocsChunk, query: Sequence[str], norm_message: str) -> f
     score = _NAME_WEIGHT * name_hits + body_score
     if chunk.access == "sealed" and {"override", "attempt", "survive"} & set(query):
         score += _SEALED_BONUS
+    if chunk.access == "locked" and {"reveal", "show", "display", "disclose"} & query_set:
+        if name_tokens & query_set:
+            score += 12.0
     if len(query) > 1 and norm_message and norm_message in _search_text(chunk):
         score += _PHRASE_BONUS
     score += _domain_phrase_bonus(chunk, query)

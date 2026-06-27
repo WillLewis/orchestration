@@ -511,6 +511,56 @@ def test_restricted_source_query_retrieves_permission_support_not_generic_vision
     assert doc_ids != {"vision"}
 
 
+@pytest.mark.parametrize(
+    ("query", "doc_id", "section"),
+    [
+        (
+            "What is the crisp customer pain you are solving here?",
+            "product-faq",
+            "What is the crisp customer pain you're solving here?",
+        ),
+        (
+            "How would you price or package this?",
+            "commercial-faq",
+            "How would you price or package this? Is this part of the existing agent, "
+            "an enterprise add-on, or an admin-controlled platform capability?",
+        ),
+        (
+            "Where exactly are LLMs used, and where are deterministic controls used?",
+            "engineering-faq",
+            "Where exactly are LLMs used, and where are deterministic controls used?",
+        ),
+        (
+            "What does the UI show when evidence is missing?",
+            "ux-faq",
+            "What does the UI show when evidence is missing?",
+        ),
+        (
+            "What is ConnectWork's durable advantage here?",
+            "sharp-followups-faq",
+            "What is ConnectWork's durable advantage here?",
+        ),
+    ],
+)
+def test_likely_question_faq_queries_retrieve_intended_corpus_sections(query, doc_id, section):
+    body = _post("chat", query)
+
+    assert body["status"] == "answered"
+    citation = _citation(body, doc_id)
+    assert citation["access"] == "open"
+    assert citation["tier"] == 2
+    assert citation["route"] is None
+    assert citation["section"] == section
+
+
+def test_likely_question_faq_docs_do_not_break_unrelated_no_results():
+    body = _post("chat", "What is the cafeteria menu for next Tuesday?")
+
+    assert body["status"] == "no_results"
+    assert body["citations"] == []
+    assert body["confidence"] == "weak"
+
+
 @pytest.mark.parametrize("surface", SURFACES)
 def test_relevance_threshold_returns_no_results_for_weak_single_body_hit(surface):
     body = _post(surface, "automation")
