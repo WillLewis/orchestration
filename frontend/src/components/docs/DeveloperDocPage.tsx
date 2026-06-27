@@ -1302,7 +1302,7 @@ function OrchestrationPage() {
               {
                 label: "escalate",
                 title: "Handle blocked owners",
-                detail: "Legal escalates covenant modification to Compliance.",
+                detail: "Legal escalates to Compliance; blocked actions route to Human Review.",
               },
               {
                 label: "schedule",
@@ -1312,7 +1312,7 @@ function OrchestrationPage() {
               {
                 label: "close",
                 title: "Close cycle",
-                detail: "Cycle completes even while escalation remains open.",
+                detail: "Cycle completes while unresolved reviews remain visible.",
               },
             ]}
           />

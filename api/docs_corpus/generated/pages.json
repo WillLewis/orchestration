@@ -413,7 +413,7 @@
       {
         "heading": "The controlled loop is deterministic state transition",
         "anchor": "the-controlled-loop-is-deterministic-state-transition",
-        "text": "The loop runs on action packets and personas, but control flow is deterministic. Replies can be model-drafted in the future; assignments, escalations, approvals, scheduled work, and audit remain typed state. 1 distribute Assign owners Route action packets to Credit, Legal, and Analyst. 2 collect Gather replies Record sign-off, escalation, or acknowledgement. 3 escalate Handle blocked owners Legal escalates covenant modification to Compliance. 4 schedule Queue next meeting Schedule only after prerequisites are understood. 5 close Close cycle Cycle completes even while escalation remains open."
+        "text": "The loop runs on action packets and personas, but control flow is deterministic. Replies can be model-drafted in the future; assignments, escalations, approvals, scheduled work, and audit remain typed state. 1 distribute Assign owners Route action packets to Credit, Legal, and Analyst. 2 collect Gather replies Record sign-off, escalation, or acknowledgement. 3 escalate Handle blocked owners Legal escalates to Compliance; blocked actions route to Human Review. 4 schedule Queue next meeting Schedule only after prerequisites are understood. 5 close Close cycle Cycle completes while unresolved reviews remain visible."
       },
       {
         "heading": "Closed means cycle-completed, not fully resolved",
