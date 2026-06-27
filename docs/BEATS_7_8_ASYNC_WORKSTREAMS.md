@@ -30,6 +30,20 @@ Shared target: Beats 7 and 8 must match the deterministic live Acme plan:
 
 Primary owner: demo/story owner.
 
+Status: Complete as of 2026-06-27.
+
+Decision record:
+
+- Product decision: embrace the live Acme counts.
+- Beat 7: 6 actions = 2 ready, 2 approval routes, 2 blocked.
+- Beat 8: 5 assignments, 5 replies, 3 escalations, 3 unresolved items.
+- Money line: "honest about what is still open."
+- Cold-open decision: `HTML-only`.
+
+Cold-open note: the workspace contains the HTML storyboard/source material and no video asset, so
+downstream work should update the HTML and regenerate any rendered recording from that source if
+needed.
+
 Files in scope:
 
 - `docs/BEATS_7_8_WALKTHROUGH_UPGRADE_PLAN.md`

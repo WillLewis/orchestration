@@ -20,6 +20,19 @@ Rejected alternative: collapse the demo back to one open item by neutering the m
 would weaken Beat 7, hide an important safety gate, and make Beat 10's MNPI / information-barrier
 proof feel disconnected from the hero flow.
 
+### Workstream A decision lock
+
+Approved on 2026-06-27:
+
+- Beat 7 stays at six actions: two ready, two approval routes, two blocked.
+- Beat 8 stays at five assignments, five replies, three escalations, and three unresolved items.
+- The approved money line is: "honest about what is still open."
+- Cold-open decision: `HTML-only`.
+
+For this branch, the 75-second cold open is generated from the HTML storyboard/source material. No
+video asset is present in the workspace, so the canonical follow-up is to update the storyboard and
+regenerate any rendered recording from it, not to make a separate one-off re-cut.
+
 ## Canonical live baseline
 
 Use this as the reconciliation target for mocks, presenter copy, and tests.
@@ -162,7 +175,7 @@ Beat 8 copy should become:
 - five replies, not three
 - three escalations, not one
 - committee queued behind unresolved prerequisites
-- "honest about what is still open" instead of "honest about 1 open item"
+- "honest about what is still open" instead of the older single-open-item framing
 
 Update every stale walkthrough reference:
 
@@ -174,11 +187,12 @@ Update every stale walkthrough reference:
 - Beat 8 say block and assignment/escalation JS fixture
 - deep-dive answer about real orchestration
 
-Cold-open decision:
+Cold-open decision: `HTML-only`.
 
-- If the 75-second cold open is generated from the HTML storyboard, the HTML edits are enough.
-- If the cold open is a pre-recorded Screen Studio video, it must be re-cut or the live demo will
-  contradict the recording.
+- The 75-second cold open is generated from the HTML storyboard/source material for this branch.
+- HTML edits are enough for the local artifact set.
+- If a rendered recording exists outside this workspace, regenerate it from the updated storyboard
+  instead of making a separate one-off re-cut.
 
 Phase 2 acceptance:
 
