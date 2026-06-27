@@ -319,9 +319,10 @@ export function useOpsReportQuery() {
 /* --------------------------------- Work Loop (surface 5) --------------------------------- */
 
 // The canonical loop dossier. Default serves the bundled mock; live mode reads the gateway's
-// read-only convenience endpoint (`GET /api/loop`) and merges canonical fields over the mock
-// scaffold so a missing/nested field falls back. (To RUN the loop server-side instead, the
-// gateway also exposes `POST /actions/loop` with the same shape.)
+// read-only convenience endpoint (`GET /api/loop`). Canonical live fields are not shallow-merged
+// over the mock, so a missing live field renders as missing/empty instead of being masked by demo
+// data. (To RUN the loop server-side instead, the gateway also exposes `POST /actions/loop` with
+// the same shape.)
 export function useLoopQuery() {
   return useQuery({
     queryKey: ["loop"],
@@ -332,7 +333,16 @@ export function useLoopQuery() {
       const live = await getJSON<Partial<LoopState>>(
         "/api/loop?user_id=u_rm&intent=prepare_decision_brief",
       );
-      return { ...mockLoop, ...live };
+      return {
+        assignments: live.assignments ?? [],
+        replies: live.replies ?? [],
+        escalations: live.escalations ?? [],
+        scheduled: live.scheduled ?? [],
+        approvals: live.approvals ?? { requirements: [] },
+        approved_indices: live.approved_indices ?? [],
+        audit: live.audit ?? [],
+        closed: live.closed ?? false,
+      };
     },
   });
 }

@@ -4,13 +4,15 @@
 // so a later fetch to `POST /actions/loop` / `GET /api/loop` drops in with no remap. Field names
 // are snake_case to match the backend JSON exactly.
 //
-// Presentational overlays (personas, decision chips, the open-status summary) are kept SEPARATE
-// and clearly marked UI-only — they are NOT part of the backend contract. In particular:
+// Presentational overlays (personas and decision chips) are kept SEPARATE and clearly marked
+// UI-only — they are NOT part of the backend contract. In particular:
 //   • `closed: true` means the loop CYCLE completed — NOT that every item is resolved.
-//   • "Open — N escalation(s) in flight" is DERIVED from `escalations` (see
-//     `escalationsInFlightLabel`), never from `closed`.
+//   • Open status is DERIVED from `escalations` plus blocked action indices (see
+//     `deriveOpenStatus`), never from `closed`.
 // Types are intentionally tolerant so live `LoopState` JSON (which may carry extra nested fields
 // from Pydantic models) renders without brittle assumptions.
+
+import type { Action } from "@/data/actions";
 
 /* ---------------------------------- Personas (UI-only) ---------------------------------- */
 
@@ -20,7 +22,8 @@ export type PersonaRole =
   | "credit_officer"
   | "legal"
   | "analyst"
-  | "compliance";
+  | "compliance"
+  | "human";
 
 export type Persona = {
   display: string;
@@ -36,6 +39,7 @@ export const personas: Record<PersonaRole, Persona> = {
   legal: { display: "Sam L.", initials: "SL" },
   analyst: { display: "Priya N.", initials: "PN" },
   compliance: { display: "Jordan M.", initials: "JM" },
+  human: { display: "Human Review", initials: "HR" },
 };
 
 /* ----------------------------- Canonical dossier shapes --------------------------------- */
@@ -99,53 +103,94 @@ export type LoopState = {
 export const loop_state: LoopState = {
   assignments: [
     {
-      action_index: 3,
-      owner_role: "credit_officer",
-      tool: "route_approval",
-      message: "Please review the 22% pricing exception — exceeds RM delegated authority.",
-    },
-    {
-      action_index: 4,
-      owner_role: "legal",
-      tool: "route_approval",
-      message: "Requesting Legal approval on the covenant modification.",
-    },
-    {
       action_index: 0,
       owner_role: "analyst",
       tool: "create_task",
-      message: "Upload the final covenant tracker before committee.",
+      message:
+        "To Credit Analyst: Final covenant tracker is required before the committee can decide.",
+    },
+    {
+      action_index: 1,
+      owner_role: "analyst",
+      tool: "draft_internal_note",
+      message: "To Credit Analyst: Summarize open risks for the committee pre-read.",
+    },
+    {
+      action_index: 2,
+      owner_role: "credit_officer",
+      tool: "route_approval",
+      message: "To Credit Officer: The 22% discount exceeds the RM's delegated authority.",
+    },
+    {
+      action_index: 3,
+      owner_role: "legal",
+      tool: "route_approval",
+      message: "To Legal: Legal approval is still pending and must complete before decision.",
+    },
+    {
+      action_index: 5,
+      owner_role: "analyst",
+      tool: "draft_internal_note",
+      message:
+        "To Credit Analyst: Synthesize public-side sector research with the private-side model.",
     },
   ],
   replies: [
     {
-      role: "credit_officer",
-      decision: "sign_off",
-      message: "Reviewed and signed off — proceed.",
-    },
-    {
-      role: "legal",
-      decision: "escalate",
-      message: "This exceeds my authority; escalating to Compliance for review.",
+      role: "analyst",
+      action_index: 0,
+      decision: "acknowledge",
+      message: "Credit Analyst: acknowledged, noted for the record.",
     },
     {
       role: "analyst",
+      action_index: 1,
       decision: "acknowledge",
-      message: "Acknowledged — tracker upload in progress.",
+      message: "Credit Analyst: acknowledged, noted for the record.",
+    },
+    {
+      role: "credit_officer",
+      action_index: 2,
+      decision: "sign_off",
+      message: "Credit Officer: reviewed and signed off — proceed.",
+    },
+    {
+      role: "legal",
+      action_index: 3,
+      decision: "escalate",
+      message: "Legal: this exceeds my authority; escalating to Compliance for review.",
+    },
+    {
+      role: "analyst",
+      action_index: 5,
+      decision: "acknowledge",
+      message: "Credit Analyst: acknowledged, noted for the record.",
     },
   ],
   escalations: [
     {
-      action_index: 4,
+      action_index: 3,
       to: "compliance",
-      reason: "Legal authority exceeded — covenant modification needs Compliance review.",
+      reason: "legal escalate",
+    },
+    {
+      action_index: 4,
+      to: "human",
+      reason:
+        "missing_evidence: blocked by ['missing_covenant_tracker'] (blocking evidence unresolved)",
+    },
+    {
+      action_index: 5,
+      to: "human",
+      reason:
+        "information-barrier (mosaic): action combines ['private-side', 'public-side'] sources — would cross an information barrier",
     },
   ],
   scheduled: [
     {
-      topic: "Final committee decision",
-      reason: "Convene once Compliance clears and the covenant tracker is uploaded.",
-      attendees: ["Dana R.", "Chris O.", "Priya N.", "Sam L."],
+      topic: "Follow-up committee review for unresolved items",
+      reason: "3 item(s) unresolved: draft_internal_note, route_approval, schedule_meeting",
+      attendees: ["Credit Officer", "Legal", "Credit Analyst", "Compliance"],
     },
   ],
   approvals: {
@@ -184,17 +229,47 @@ export const loop_state: LoopState = {
 
 /* ------------------------------- UI-only presentation ----------------------------------- */
 
-// UI-only overlay — NOT part of the backend `LoopState` contract. Presentational copy for the
-// closed-but-not-fully-resolved status banner.
-export const loop_ui = {
-  open_summary:
-    "1 item open — Legal → Compliance review in flight; committee meeting queued until Legal and tracker clear.",
+export type OpenStatus = {
+  unresolvedActionIndices: number[];
+  unresolvedCount: number;
+  shortLabel: string;
+  summary: string;
 };
 
-// Derive the open/escalation status from canonical data (escalations), never from `closed`.
-export function escalationsInFlightLabel(state: LoopState): string {
-  const n = state.escalations.length;
-  return `${n} escalation${n === 1 ? "" : "s"} in flight`;
+function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+// Derive the open status from canonical data, never from `closed`.
+export function deriveOpenStatus(state: LoopState, actions: Action[] = []): OpenStatus {
+  const unresolved = new Set<number>();
+  state.escalations.forEach((e) => unresolved.add(e.action_index));
+  actions.forEach((action, index) => {
+    if (action.blocked_reason) unresolved.add(index);
+  });
+  const unresolvedActionIndices = [...unresolved].sort((a, b) => a - b);
+  const unresolvedCount = unresolvedActionIndices.length;
+  const escalationCount = state.escalations.length;
+  const reviewTargets = [
+    ...new Set(state.escalations.map((e) => personas[e.to]?.display ?? e.to).filter(Boolean)),
+  ];
+  const reviewCopy = reviewTargets.length
+    ? `reviews in flight: ${reviewTargets.join(" + ")}`
+    : "no escalations in flight";
+  const scheduledReason = state.scheduled[0]?.reason;
+  const scheduledCopy = scheduledReason
+    ? `follow-up queued: ${scheduledReason}`
+    : "no follow-up queued";
+
+  return {
+    unresolvedActionIndices,
+    unresolvedCount,
+    shortLabel: `${plural(unresolvedCount, "item")} open`,
+    summary: `${plural(unresolvedCount, "item")} open — ${plural(
+      escalationCount,
+      "escalation",
+    )}; ${reviewCopy}; ${scheduledCopy}.`,
+  };
 }
 
 export const decision_chip: Record<Decision, { label: string; cls: string }> = {
