@@ -69,6 +69,7 @@ from api.presentation import build_decision_readiness, build_display_brief
 from api.workproducts import get as get_workproduct
 from api.workproducts import mint as mint_workproduct
 from api.workproducts import verify as verify_workproduct
+from telemetry.docs_chat import DocsChatTelemetrySummary, docs_chat_telemetry_snapshot
 
 app = FastAPI(title="ConnectWork Command Agent — gateway", version="0.2.0")
 
@@ -222,6 +223,12 @@ def post_workproduct_verify(record_id: str, req: VerifyRecordRequest) -> RecordV
 def get_ops_evals() -> OpsReport:
     """The three-vertical scorecard + telemetry sample + source mix + failure taxonomy."""
     return OpsReport.model_validate(ops_report())
+
+
+@app.get("/ops/docs-chat", response_model=DocsChatTelemetrySummary)
+def get_ops_docs_chat() -> DocsChatTelemetrySummary:
+    """Aggregate docs-chat LLM observability with no raw prompts, answers, or documents."""
+    return docs_chat_telemetry_snapshot()
 
 
 # --------------------------------------------------------------------------- #

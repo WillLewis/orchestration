@@ -13,6 +13,7 @@ import json
 import math
 import os
 import re
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
@@ -32,6 +33,7 @@ from api.models import (
     DocsPhrasingMode,
     DocsSurface,
 )
+from telemetry.docs_chat import record_docs_chat_response
 
 load_dotenv()
 
@@ -192,13 +194,14 @@ def answer(
     mode: DocsPhrasingMode = "deterministic",
 ) -> DocsChatResponse:
     """Answer a docs question with ACL enforced at retrieval and citations rebuilt by wrapper."""
+    started_at = time.perf_counter()
     requested_mode: DocsPhrasingMode = mode
     llm_available = _llm_available(client)
     model = _llm_model(client) if llm_available else None
     chunks = load_chunks()
     retrieval = _retrieve(message, chunks)
     if not retrieval.candidates:
-        return DocsChatResponse(
+        response = DocsChatResponse(
             response="I couldn't find matching documentation for that question.",
             citations=[],
             confidence=_confidence(retrieval.signals),
@@ -215,6 +218,8 @@ def answer(
             status="no_results",
             suggested_questions=_suggested_questions(),
         )
+        _record_docs_chat_telemetry(surface, response, started_at)
+        return response
 
     view = _build_view(surface, message, history, retrieval.candidates)
     fallback_reason: DocsPhrasingFallbackReason | None = None
@@ -255,7 +260,7 @@ def answer(
     citations = _citations_for_candidates(
         _ordered_candidate_ids(retrieval.candidates), retrieval.candidates
     )
-    return DocsChatResponse(
+    response_envelope = DocsChatResponse(
         response=response,
         citations=citations,
         confidence=_confidence(retrieval.signals),
@@ -270,6 +275,17 @@ def answer(
         status="answered",
         suggested_questions=_suggested_questions(),
     )
+    _record_docs_chat_telemetry(surface, response_envelope, started_at)
+    return response_envelope
+
+
+def _record_docs_chat_telemetry(
+    surface: DocsSurface,
+    response: DocsChatResponse,
+    started_at: float,
+) -> None:
+    elapsed_ms = (time.perf_counter() - started_at) * 1000
+    record_docs_chat_response(surface=surface, response=response, latency_ms=elapsed_ms)
 
 
 def _build_view(
