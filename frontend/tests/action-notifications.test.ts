@@ -45,6 +45,12 @@ function creditOfficerRow(): DecisionReadinessRow {
   return row;
 }
 
+function legalRow(): DecisionReadinessRow {
+  const row = decision_readiness.rows.find((item) => item.id === "legal_approval");
+  if (!row) throw new Error("legal_approval fixture missing");
+  return row;
+}
+
 function creditOfficerRouteAction() {
   const action = action_plan.actions.find(
     (item) =>
@@ -102,6 +108,23 @@ describe("Agent Actions notifications", () => {
 
     expect(counts.nextTotal).toBe(0);
     expect(counts.nextUnseen).toBe(0);
+  });
+
+  it("tracks multiple staged readiness rows independently", () => {
+    stageDecisionReadinessRemediation(creditOfficerRow());
+    stageDecisionReadinessRemediation(legalRow());
+
+    let counts = getCurrentAgentActionNotificationCounts(getRevalidationState());
+    expect(counts.nextTotal).toBe(2);
+    expect(counts.nextUnseen).toBe(2);
+
+    const action = creditOfficerRouteAction();
+    approveAction(action_key(action));
+    expect(executeApproved("Dana R.", [action])).toBe(1);
+
+    counts = getCurrentAgentActionNotificationCounts(getRevalidationState());
+    expect(counts.nextTotal).toBe(1);
+    expect(counts.nextItemIds[0]).toContain("legal_approval");
   });
 
   it("keeps the executed Credit Officer route pending until visible simulation", () => {

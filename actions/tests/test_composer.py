@@ -12,6 +12,7 @@ from fixtures.acme import acme_bundle, acme_expected_decision
 from actions.composer import (
     HeuristicActionProposer,
     SafeActionComposer,
+    StagedRemediation,
     summarize_plan,
 )
 
@@ -77,6 +78,38 @@ def test_every_action_carries_a_diff_for_the_drawer():
     for a in plan.actions:
         assert a.diff is not None
         assert a.diff.target_object_id
+
+
+def test_staged_remediation_validates_one_row_descriptor():
+    remediation = StagedRemediation(
+        row_id="credit_officer_approval",
+        tool="route_approval",
+        target_object_id="doc_pricing_exception",
+        required_approver="credit_officer",
+        source_ids=["doc_pricing_exception", "wf_approval"],
+        reason="Requested discount is 22%, above the RM approval threshold of 15%.",
+        parameters={
+            "business_label": "22% pricing exception",
+            "requested_discount_percent": 22,
+            "route_note": (
+                "Route the 22% pricing exception to the Credit Officer; it exceeds the RM's "
+                "delegated authority."
+            ),
+        },
+    )
+
+    action = SafeActionComposer().compose_staged_remediation(
+        remediation,
+        _acme_brief(),
+        acme_bundle(),
+    )
+
+    assert action.tool == "route_approval"
+    assert action.required_approver == "credit_officer"
+    assert action.blocked_reason is None
+    assert action.diff.target_object_id == "doc_pricing_exception"
+    assert action.diff.after["approval_request"] == "22% pricing exception"
+    assert action.diff.after["requested_discount"] == "22%"
 
 
 class _FixedProposer:

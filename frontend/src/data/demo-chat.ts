@@ -118,11 +118,20 @@ export const PENDING_CREDIT_OFFICER = "Credit Officer";
 // Agent flow turns (Beats 3–6) — assistant replies the panel appends as the arc advances. Copy lives
 // here so chat and the brief overlay stay in sync.
 export const FLOW: {
+  staged: ChatResponse;
   routed: ChatResponse;
   signed: ChatResponse;
   accepted: ChatResponse;
   capped: ChatResponse;
 } = {
+  // Beat 2.5 — chat can stage the same readiness remediation, but it never executes the route.
+  staged: {
+    reply:
+      "I staged the 22% Credit Officer route in Agent Actions. Review the validated card there, then " +
+      "send it to route the approval.",
+    citations: [{ object_id: "doc_pricing_exception" }, { object_id: "wf_approval" }],
+    actions: [],
+  },
   // Beat 3 — confirmation after Route to Credit Officer (pending chip rendered separately).
   routed: {
     reply:

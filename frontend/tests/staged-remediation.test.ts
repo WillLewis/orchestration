@@ -7,8 +7,10 @@ import {
   composeStagedRemediationCard,
   deriveDrawerActions,
   hasRenderableOrigin,
+  withStagedOrigin,
   withBatchOrigin,
 } from "../src/lib/staged-remediation";
+import { stagedRemediationRequestBody } from "../src/hooks/queries";
 
 const creditOfficerRow = decision_readiness.rows.find(
   (row) => row.id === "credit_officer_approval",
@@ -43,7 +45,7 @@ describe("staged readiness remediation provenance", () => {
     const reference = requireReference();
     const actions = deriveDrawerActions({
       mode: "staged_remediation",
-      staged_remediation: reference,
+      staged_remediations: [reference],
       validationActions: action_plan.actions,
       creditSigned: false,
     });
@@ -85,7 +87,7 @@ describe("staged readiness remediation provenance", () => {
     });
     const actions = deriveDrawerActions({
       mode: "staged_remediation",
-      staged_remediation: reference,
+      staged_remediations: [reference],
       validationActions: blockedPlan,
       creditSigned: false,
     });
@@ -106,7 +108,7 @@ describe("staged readiness remediation provenance", () => {
     };
     const actions = deriveDrawerActions({
       mode: "staged_remediation",
-      staged_remediation: requireReference(invalid),
+      staged_remediations: [requireReference(invalid)],
       validationActions: action_plan.actions,
       creditSigned: false,
     });
@@ -124,5 +126,67 @@ describe("staged readiness remediation provenance", () => {
     expect(batch).toHaveLength(1);
     expect(batch[0].origin).toEqual({ surface: "batch_proposal", batch_id: "acme_followups" });
     expect(hasRenderableOrigin(batch[0])).toBe(true);
+  });
+
+  it("renders multiple staged row references as independent drawer cards", () => {
+    const credit = requireReference();
+    const legalRow = decision_readiness.rows.find((row) => row.id === "legal_approval");
+    if (!legalRow) throw new Error("legal_approval fixture missing");
+    const legal = requireReference(legalRow);
+
+    const actions = deriveDrawerActions({
+      mode: "staged_remediation",
+      staged_remediations: [credit, legal],
+      validationActions: action_plan.actions,
+      creditSigned: false,
+    });
+
+    expect(actions).toHaveLength(2);
+    expect(actions.map((action) => action.origin.surface)).toEqual([
+      "decision_readiness",
+      "decision_readiness",
+    ]);
+    expect(actions.map((action) => action.origin.row_id).sort()).toEqual([
+      "credit_officer_approval",
+      "legal_approval",
+    ]);
+  });
+
+  it("builds the live staged-remediation request from the row reference", () => {
+    const reference = requireReference();
+
+    expect(stagedRemediationRequestBody(reference)).toEqual({
+      user_id: "u_rm",
+      intent: "prepare_decision_brief",
+      origin: reference.origin,
+      remediation: reference.remediation,
+      row_gate: "Credit Officer approval",
+      row_details: "Requested discount is 22%, above the RM approval threshold of 15%.",
+      source_ids: ["doc_pricing_exception", "wf_approval"],
+    });
+  });
+
+  it("uses live validated staged cards ahead of local plan fallback", () => {
+    const reference = requireReference();
+    const localReady = action_plan.actions.find(
+      (action) => action.tool === "route_approval" && action.required_approver === "credit_officer",
+    );
+    if (!localReady) throw new Error("credit officer route action missing");
+    const liveBlocked = withStagedOrigin(
+      { ...localReady, blocked_reason: "server validation: route window closed" },
+      reference,
+    );
+
+    const actions = deriveDrawerActions({
+      mode: "staged_remediation",
+      staged_remediations: [reference],
+      stagedValidatedActions: [liveBlocked],
+      validationActions: action_plan.actions,
+      creditSigned: false,
+    });
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0].blocked_reason).toBe("server validation: route window closed");
+    expect(actions[0].origin).toEqual(reference.origin);
   });
 });

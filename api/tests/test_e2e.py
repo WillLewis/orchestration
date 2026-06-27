@@ -99,13 +99,60 @@ def test_api_brief_returns_display_readiness_view():
         "label": "Request from analyst",
         "tool": "create_task",
         "target_object_id": "task_new_1",
+        "parameters": {
+            "title": "Upload final covenant tracker",
+            "assignee": "Priya N. (Analyst)",
+            "due": "2026-06-22",
+            "status": "open",
+        },
     }
     assert rows["credit_officer_approval"]["action"] == {
-        "label": "Route to Credit Officer",
+        "label": "Stage: route 22% to Credit Officer",
         "tool": "route_approval",
         "target_object_id": "doc_pricing_exception",
         "required_approver": "credit_officer",
+        "parameters": {
+            "business_label": "22% pricing exception",
+            "requested_discount_percent": 22,
+            "route_note": (
+                "Route the 22% pricing exception to the Credit Officer; it exceeds the RM's "
+                "delegated authority."
+            ),
+        },
     }
+
+
+def test_staged_remediation_endpoint_uses_row_descriptor():
+    payload = client.get("/api/brief").json()
+    row = next(
+        item
+        for item in payload["decision_readiness"]["rows"]
+        if item["id"] == "credit_officer_approval"
+    )
+
+    body = {
+        **ACME,
+        "origin": {
+            "surface": "decision_readiness",
+            "row_id": row["id"],
+            "remediation_tool": row["action"]["tool"],
+            "target_object_id": row["action"]["target_object_id"],
+            "required_approver": row["action"]["required_approver"],
+        },
+        "remediation": row["action"],
+        "row_gate": row["gate"],
+        "row_details": row["details"],
+        "source_ids": row["source_ids"],
+    }
+
+    action = client.post("/actions/staged-remediation", json=body).json()
+
+    assert action["tool"] == "route_approval"
+    assert action["required_approver"] == "credit_officer"
+    assert action["blocked_reason"] is None
+    assert action["diff"]["target_object_id"] == "doc_pricing_exception"
+    assert action["diff"]["after"]["approval_request"] == "22% pricing exception"
+    assert action["diff"]["after"]["requested_discount"] == "22%"
 
 
 # --------------------------------------------------------------------------- #

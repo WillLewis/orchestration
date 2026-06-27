@@ -25,7 +25,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
-from actions.composer import SafeActionComposer
+from actions.composer import SafeActionComposer, StagedRemediation
 from actions.engine import ActionValidationEngine, WorkspaceExecutor
 from actions.loop import ControlledWorkLoop, LoopState
 from actions.personas import LLMPersonaClient, PersonaClient, StubPersonaClient
@@ -228,6 +228,15 @@ def default_action_plan(user_id: str, intent: str) -> ActionPlan:
     """Assemble the brief and compose its action plan in one call (gateway convenience)."""
     brief, bundle = assemble_brief(user_id, intent)
     return compose_actions(brief, bundle)
+
+
+def compose_staged_remediation(
+    brief: DecisionBrief,
+    bundle: ContextBundle,
+    remediation: StagedRemediation,
+) -> Action:
+    """Validate one staged Decision Brief row through the same composer/engine path."""
+    return _composer(_action_workspace()).compose_staged_remediation(remediation, brief, bundle)
 
 
 def execute_actions(plan: ActionPlan, approved_indices: list[int]) -> list[AuditEvent]:

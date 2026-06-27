@@ -203,6 +203,7 @@ class DecisionReadinessActionSelector(BaseModel):
     tool: str
     target_object_id: str
     required_approver: Optional[str] = None
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class DecisionReadinessExplainer(BaseModel):
@@ -226,6 +227,30 @@ class DecisionReadinessRow(BaseModel):
 class DecisionReadiness(BaseModel):
     summary: str
     rows: list[DecisionReadinessRow] = Field(default_factory=list)
+
+
+class StagedRemediationOrigin(BaseModel):
+    """Trace from a staged drawer card back to the Decision Brief row that produced it."""
+
+    surface: Literal["decision_readiness"] = "decision_readiness"
+    row_id: str
+    remediation_tool: str
+    target_object_id: str
+    required_approver: Optional[str] = None
+
+
+class StagedRemediationRequest(BriefRequest):
+    """Body for `/actions/staged-remediation`.
+
+    The drawer card must be validated from this exact row remediation. The client supplies the row
+    identity and remediation descriptor; the server rebuilds one action and re-gates it.
+    """
+
+    origin: StagedRemediationOrigin
+    remediation: DecisionReadinessActionSelector
+    row_gate: str = ""
+    row_details: str = ""
+    source_ids: list[str] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #

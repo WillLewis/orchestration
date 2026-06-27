@@ -23,6 +23,7 @@ and `/actions/execute` recomposes the gated plan server-side so a client can't b
 | POST | `/verify` | `DeterministicDecision` | WS-C | (debug) |
 | POST | `/chat` | `ChatResponse` | WS-B→C (+ injectable LLM) | InputBar / "Ask about this packet" |
 | POST | `/actions/compose` | `ActionPlan` | WS-E (+B,C,D) | Action Diff Drawer ([actions.ts](../frontend/src/data/actions.ts)) |
+| POST | `/actions/staged-remediation` | `Action` | WS-E (+B,C,D) | one staged Decision Brief row → one validated drawer card |
 | POST | `/actions/execute` | `list[AuditEvent]` | WS-E | Action Diff Drawer |
 | POST | `/revalidate` | `RevalidationResult` | WS-F (+B,C,D) | Stale-decision alert |
 | POST | `/workproducts/mint` | `MintResponse` | WS-B→D + WS-F snapshot | Seal as governed record |

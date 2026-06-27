@@ -30,6 +30,9 @@ never override a gate** (proven in [`tests/test_redteam_gate_override.py`](tests
   the "*N follow-ups — X draftable, Y need approval routing, Z blocked*" split, derived entirely
   from engine validation. Proposers: `HeuristicActionProposer` (offline default) ·
   `LLMActionProposer` (routed via `PLANNER_MODEL`).
+- **`SafeActionComposer.compose_staged_remediation(remediation, brief, bundle)`** — validates one
+  Decision Brief readiness-row remediation into one drawer card. This is the anti-drift seam for
+  staged row actions: the card is rebuilt from the row descriptor and re-gated by the engine.
 - **`ControlledWorkLoop.run(brief, bundle)`** ([`loop.py`](loop.py)) — five pure `(state)->state`
   nodes: **distribute → collect → escalate → schedule → close**. A **human-approval step**
   (`approver` callback, default `approve_nonblocked`) precedes execution; the loop calls

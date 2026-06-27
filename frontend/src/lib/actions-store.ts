@@ -45,7 +45,8 @@ export type AgentActionNotificationCounts = {
 
 type State = {
   drawer: DrawerState;
-  staged_remediation: StagedRemediationReference | null;
+  staged_remediations: Record<string, StagedRemediationReference>;
+  active_staged_row_id: string | null;
   chip_seen_keys: Record<ActionChip, string>;
   notification_revision: Record<ActionChip, number>;
   // per-action user status (proposed | approved | edited | rejected | committed | reverted)
@@ -57,7 +58,8 @@ type State = {
 
 const initial: State = {
   drawer: { open: false, mode: "plan", focus_key: null, source: "", change_kind: null },
-  staged_remediation: null,
+  staged_remediations: {},
+  active_staged_row_id: null,
   chip_seen_keys: { next: "", changes: "" },
   notification_revision: { next: 0, changes: 0 },
   user_status: Object.fromEntries(
@@ -117,7 +119,11 @@ export function closeDrawer() {
 export function stageDecisionReadinessRemediation(row: DecisionReadinessRow) {
   const staged = buildStagedRemediationReference(row);
   if (!staged) return null;
-  state.staged_remediation = staged;
+  state.staged_remediations = {
+    ...state.staged_remediations,
+    [staged.origin.row_id]: staged,
+  };
+  state.active_staged_row_id = staged.origin.row_id;
   state.notification_revision = {
     ...state.notification_revision,
     next: state.notification_revision.next + 1,
@@ -278,7 +284,8 @@ export function resetActions() {
     action_plan.actions.map((a) => [action_key(a), "proposed"] as const),
   );
   state.drawer = { open: false, mode: "plan", focus_key: null, source: "", change_kind: null };
-  state.staged_remediation = null;
+  state.staged_remediations = {};
+  state.active_staged_row_id = null;
   state.chip_seen_keys = { next: "", changes: "" };
   state.notification_revision = { next: 0, changes: 0 };
   state.edited_after = {};
@@ -297,11 +304,12 @@ function stagedRemediationActionKey(reference: StagedRemediationReference): stri
 }
 
 export function getPendingStagedNextActionIds(s: State = state): string[] {
-  if (!s.staged_remediation) return [];
-  const key = stagedRemediationActionKey(s.staged_remediation);
-  const user = s.user_status[key] ?? "proposed";
-  if (user === "committed" || user === "rejected") return [];
-  return [`next:${s.notification_revision.next}:${s.staged_remediation.origin.row_id}:${key}`];
+  return Object.values(s.staged_remediations).flatMap((reference) => {
+    const key = stagedRemediationActionKey(reference);
+    const user = s.user_status[key] ?? "proposed";
+    if (user === "committed" || user === "rejected") return [];
+    return [`next:${s.notification_revision.next}:${reference.origin.row_id}:${key}`];
+  });
 }
 
 export function getReturnedChangeIds(

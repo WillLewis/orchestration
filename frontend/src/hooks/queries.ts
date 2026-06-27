@@ -6,7 +6,7 @@
 // gateway (`api/main.py`). Responses are contract-shaped (core/schemas.py) and are
 // merged over the mock, so UI-only fields (labels, derived status, telemetry) survive
 // and only real values are overlaid.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   approval_role_labels,
@@ -42,6 +42,11 @@ import {
 } from "@/data/record";
 import { PREVIEW_FALLBACK_RESPONSE, scriptedChatResponse } from "@/data/demo-chat";
 import { setLatestRecordId } from "@/lib/record-store";
+import {
+  withStagedOrigin,
+  type OriginatedAction,
+  type StagedRemediationReference,
+} from "@/lib/staged-remediation";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? "";
 // Mocks on by default → Lovable parity. Live only when explicitly disabled + a base URL.
@@ -52,6 +57,16 @@ const STALE = LIVE ? 0 : Infinity;
 
 async function getJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) throw new Error(`${path} → ${res.status}`);
+  return (await res.json()) as T;
+}
+
+async function postJSON<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
   if (!res.ok) throw new Error(`${path} → ${res.status}`);
   return (await res.json()) as T;
 }
@@ -261,6 +276,58 @@ export function useActionPlanQuery() {
         return actionData;
       }
     },
+  });
+}
+
+export function stagedRemediationRequestBody(reference: StagedRemediationReference) {
+  return {
+    user_id: "u_rm",
+    intent: "prepare_decision_brief",
+    origin: reference.origin,
+    remediation: reference.remediation,
+    row_gate: reference.row_gate,
+    row_details: reference.row_details,
+    source_ids: reference.source_ids,
+  };
+}
+
+function stagedRemediationQueryKey(reference: StagedRemediationReference) {
+  return [
+    "actions",
+    "staged-remediation",
+    reference.origin.row_id,
+    reference.origin.remediation_tool,
+    reference.origin.target_object_id,
+    reference.origin.required_approver ?? "",
+    reference.row_details,
+    JSON.stringify(reference.remediation.parameters ?? {}),
+    reference.source_ids.join("|"),
+  ];
+}
+
+export function useStagedRemediationActions(
+  references: StagedRemediationReference[],
+): OriginatedAction[] {
+  const results = useQueries({
+    queries: LIVE
+      ? references.map((reference) => ({
+          queryKey: stagedRemediationQueryKey(reference),
+          staleTime: STALE,
+          queryFn: async () =>
+            postJSON<Action>(
+              "/actions/staged-remediation",
+              stagedRemediationRequestBody(reference),
+            ),
+        }))
+      : [],
+  });
+
+  if (!LIVE) return [];
+  return results.flatMap((result, index) => {
+    const action = result.data;
+    const reference = references[index];
+    if (!action || !reference) return [];
+    return [withStagedOrigin(action, reference)];
   });
 }
 

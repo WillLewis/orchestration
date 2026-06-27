@@ -23,9 +23,9 @@ The lifecycle primitives mostly exist, but the anti-drift wiring is not complete
 | Typed lifecycle primitives | Present in `core/schemas.py`, including `EventTrigger`, `PolicyGraph`, `WorkProductContract`, revalidation types, action types. |
 | Safe action validation | Present in `actions/composer.py` and `actions/engine.py`. The composer validates every proposed action through the deterministic engine. |
 | Rollback | Present on `WorkspaceExecutor.rollback()` in `actions/engine.py`. It is not the main capability of `actions/loop.py`. |
-| Brief and drawer share one source | Not true today for the API demo path. `api/orchestrator.py` wires `SafeActionComposer` with `AcmeFollowupProposer`, which returns a fixed Acme action list and ignores `brief.next_steps`. |
+| Brief and drawer share one source | Partially true. Frontend staged rows carry provenance, and `/actions/staged-remediation` validates one staged row through the composer. The API batch/demo plan still uses `AcmeFollowupProposer` for the broader follow-up list. |
 | Event log / dispatcher | Not wired. `EventTrigger` is a type, but no backend event dispatcher fans events into one recompute loop yet. |
-| Demo revalidation | Mostly frontend overlay state in `frontend/src/lib/revalidation-store.ts`. It is useful for demo determinism, but it is not the final backend lifecycle engine. |
+| Demo revalidation | Mostly frontend overlay state in `frontend/src/lib/revalidation-store.ts`. It now requires a visible simulated counterparty response, but it is still not the final backend event dispatcher. |
 
 The strongest lifecycle claims below are therefore **design invariants to enforce**, not statements
 that the current repo already satisfies end to end.
@@ -411,12 +411,11 @@ Acceptance tests for Phase 1:
 
 | Gap | Current location |
 |---|---|
-| API action drawer path uses fixed Acme plan instead of brief-row remediation. | `api/orchestrator.py` with `AcmeFollowupProposer`. |
-| Generic composer maps `brief.next_steps`, but the API demo path overrides it. | `actions/composer.py`, `api/orchestrator.py`. |
-| Single-row staged remediation -> one validated drawer card is not implemented. | Needed in actions/API/frontend seam. |
+| API batch action path uses fixed Acme plan instead of `brief.next_steps`. | `api/orchestrator.py` with `AcmeFollowupProposer`. |
+| Generic composer maps `brief.next_steps`, but the API batch/demo path overrides it. | `actions/composer.py`, `api/orchestrator.py`. |
+| Single-row staged remediation -> one validated drawer card is frontend/API-supported and live-wired to `/actions/staged-remediation`. Execute-by-origin is still not first-class. | `frontend/src/hooks/queries.ts`, `frontend/src/lib/staged-remediation.ts`, `actions/composer.py`, `/actions/staged-remediation`. |
 | Event dispatcher for `EventTrigger` is not wired. | Lifecycle/API gap. |
 | Demo revalidation is a frontend overlay. | `frontend/src/lib/revalidation-store.ts`. |
-| Hidden CO auto-sign timer exists in the frontend demo path. | `frontend/src/lib/revalidation-store.ts`. |
 | Changes counter is not fully first-class. | `frontend/src/lib/actions-store.ts` and drawer wiring. |
 | Cascade action is special-cased. | `frontend/src/data/actions.ts`. |
 

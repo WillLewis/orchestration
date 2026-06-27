@@ -80,24 +80,40 @@ export function composeStagedRemediationCard(
     );
   }
 
-  return applyRemediationParameters({ ...match, origin: reference.origin }, reference);
+  return withStagedOrigin(match, reference);
+}
+
+export function withStagedOrigin(
+  action: Action,
+  reference: StagedRemediationReference,
+): OriginatedAction {
+  return applyRemediationParameters({ ...action, origin: reference.origin }, reference);
 }
 
 export function deriveDrawerActions({
   mode,
-  staged_remediation,
+  staged_remediations,
+  stagedValidatedActions = [],
   validationActions,
   creditSigned,
 }: {
   mode: DrawerActionMode;
-  staged_remediation: StagedRemediationReference | null;
+  staged_remediations: StagedRemediationReference[];
+  stagedValidatedActions?: OriginatedAction[];
   validationActions: Action[];
   creditSigned: boolean;
 }): OriginatedAction[] {
   if (mode === "staged_remediation") {
-    if (!staged_remediation) return [];
-    const action = composeStagedRemediationCard(staged_remediation, validationActions);
-    return hasRenderableOrigin(action) ? [action] : [];
+    const validatedByRow = new Map(
+      stagedValidatedActions.map((action) => [action.origin.row_id, action]),
+    );
+    return staged_remediations
+      .map(
+        (reference) =>
+          validatedByRow.get(reference.origin.row_id) ??
+          composeStagedRemediationCard(reference, validationActions),
+      )
+      .filter(hasRenderableOrigin);
   }
 
   const batchActions = withBatchOrigin(validationActions);

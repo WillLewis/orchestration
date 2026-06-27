@@ -65,6 +65,7 @@ import {
   LIVE,
   useActionPlanQuery,
   useExecuteActionsMutation,
+  useStagedRemediationActions,
   useVerification,
   useVerifyWorkProductMutation,
   type ServerAuditEvent,
@@ -206,11 +207,13 @@ function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
 
 export function ActionDiffDrawer() {
   const store = useActionsStore();
-  const { drawer, staged_remediation, user_status, audit } = store;
+  const { drawer, staged_remediations, user_status, audit } = store;
   const reval = useRevalidation();
   const recordId = useLatestRecordId();
   const { data: cachedVerification } = useVerification(recordId);
   const planActions = useActionPlanQuery().data.actions;
+  const stagedReferences = useMemo(() => Object.values(staged_remediations), [staged_remediations]);
+  const liveStagedActions = useStagedRemediationActions(stagedReferences);
   const {
     data: verifyData,
     isPending: verifyPending,
@@ -224,11 +227,12 @@ export function ActionDiffDrawer() {
     () =>
       deriveDrawerActions({
         mode: drawer.mode,
-        staged_remediation,
+        staged_remediations: stagedReferences,
+        stagedValidatedActions: liveStagedActions,
         validationActions: planActions,
         creditSigned: reval.creditSigned,
       }),
-    [drawer.mode, planActions, reval.creditSigned, staged_remediation],
+    [drawer.mode, liveStagedActions, planActions, reval.creditSigned, stagedReferences],
   );
   const [tab, setTab] = useState<"changes" | "next" | "notes" | "audit">("next");
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});

@@ -129,6 +129,12 @@ def build_decision_readiness(brief: DecisionBrief, bundle: ContextBundle) -> Dec
                     label="Request from analyst",
                     tool="create_task",
                     target_object_id="task_new_1",
+                    parameters={
+                        "title": "Upload final covenant tracker",
+                        "assignee": "Priya N. (Analyst)",
+                        "due": "2026-06-22",
+                        "status": "open",
+                    },
                 ),
             ),
             DecisionReadinessRow(
@@ -145,10 +151,18 @@ def build_decision_readiness(brief: DecisionBrief, bundle: ContextBundle) -> Dec
                     rule_id="approval_threshold",
                 ),
                 action=DecisionReadinessActionSelector(
-                    label="Route to Credit Officer",
+                    label="Stage: route 22% to Credit Officer",
                     tool="route_approval",
                     target_object_id="doc_pricing_exception",
                     required_approver="credit_officer",
+                    parameters={
+                        "business_label": f"{requested_pct}% pricing exception",
+                        "requested_discount_percent": requested_pct,
+                        "route_note": (
+                            f"Route the {requested_pct}% pricing exception to the Credit Officer; "
+                            "it exceeds the RM's delegated authority."
+                        ),
+                    },
                 ),
             ),
             DecisionReadinessRow(

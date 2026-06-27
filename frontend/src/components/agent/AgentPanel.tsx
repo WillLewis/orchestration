@@ -13,12 +13,16 @@ import { FLOW, PENDING_CREDIT_OFFICER } from "@/data/demo-chat";
 import {
   useGovernedBrief,
   useRevalidation,
-  routeToCreditOfficer,
   simulateCreditOfficerResponse,
   resetRevalidation,
   type GovernedBrief,
 } from "@/lib/revalidation-store";
-import { openDrawer, recordReturnedChangeNotification, resetActions } from "@/lib/actions-store";
+import {
+  openDrawer,
+  recordReturnedChangeNotification,
+  resetActions,
+  stageDecisionReadinessRemediation,
+} from "@/lib/actions-store";
 import {
   agentPrompt,
   getAgentInvocation,
@@ -237,12 +241,24 @@ export function AgentPanel({
           submitAgent(agentPrompt("Why does this need approval?"), "Why does this need approval?");
           break;
         case "route_credit_officer":
-          setMessages((m) => [
-            ...m,
-            privateUserTurn(agentPrompt("Route to Credit Officer")),
-            privateAssistantTurn(FLOW.routed.reply, FLOW.routed, PENDING_CREDIT_OFFICER),
-          ]);
-          routeToCreditOfficer();
+          {
+            const row = governed.decision_readiness.rows.find(
+              (item) => item.id === "credit_officer_approval",
+            );
+            setMessages((m) => [
+              ...m,
+              privateUserTurn(agentPrompt("Stage route to Credit Officer")),
+              privateAssistantTurn(FLOW.staged.reply, FLOW.staged),
+            ]);
+            if (row?.action) {
+              stageDecisionReadinessRemediation(row);
+            } else {
+              openDrawer({
+                mode: "staged_remediation",
+                source: "Decision readiness — staged route",
+              });
+            }
+          }
           break;
         case "apply_capped":
           setMessages((m) => [
@@ -263,7 +279,7 @@ export function AgentPanel({
           break;
       }
     },
-    [submitAgent],
+    [governed.decision_readiness.rows, submitAgent],
   );
 
   const simulatePendingResponse = useCallback(

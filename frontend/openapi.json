@@ -411,6 +411,35 @@
         "title": "ChangedSource",
         "type": "object"
       },
+      "ChatAction": {
+        "description": "A deterministic suggested-action button attached to a governed chat reply. The wrapper sets\nthese (never the model); ``kind`` drives the frontend transition. Used by the deterministic\ndiscount-application block (Beat 1): Explain \u00b7 Route to Credit Officer \u00b7 use the capped max.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "explain",
+              "route_credit_officer",
+              "apply_capped"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "title": "ChatAction",
+        "type": "object"
+      },
       "ChatMessage": {
         "description": "One turn of prior conversation. UNTRUSTED: history is conversational context only and is\nnever treated as evidence \u2014 it cannot introduce sources, claims, or override a gate.",
         "properties": {
@@ -465,8 +494,15 @@
         "type": "object"
       },
       "ChatResponse": {
-        "description": "The governed answer. Prose may be model-drafted, but every field below is set by the API\nwrapper's deterministic post-processing \u2014 never by the model:\n\n* ``citations`` are validated against ``bundle.sources`` (hallucinated/excluded ids dropped);\n* ``permission_boundary_hit`` is derived from ``bundle.permission_boundary`` + the request;\n* ``gate_held`` reflects the deterministic decision (the model can't grant approval);\n* ``missing_evidence`` mirrors ``bundle.missing_evidence``.\n\nKeep this set MINIMAL \u2014 adding a field changes the wire contract the frontend consumes.",
+        "description": "The governed answer. Prose may be model-drafted, but every field below is set by the API\nwrapper's deterministic post-processing \u2014 never by the model:\n\n* ``citations`` are validated against ``bundle.sources`` (hallucinated/excluded ids dropped);\n* ``permission_boundary_hit`` is derived from ``bundle.permission_boundary`` + the request;\n* ``gate_held`` reflects the deterministic decision (the model can't grant approval);\n* ``missing_evidence`` mirrors ``bundle.missing_evidence``;\n* ``actions`` are deterministic suggested-action buttons (empty unless the wrapper attaches them,\n  e.g. the discount-application block) \u2014 never model-authored.\n\nKeep this set MINIMAL \u2014 adding a field changes the wire contract the frontend consumes.",
         "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/ChatAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
           "citations": {
             "items": {
               "$ref": "#/components/schemas/SourceRef"
@@ -723,6 +759,46 @@
         "title": "DecisionBrief",
         "type": "object"
       },
+      "DecisionReadinessActionSelector": {
+        "description": "Frontend action lookup selector. The UI resolves this against the current ActionPlan and\ncomputes its own action key, so the API never depends on action ordering or frontend state.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "required_approver": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Approver"
+          },
+          "target_object_id": {
+            "title": "Target Object Id",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "tool",
+          "target_object_id"
+        ],
+        "title": "DecisionReadinessActionSelector",
+        "type": "object"
+      },
       "DeterministicDecision": {
         "properties": {
           "approval_ready": {
@@ -763,6 +839,360 @@
           "approval_ready"
         ],
         "title": "DeterministicDecision",
+        "type": "object"
+      },
+      "DocsChatMessage": {
+        "description": "One prior docs-RAG turn. History is untrusted conversational context only.",
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "default": "user",
+            "enum": [
+              "user",
+              "agent"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "title": "DocsChatMessage",
+        "type": "object"
+      },
+      "DocsChatPhrasing": {
+        "description": "Mode metadata for docs-RAG prose generation. Governed fields stay outside this object.",
+        "properties": {
+          "effective_mode": {
+            "default": "deterministic",
+            "enum": [
+              "llm",
+              "deterministic"
+            ],
+            "title": "Effective Mode",
+            "type": "string"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_configured",
+                  "client_error",
+                  "grounding_guard"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "llm_available": {
+            "default": false,
+            "title": "Llm Available",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "requested_mode": {
+            "default": "deterministic",
+            "enum": [
+              "llm",
+              "deterministic"
+            ],
+            "title": "Requested Mode",
+            "type": "string"
+          }
+        },
+        "title": "DocsChatPhrasing",
+        "type": "object"
+      },
+      "DocsChatRequest": {
+        "description": "Body for the future `/docs/chat` endpoint. Retrieval is documentation-scoped.",
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DocsChatMessage"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "default": "deterministic",
+            "enum": [
+              "llm",
+              "deterministic"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "surface": {
+            "enum": [
+              "chat",
+              "meetings",
+              "decision_brief"
+            ],
+            "title": "Surface",
+            "type": "string"
+          }
+        },
+        "required": [
+          "surface",
+          "message"
+        ],
+        "title": "DocsChatRequest",
+        "type": "object"
+      },
+      "DocsChatResponse": {
+        "description": "Docs-RAG answer envelope shared by the docs UI mock and future backend endpoint.",
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/DocsCitation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "confidence": {
+            "default": "grounded",
+            "enum": [
+              "grounded",
+              "partial",
+              "weak"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "phrasing": {
+            "$ref": "#/components/schemas/DocsChatPhrasing"
+          },
+          "response": {
+            "title": "Response",
+            "type": "string"
+          },
+          "status": {
+            "default": "answered",
+            "enum": [
+              "answered",
+              "no_results",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "suggested_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "response"
+        ],
+        "title": "DocsChatResponse",
+        "type": "object"
+      },
+      "DocsChatTelemetrySummary": {
+        "additionalProperties": false,
+        "description": "Aggregate docs-chat observability summary; no prompts, answers, documents, or ids.",
+        "properties": {
+          "citation_count_bucket_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Citation Count Bucket Counts",
+            "type": "object"
+          },
+          "effective_mode_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Effective Mode Counts",
+            "type": "object"
+          },
+          "fallback_reason_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Fallback Reason Counts",
+            "type": "object"
+          },
+          "latency_bucket_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Latency Bucket Counts",
+            "type": "object"
+          },
+          "llm_accepted_count": {
+            "default": 0,
+            "title": "Llm Accepted Count",
+            "type": "integer"
+          },
+          "llm_fallback_count": {
+            "default": 0,
+            "title": "Llm Fallback Count",
+            "type": "integer"
+          },
+          "llm_requested_count": {
+            "default": 0,
+            "title": "Llm Requested Count",
+            "type": "integer"
+          },
+          "model_configured_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Model Configured Counts",
+            "type": "object"
+          },
+          "no_results_count": {
+            "default": 0,
+            "title": "No Results Count",
+            "type": "integer"
+          },
+          "requested_mode_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Requested Mode Counts",
+            "type": "object"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Status Counts",
+            "type": "object"
+          },
+          "surface_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Surface Counts",
+            "type": "object"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "DocsChatTelemetrySummary",
+        "type": "object"
+      },
+      "DocsCitation": {
+        "description": "Route-based docs citation. Never uses finance-case object ids.",
+        "properties": {
+          "access": {
+            "default": "open",
+            "enum": [
+              "open",
+              "sealed",
+              "locked"
+            ],
+            "title": "Access",
+            "type": "string"
+          },
+          "anchor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor"
+          },
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "tier": {
+            "enum": [
+              1,
+              2,
+              "sealed",
+              3
+            ],
+            "title": "Tier"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "doc_id",
+          "tier"
+        ],
+        "title": "DocsCitation",
         "type": "object"
       },
       "Escalation": {
@@ -1867,6 +2297,91 @@
         "title": "SourceVersionSnapshot",
         "type": "object"
       },
+      "StagedRemediationOrigin": {
+        "description": "Trace from a staged drawer card back to the Decision Brief row that produced it.",
+        "properties": {
+          "remediation_tool": {
+            "title": "Remediation Tool",
+            "type": "string"
+          },
+          "required_approver": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Approver"
+          },
+          "row_id": {
+            "title": "Row Id",
+            "type": "string"
+          },
+          "surface": {
+            "const": "decision_readiness",
+            "default": "decision_readiness",
+            "title": "Surface",
+            "type": "string"
+          },
+          "target_object_id": {
+            "title": "Target Object Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "row_id",
+          "remediation_tool",
+          "target_object_id"
+        ],
+        "title": "StagedRemediationOrigin",
+        "type": "object"
+      },
+      "StagedRemediationRequest": {
+        "description": "Body for `/actions/staged-remediation`.\n\nThe drawer card must be validated from this exact row remediation. The client supplies the row\nidentity and remediation descriptor; the server rebuilds one action and re-gates it.",
+        "properties": {
+          "intent": {
+            "default": "prepare_decision_brief",
+            "title": "Intent",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/StagedRemediationOrigin"
+          },
+          "remediation": {
+            "$ref": "#/components/schemas/DecisionReadinessActionSelector"
+          },
+          "row_details": {
+            "default": "",
+            "title": "Row Details",
+            "type": "string"
+          },
+          "row_gate": {
+            "default": "",
+            "title": "Row Gate",
+            "type": "string"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          },
+          "user_id": {
+            "default": "u_rm",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin",
+          "remediation"
+        ],
+        "title": "StagedRemediationRequest",
+        "type": "object"
+      },
       "StaleSectionState": {
         "properties": {
           "reason": {
@@ -2151,7 +2666,7 @@
   "paths": {
     "/actions/compose": {
       "post": {
-        "description": "Proposed follow-ups; every action carries a previewable diff or a `blocked_reason`.",
+        "description": "Agent Actions; every action carries a previewable diff or a `blocked_reason`.",
         "operationId": "post_actions_compose_actions_compose_post",
         "requestBody": {
           "content": {
@@ -2268,6 +2783,45 @@
           }
         },
         "summary": "Post Actions Loop"
+      }
+    },
+    "/actions/staged-remediation": {
+      "post": {
+        "description": "Validate one staged Decision Brief row remediation into one drawer card.\n\nThis endpoint is the anti-drift seam: the card comes from the row's remediation descriptor\npassed through the deterministic action composer, not a separately authored follow-up list.",
+        "operationId": "post_actions_staged_remediation_actions_staged_remediation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StagedRemediationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Action"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Actions Staged Remediation"
       }
     },
     "/api/actions": {
@@ -2500,7 +3054,7 @@
     },
     "/api/ops/scorecard": {
       "get": {
-        "description": "The core WS-G three-vertical RecipeScorecard (finance + legal + health).",
+        "description": "Core-schema projection of the canonical Ops three-vertical scorecard.",
         "operationId": "api_ops_scorecard_api_ops_scorecard_get",
         "responses": {
           "200": {
@@ -2634,6 +3188,64 @@
           }
         },
         "summary": "Post Context"
+      }
+    },
+    "/docs/chat": {
+      "post": {
+        "description": "Answer over the documentation corpus with ACL enforced before drafting.\n\nTier-3 raw bodies and sealed raw bodies never reach the model view. The wrapper validates every\ncitation, emits sealed `cleared_derivative` text only, and returns locked-source access metadata\nwithout revealing restricted content.",
+        "operationId": "post_docs_chat_docs_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Docs Chat"
+      }
+    },
+    "/ops/docs-chat": {
+      "get": {
+        "description": "Aggregate docs-chat LLM observability with no raw prompts, answers, or documents.",
+        "operationId": "get_ops_docs_chat_ops_docs_chat_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsChatTelemetrySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Ops Docs Chat"
       }
     },
     "/ops/evals": {

@@ -24,8 +24,10 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from actions.composer import StagedRemediation
 from actions.loop import LoopState
 from core.schemas import (
+    Action,
     ActionPlan,
     AuditEvent,
     ContextBundle,
@@ -51,6 +53,7 @@ from api.models import (
     OpsReport,
     RecordVerification,
     RevalidateRequest,
+    StagedRemediationRequest,
     VerifyRecordRequest,
 )
 from api.orchestrator import (
@@ -58,6 +61,7 @@ from api.orchestrator import (
     assemble_context,
     compose_actions,
     compose_and_execute,
+    compose_staged_remediation,
     default_action_plan,
     ops_report,
     rulepack_meta,
@@ -149,6 +153,26 @@ def post_actions_compose(req: BriefRequest) -> ActionPlan:
     """Agent Actions; every action carries a previewable diff or a `blocked_reason`."""
     brief, bundle = assemble_brief(req.user_id, req.intent)
     return compose_actions(brief, bundle)
+
+
+@app.post("/actions/staged-remediation", response_model=Action)
+def post_actions_staged_remediation(req: StagedRemediationRequest) -> Action:
+    """Validate one staged Decision Brief row remediation into one drawer card.
+
+    This endpoint is the anti-drift seam: the card comes from the row's remediation descriptor
+    passed through the deterministic action composer, not a separately authored follow-up list.
+    """
+    brief, bundle = assemble_brief(req.user_id, req.intent)
+    remediation = StagedRemediation(
+        row_id=req.origin.row_id,
+        tool=req.remediation.tool,
+        target_object_id=req.remediation.target_object_id,
+        required_approver=req.remediation.required_approver,
+        source_ids=req.source_ids,
+        reason=req.row_details,
+        parameters=req.remediation.parameters,
+    )
+    return compose_staged_remediation(brief, bundle, remediation)
 
 
 @app.post("/actions/execute", response_model=list[AuditEvent])

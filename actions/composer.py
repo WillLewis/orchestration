@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.schemas import (
     Action,
@@ -60,6 +60,22 @@ class ActionProposer(Protocol):
     """Proposes candidate actions (tool + intent) from a brief. Never decides what is allowed."""
 
     def propose(self, brief: DecisionBrief, bundle: ContextBundle) -> list[Action]: ...
+
+
+class StagedRemediation(BaseModel):
+    """One Decision Brief row remediation staged for drawer validation.
+
+    This API-layer seam lets one readiness-row remediation go through the deterministic composer
+    without falling back to a separately-authored follow-up list.
+    """
+
+    row_id: str
+    tool: str
+    target_object_id: str
+    required_approver: str | None = None
+    source_ids: list[str] = Field(default_factory=list)
+    reason: str = ""
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class HeuristicActionProposer:
@@ -256,9 +272,11 @@ class SafeActionComposer:
         self,
         engine: ActionValidationEngine | None = None,
         proposer: ActionProposer | None = None,
+        registry: ToolCardRegistry | None = None,
     ) -> None:
         self.engine = engine or ActionValidationEngine()
         self.proposer = proposer or HeuristicActionProposer()
+        self.registry = registry or ToolCardRegistry()
 
     def compose(self, brief: DecisionBrief, bundle: ContextBundle) -> ActionPlan:
         approvals = brief.required_approvals
@@ -273,3 +291,78 @@ class SafeActionComposer:
             # validate_action ignores any model-supplied blocked_reason — the gate is authoritative.
             validated.append(self.engine.validate_action(diffed, bundle, approvals=approvals))
         return ActionPlan(actions=validated)
+
+    def compose_staged_remediation(
+        self,
+        remediation: StagedRemediation,
+        brief: DecisionBrief,
+        bundle: ContextBundle,
+    ) -> Action:
+        """Validate exactly one staged readiness-row remediation into one drawer card."""
+        candidate = self._action_from_staged_remediation(remediation)
+        diffed = candidate.model_copy(update={"diff": self.engine.build_diff(candidate)})
+        return self.engine.validate_action(diffed, bundle, approvals=brief.required_approvals)
+
+    def _action_from_staged_remediation(self, remediation: StagedRemediation) -> Action:
+        side_effect = self.registry.get(remediation.tool).side_effect
+        parameters = remediation.parameters
+        reason = (
+            _string_param(parameters, "route_note")
+            or remediation.reason
+            or f"Stage remediation for {remediation.row_id}."
+        )
+        after = _after_for_staged_remediation(remediation)
+        risk = "medium" if remediation.tool == "route_approval" else "low"
+        sources = [
+            SourceRef(object_id=object_id)
+            for object_id in (remediation.source_ids or [remediation.target_object_id])
+        ]
+        return Action(
+            tool=remediation.tool,
+            reason=reason,
+            sources=sources,
+            required_approver=remediation.required_approver,
+            risk=risk,
+            side_effect=side_effect,
+            diff=ActionDiff(target_object_id=remediation.target_object_id, after=after),
+        )
+
+
+def _string_param(parameters: dict[str, Any], key: str) -> str | None:
+    value = parameters.get(key)
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def _role_label(role: str | None) -> str:
+    if not role:
+        return "Approver"
+    return role.replace("_", " ").title()
+
+
+def _after_for_staged_remediation(remediation: StagedRemediation) -> dict[str, Any]:
+    parameters = remediation.parameters
+    if remediation.tool == "route_approval":
+        after: dict[str, Any] = {
+            "approval_route": _role_label(remediation.required_approver),
+            "state": "routed",
+        }
+        business_label = _string_param(parameters, "business_label")
+        if business_label:
+            after["approval_request"] = business_label
+        requested_discount = parameters.get("requested_discount_percent")
+        if isinstance(requested_discount, int | float):
+            after["requested_discount"] = f"{requested_discount:g}%"
+        return after
+
+    if remediation.tool == "create_task":
+        return {
+            "title": _string_param(parameters, "title") or remediation.reason or remediation.row_id,
+            "assignee": _string_param(parameters, "assignee") or "Priya N. (Analyst)",
+            "due": _string_param(parameters, "due") or "2026-06-22",
+            "status": _string_param(parameters, "status") or "open",
+        }
+
+    if remediation.tool == "edit_document":
+        return dict(parameters.get("after") if isinstance(parameters.get("after"), dict) else {})
+
+    return dict(parameters)
