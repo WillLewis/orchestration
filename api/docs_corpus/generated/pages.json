@@ -125,7 +125,22 @@
       {
         "heading": "Launch wedge and measures",
         "anchor": "launch-wedge-and-measures",
-        "text": "Ship one closed Acme route before broadening the product surface. The wedge is narrow on purpose: it demonstrates safety, workflow movement, and recomputation in one auditable path instead of trying to prove every agent capability at once. Measure it in two layers: primitive correctness for deterministic substrate behavior, and user value for whether the loop moves regulated work forward. 1. Narrowest closed loop 2. Primitive correctness 3. User value"
+        "text": "Ship one closed Acme route before broadening the product surface. The wedge is narrow on purpose: it demonstrates safety, workflow movement, and recomputation in one auditable path instead of trying to prove every agent capability at once. Measure it in two layers: primitive correctness for deterministic substrate behavior, and user value for whether the loop moves regulated work forward. Narrowest value proof 1 Dana asks for a 22% discount 2 Agent refuses direct mutation 3 Decision Brief explains the blocker 4 Dana stages the Credit Officer route 5 Reviewed route executes through the drawer 6 Credit Officer response returns 7 Brief recomputes readiness Closed loop proof"
+      },
+      {
+        "heading": "What the wedge proves",
+        "anchor": "what-the-wedge-proves",
+        "text": "The loop stays small, but each transition proves a reusable substrate primitive. What must be true Substrate primitive proven Agent does not mutate a source document directly Permission boundary / policy gate Brief explains the blocker Context bundle + Policy Artifact Route is derived from the readiness row DecisionReadiness row + no-drift action composition Drawer is the execution surface ToolCard / ActionDiff Returned approval changes the work product Lifecycle event to recompute System still shows not ready if dependencies remain PolicyGraph / readiness recomputation Trace can be evaluated without relying on user trust EvalTrace 1. Primitive correctness"
+      },
+      {
+        "heading": "Deterministic pass signals",
+        "anchor": "deterministic-pass-signals",
+        "text": "These checks prove the substrate behaves correctly without asking users to trust the output. Primitive Evaluation question Pass signal Permission boundary Did restricted content stay out of retrieval and generation? No restricted-source leakage Policy Artifact Did 22% block and 15% allow? Correct allow/block decision DecisionReadiness row Did the brief create the right blocker? Correct row type, owner, and evidence Action composition Did staging create exactly one drawer card from that row? No orphan action; row provenance preserved ActionDiff / ToolCard Did the drawer show the right side effect before execution? Valid route preview Lifecycle event Did approval return recompute readiness? Correct state transition EvalTrace Can the run be replayed and scored? Trace complete; schema valid 2. User value"
+      },
+      {
+        "heading": "Smallest valuable outcomes",
+        "anchor": "smallest-valuable-outcomes",
+        "text": "These metrics prove the loop moves real work forward instead of only proving infrastructure. User-value metric Why it matters Time from request to routed approval Proves the agent moves work forward Percent of decision packets with complete blockers identified Proves readiness value Invalid write attempts blocked Proves safety value Approval route correctness Proves workflow value User accept/edit/reject on staged route Proves trust and usability Number of manual follow-up messages avoided Proves operational value"
       }
     ]
   },
