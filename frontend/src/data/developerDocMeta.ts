@@ -1,5 +1,6 @@
 export type DeveloperDocPageId =
   | "metrics"
+  | "primitives"
   | "risks"
   | "contextAssembly"
   | "actionDiff"
@@ -26,6 +27,11 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
     title: "Success Metrics",
     description:
       "Success metrics for the governed ConnectWork agent: cycle time, trust guardrails, eval scores, replay metrics, approval burden, and cost.",
+  },
+  primitives: {
+    title: "Primitives",
+    description:
+      "The admin-configured and platform-owned primitives that compose into the Acme renewal credit decision flow.",
   },
   risks: {
     title: "Risks & Mitigations",
@@ -107,9 +113,6 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
 export function getDeveloperDocHead(pageId: DeveloperDocPageId) {
   const page = developerDocMeta[pageId];
   return {
-    meta: [
-      { title: page.title },
-      { name: "description", content: page.description },
-    ],
+    meta: [{ title: page.title }, { name: "description", content: page.description }],
   };
 }

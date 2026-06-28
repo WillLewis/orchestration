@@ -60,6 +60,80 @@ const dscr = decision_brief.policy_gates.calculations[0];
 const routeApprovalAction = action_plan.actions.find((action) => action.tool === "route_approval");
 const blockedAction = action_plan.actions.find((action) => action.blocked_reason);
 const loopOpenStatus = deriveOpenStatus(loop_state, action_plan.actions);
+const primitiveRows = [
+  {
+    primitive: "AgentRecipe",
+    whatItIs: "Defines the governed use case an agent is allowed to run.",
+    configuredBy: "Use case, source scopes, allowed actions, eval pack",
+    acmeExample: "Acme renewal credit decision",
+  },
+  {
+    primitive: "Permission Boundary",
+    whatItIs: "Defines which sources and content the current user may use.",
+    configuredBy: "User/document permissions, restricted-source handling",
+    acmeExample: "Legal memo restricted, not summarized",
+  },
+  {
+    primitive: "Context Bundle",
+    whatItIs: "Packages permitted sources, claims, state, and versions for the agent.",
+    configuredBy: "Meeting, docs, metadata, workflow state, source versions",
+    acmeExample: "Memo + CS plan + approvals + tracker",
+  },
+  {
+    primitive: "RulePack",
+    whatItIs: "Encodes deterministic thresholds, calculations, and blocked-action rules.",
+    configuredBy: "Thresholds, calculations, blocked actions",
+    acmeExample: "22% requires Credit Officer approval",
+  },
+  {
+    primitive: "ApprovalMatrix",
+    whatItIs: "Maps rule outcomes and action classes to required approvers.",
+    configuredBy: "Required approver by rule or action class",
+    acmeExample: "Credit Officer and Legal routes",
+  },
+  {
+    primitive: "PolicyGraph",
+    whatItIs: "Orders dependencies so readiness can be computed deterministically.",
+    configuredBy: "Dependency order and readiness criteria",
+    acmeExample: "Credit, Legal, tracker, CS-plan reconciliation",
+  },
+  {
+    primitive: "Decision Readiness Row",
+    whatItIs: "Represents one blocker with its status and possible remediation.",
+    configuredBy: "Typed blocker and stageable remediation",
+    acmeExample: "Approval, missing evidence, conflict rows",
+  },
+  {
+    primitive: "ActionDiff",
+    whatItIs: "Shows the exact proposed change before anything is committed.",
+    configuredBy: "Validated change preview",
+    acmeExample: "CS plan 18% -> 22% diff",
+  },
+  {
+    primitive: "LifecycleEvent",
+    whatItIs: "Records a state-changing event that can trigger recomputation.",
+    configuredBy: "Event classes and recompute behavior",
+    acmeExample: "Approval returned; evidence uploaded",
+  },
+  {
+    primitive: "WorkProductContract",
+    whatItIs: "Defines the sealed record, its sources, dependencies, and integrity checks.",
+    configuredBy: "Record schema, sources, seal, dependencies",
+    acmeExample: "Final governed Decision Brief",
+  },
+  {
+    primitive: "RevalidationRule",
+    whatItIs: "Declares which source changes make record sections stale.",
+    configuredBy: "Freshness triggers and affected sections",
+    acmeExample: "Source change marks section stale",
+  },
+  {
+    primitive: "EvalTrace",
+    whatItIs: "Captures content-free quality and safety measurements for replay.",
+    configuredBy: "Quality, safety, and platform metrics",
+    acmeExample: "Citation, permission, action, stale-record KPIs",
+  },
+];
 
 function Pill({
   children,
@@ -130,6 +204,29 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
       },
     ],
     content: MetricsPage,
+  },
+  primitives: {
+    eyebrow: "Getting started",
+    title: "Primitives",
+    description: (
+      <p>
+        These are the objects an admin or platform owner configures so the agent can read, decide,
+        stage, execute, seal, and revalidate work without inventing governance at runtime.
+      </p>
+    ),
+    related: [
+      {
+        label: "Roadmap",
+        to: "/developers/roadmap",
+        description: "Where the primitives enter the phased build.",
+      },
+      {
+        label: "Deterministic Gating",
+        to: "/developers/gating",
+        description: "How RulePacks, ApprovalMatrix, and PolicyGraph become a gate.",
+      },
+    ],
+    content: PrimitivesPage,
   },
   risks: {
     eyebrow: "Getting started",
@@ -605,6 +702,51 @@ function MetricsPage() {
           goes stale does not count as successful.
         </p>
       </Callout>
+    </>
+  );
+}
+
+function PrimitivesPage() {
+  return (
+    <>
+      <DocsSection label="map" title="Primitive map">
+        <p>
+          The platform will expose these as explicit primitives at various points in the roadmap.
+          Admins configure the policy surface; the runtime composes it into a deterministic decision
+          path.
+        </p>
+        <p>
+          The table shows what each primitive is configured to own and how it appears in the Acme
+          renewal credit decision.
+        </p>
+      </DocsSection>
+
+      <DataTable
+        columns={[
+          { key: "primitive", label: "Primitive" },
+          { key: "whatItIs", label: "What it is" },
+          { key: "configuredBy", label: "Configured by admin / platform owner" },
+          { key: "acmeExample", label: "Acme example" },
+        ]}
+        rows={primitiveRows}
+      />
+
+      <DocsSection label="composition" title="How the primitives compose">
+        <p>
+          <code>AgentRecipe</code> selects the use case, allowed sources, allowed actions, and eval
+          pack. <code>Permission Boundary</code> filters what the user may use before retrieval or
+          summarization. <code>Context Bundle</code> carries the permitted meeting, documents,
+          metadata, workflow state, and source versions into the read and verification steps.
+        </p>
+        <p>
+          <code>RulePack</code>, <code>ApprovalMatrix</code>, and <code>PolicyGraph</code> determine
+          whether the decision is ready and which blocker comes next.{" "}
+          <code>Decision Readiness Row</code> turns those blockers into stageable remediations.{" "}
+          <code>ActionDiff</code>, <code>LifecycleEvent</code>, <code>WorkProductContract</code>,{" "}
+          <code>RevalidationRule</code>, and <code>EvalTrace</code> keep every write previewed,
+          recorded, fresh, and measurable.
+        </p>
+      </DocsSection>
     </>
   );
 }

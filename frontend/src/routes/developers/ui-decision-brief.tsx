@@ -21,9 +21,7 @@ function UiDecisionBriefDocsPage() {
     <DocsPageShell
       eyebrow="Interfaces"
       title="Decision Brief UI"
-      description={
-        <p>Coming soon.</p>
-      }
+      description={<p>Coming soon.</p>}
       related={[
         {
           label: "Decision Brief",

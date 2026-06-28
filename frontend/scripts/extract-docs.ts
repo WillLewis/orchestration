@@ -73,6 +73,7 @@ const routeModuleLoaders = {
   "/developers/vision": () => import("../src/routes/developers/vision"),
   "/developers/prioritization": () => import("../src/routes/developers/prioritization"),
   "/developers/roadmap": () => import("../src/routes/developers/roadmap"),
+  "/developers/primitives": () => import("../src/routes/developers/primitives"),
   "/developers/whats-live": () => import("../src/routes/developers/whats-live"),
   "/developers/metrics": () => import("../src/routes/developers/metrics"),
   "/developers/risks": () => import("../src/routes/developers/risks"),

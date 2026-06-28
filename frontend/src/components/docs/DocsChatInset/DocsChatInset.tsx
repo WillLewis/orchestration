@@ -574,10 +574,7 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AppModeControl
-              mode={controller.mode}
-              onSelectMode={controller.selectMode}
-            />
+            <AppModeControl mode={controller.mode} onSelectMode={controller.selectMode} />
             <button
               type="button"
               onClick={reset}
@@ -828,10 +825,7 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AppModeControl
-              mode={controller.mode}
-              onSelectMode={controller.selectMode}
-            />
+            <AppModeControl mode={controller.mode} onSelectMode={controller.selectMode} />
             <button
               type="button"
               onClick={() =>
