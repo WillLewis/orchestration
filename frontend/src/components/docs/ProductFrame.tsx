@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { FileText, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { FileText, ShieldCheck, Sparkles } from "lucide-react";
 
 export function ProductFrame({
   surface,
@@ -74,10 +74,6 @@ export function ProductFrame({
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-primary">
             <ShieldCheck className="h-3 w-3" />
             Governed
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
-            <LockKeyhole className="h-3 w-3 text-primary" />
-            Permissions-aware
           </span>
         </div>
       </header>

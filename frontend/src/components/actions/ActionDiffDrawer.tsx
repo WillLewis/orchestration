@@ -33,8 +33,6 @@ import {
   tool_labels,
   type Action,
   type DerivedStatus,
-  type SideEffect,
-  type Risk,
 } from "@/data/actions";
 import { verify_result_financials, type VerifyResult } from "@/data/record";
 import {
@@ -161,22 +159,6 @@ function effectiveStatus(
     cls: "bg-[var(--success-bg)] text-[var(--success)]",
     rail: "bg-[var(--success)]",
   };
-}
-
-const RISK_CLS: Record<Risk, string> = {
-  low: "bg-[var(--canvas)] text-[var(--secondary-text)] border border-border",
-  medium: "bg-[var(--warning-bg)] text-[var(--warning)]",
-  high: "bg-[var(--danger-bg)] text-[var(--danger)]",
-};
-const SIDE_CLS: Record<SideEffect, string> = {
-  read: "bg-[var(--canvas)] text-[var(--secondary-text)] border border-border",
-  draft: "bg-[var(--primary-tint)] text-primary",
-  propose: "bg-[var(--primary-tint)] text-primary",
-  write: "bg-[var(--canvas)] text-[var(--secondary-text)] border border-border",
-};
-
-function renderedSideEffect(action: Action): SideEffect {
-  return action.tool === "route_approval" ? "write" : action.side_effect;
 }
 
 // Normalized execution outcome so one panel renders both the live gateway result and the mock
@@ -764,10 +746,6 @@ export function ActionDiffDrawer() {
                 <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
                   Agent Actions
                 </h2>
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10.5px] font-semibold text-[var(--secondary-text)]">
-                  <ShieldCheck className="h-3 w-3 text-primary" />
-                  Permissions-aware
-                </span>
               </div>
               <p className="mt-1.5 text-[12px] text-[var(--secondary-text)]">
                 Review changes, outbound requests, and notes before sending.
@@ -1210,8 +1188,6 @@ function CascadeChangeCard({ onAccept }: { onAccept: () => void }) {
           </h3>
         </div>
         <div className="flex flex-wrap gap-1">
-          <Chip className={SIDE_CLS[a.side_effect]}>{a.side_effect}</Chip>
-          <Chip className={RISK_CLS[a.risk]}>Low risk</Chip>
           <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">Needs acceptance</Chip>
         </div>
       </div>
@@ -1362,12 +1338,6 @@ function NextActionCard({
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-              <Chip className={SIDE_CLS[renderedSideEffect(action)]}>
-                {renderedSideEffect(action)}
-              </Chip>
-              <Chip className={RISK_CLS[action.risk]}>
-                {action.risk === "low" ? "Low risk" : `${action.risk} risk`}
-              </Chip>
               <Chip className={statusChip.cls}>{statusChip.label}</Chip>
             </div>
           </div>
@@ -1396,9 +1366,11 @@ function NextActionCard({
             </div>
           )}
 
-          <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
-            {action.reason}
-          </p>
+          {action.tool === "create_task" && (
+            <p className="mt-2 text-[12.5px] leading-snug text-[var(--secondary-text)]">
+              {action.reason}
+            </p>
+          )}
           <SourceRow sources={action.sources.map((s) => s.object_id)} />
         </div>
 
@@ -1812,12 +1784,6 @@ function ActionCard({
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-1">
-              <Chip className={SIDE_CLS[renderedSideEffect(action)]}>
-                {renderedSideEffect(action)}
-              </Chip>
-              <Chip className={RISK_CLS[action.risk]}>
-                {action.risk === "low" ? "low risk" : `${action.risk} risk`}
-              </Chip>
               {action.required_approver && !isCommitted && (
                 <Chip className="bg-[var(--warning-bg)] text-[var(--warning)]">
                   Needs: {approver_labels[action.required_approver] ?? action.required_approver}
@@ -2404,8 +2370,6 @@ function CascadeDrawer() {
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <Chip className={SIDE_CLS[a.side_effect]}>{a.side_effect}</Chip>
-                  <Chip className={RISK_CLS[a.risk]}>low risk</Chip>
                   <Chip
                     className={
                       accepted

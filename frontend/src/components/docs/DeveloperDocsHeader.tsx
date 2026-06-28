@@ -13,7 +13,7 @@ function labelForHref(href: string) {
   if (path === "/") return "Meeting";
   if (path === "/ops") return "Agent Ops";
   if (path === "/loop") return "Agent Batch";
-  if (path === "/packet") return "Decision Packet";
+  if (path === "/packet") return "Decision Brief";
   if (path.startsWith("/record/")) return "Governed Record";
   return "Meeting";
 }

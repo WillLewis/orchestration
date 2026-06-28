@@ -424,7 +424,7 @@ function WorkLoop() {
                   className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)] transition-colors hover:bg-[var(--canvas)]"
                 >
                   <FileCheck2 className="h-3 w-3" />
-                  from Decision Packet — Acme renewal
+                  from Decision Brief — Acme renewal
                 </Link>
                 <span
                   className={[
@@ -624,7 +624,7 @@ function BatchPlan({
             <p className="mt-1 text-[11.5px] leading-snug text-[var(--muted-fg)]">
               Derived from the{" "}
               <Link to="/packet" className="font-medium text-primary hover:underline">
-                Decision Packet's
+                Decision Brief's
               </Link>{" "}
               recommended next-steps — generated from the meeting transcript and linked content.
             </p>
@@ -1385,7 +1385,7 @@ function Dossier({
             className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-primary transition-colors hover:underline"
           >
             <GitBranch className="h-3 w-3" />
-            From Decision Packet — Acme renewal
+            From Decision Brief — Acme renewal
           </Link>
         </div>
       </div>

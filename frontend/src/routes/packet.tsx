@@ -51,11 +51,11 @@ export const Route = createFileRoute("/packet")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
-      { title: "Decision Packet — Acme renewal" },
+      { title: "Decision Brief — Acme renewal" },
       {
         name: "description",
         content:
-          "Governed decision packet for the Acme renewal pricing exception and covenant modification — approvals, gates, evidence, and full source provenance.",
+          "Governed decision brief for the Acme renewal pricing exception and covenant modification — approvals, gates, evidence, and full source provenance.",
       },
     ],
   }),
@@ -115,35 +115,44 @@ function SourceChip({
   ids,
   hoveredId,
   setHoveredId,
+  sourceNumberById,
 }: {
   ids: string[];
   hoveredId: string | null;
   setHoveredId: (id: string | null) => void;
+  sourceNumberById: ReadonlyMap<string, number>;
 }) {
-  const primary = ids[0];
-  const active = hoveredId && ids.includes(hoveredId);
   return (
-    <button
-      type="button"
-      onMouseEnter={() => setHoveredId(primary)}
-      onMouseLeave={() => setHoveredId(null)}
-      onFocus={() => setHoveredId(primary)}
-      onBlur={() => setHoveredId(null)}
-      onClick={() => {
-        document
-          .getElementById(`src-${primary}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }}
-      className={[
-        "ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-[5px] px-1 align-[2px] text-[10px] font-semibold transition-colors",
-        active
-          ? "bg-primary text-white"
-          : "bg-[var(--primary-tint)] text-primary hover:bg-primary hover:text-white",
-      ].join(" ")}
-      aria-label={`Source reference`}
-    >
-      {ids.length}
-    </button>
+    <span className="ml-1 inline-flex items-center gap-0.5 align-[2px]">
+      {ids.map((id) => {
+        const number = sourceNumberById.get(id);
+        const active = hoveredId === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            onMouseEnter={() => setHoveredId(id)}
+            onMouseLeave={() => setHoveredId(null)}
+            onFocus={() => setHoveredId(id)}
+            onBlur={() => setHoveredId(null)}
+            onClick={() => {
+              document
+                .getElementById(`src-${id}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className={[
+              "inline-flex h-4 min-w-4 items-center justify-center rounded-[5px] px-1 text-[10px] font-semibold transition-colors",
+              active
+                ? "bg-primary text-white"
+                : "bg-[var(--primary-tint)] text-primary hover:bg-primary hover:text-white",
+            ].join(" ")}
+            aria-label={`Source reference ${number ?? "unknown"}`}
+          >
+            {number ?? "?"}
+          </button>
+        );
+      })}
+    </span>
   );
 }
 
@@ -375,6 +384,7 @@ function DecisionReadinessTable({
   brief,
   hoveredId,
   setHoveredId,
+  sourceNumberById,
   rulepackId,
   rulepackVersion,
 }: {
@@ -382,6 +392,7 @@ function DecisionReadinessTable({
   brief: typeof briefTemplate;
   hoveredId: string | null;
   setHoveredId: (id: string | null) => void;
+  sourceNumberById: ReadonlyMap<string, number>;
   rulepackId: string;
   rulepackVersion: number;
 }) {
@@ -468,6 +479,7 @@ function DecisionReadinessTable({
                           ids={row.source_ids}
                           hoveredId={hoveredId}
                           setHoveredId={setHoveredId}
+                          sourceNumberById={sourceNumberById}
                         />
                       )}
                     </span>
@@ -525,7 +537,6 @@ function PacketWorkspace() {
     decision_brief,
     decision_readiness,
     sources,
-    source_count,
     rulepack_id,
     rulepack_version,
     workflow_status,
@@ -536,7 +547,7 @@ function PacketWorkspace() {
   const b = decision_brief;
   const approvalReady = b.policy_gates.approval_ready;
 
-  // "Ask about this packet" reuses the governed /chat answerer (permission refusal, gate-hold,
+  // "Ask about this brief" reuses the governed /chat answerer (permission refusal, gate-hold,
   // missing-evidence honesty, validated citations) — same Acme scope as the meeting panel.
   const chat = useChatMutation();
   const [askInput, setAskInput] = useState("");
@@ -569,6 +580,10 @@ function PacketWorkspace() {
     });
     return counts;
   }, [sources]);
+  const sourceNumberById = useMemo(
+    () => new Map(sources.map((source, index) => [source.object_id, index + 1])),
+    [sources],
+  );
 
   useEffect(() => {
     if (focus === "next-steps" && readinessRef.current) {
@@ -627,28 +642,15 @@ function PacketWorkspace() {
         <div className="mx-auto max-w-[1320px] px-6 pt-6 pb-5 xl:px-10">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-primary">
-                <Sparkles className="h-3 w-3" />
-                Decision Packet
-              </div>
-              <h1 className="mt-2 text-[24px] font-semibold leading-tight tracking-tight text-foreground">
-                Decision Packet — Acme renewal
+              <h1 className="text-[24px] font-semibold leading-tight tracking-tight text-foreground">
+                Decision Brief — Acme renewal
               </h1>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-[var(--secondary-text)]">
                 <span>Generated 2 min ago</span>
                 <span className="text-[var(--muted-fg)]">·</span>
-                <span>
-                  Confidence:{" "}
-                  <span className="font-medium capitalize text-foreground">{b.confidence}</span>
-                </span>
-                <span className="text-[var(--muted-fg)]">·</span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
-                  <ShieldCheck className="h-3 w-3 text-primary" />
-                  Permissions-aware
-                </span>
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
                   <FileText className="h-3 w-3" />
-                  {source_count} sources
+                  {sourceSummary.used} sources used
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-[var(--secondary-text)]">
                   <ShieldCheck className="h-3 w-3 text-primary" />
@@ -765,6 +767,7 @@ function PacketWorkspace() {
                     ids={["doc_credit_memo", "doc_financials"]}
                     hoveredId={hoveredId}
                     setHoveredId={setHoveredId}
+                    sourceNumberById={sourceNumberById}
                   />
                 </p>
               </section>
@@ -791,6 +794,7 @@ function PacketWorkspace() {
                           ]}
                           hoveredId={hoveredId}
                           setHoveredId={setHoveredId}
+                          sourceNumberById={sourceNumberById}
                         />
                       </span>
                     </li>
@@ -806,6 +810,7 @@ function PacketWorkspace() {
                   setHoveredId={setHoveredId}
                   rulepackId={rulepack_id}
                   rulepackVersion={rulepack_version}
+                  sourceNumberById={sourceNumberById}
                 />
               </div>
 
@@ -868,6 +873,7 @@ function PacketWorkspace() {
                           ]}
                           hoveredId={hoveredId}
                           setHoveredId={setHoveredId}
+                          sourceNumberById={sourceNumberById}
                         />
                       </span>
                     </li>
@@ -890,22 +896,6 @@ function PacketWorkspace() {
                   ))}
                 </ul>
               </section>
-
-              {/* Permission limitations */}
-              <section>
-                <SectionLabel>Permission limitations</SectionLabel>
-                <div className="mt-2 space-y-2">
-                  {b.permission_limitations.map((p, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2.5 rounded-md border border-[var(--info)]/15 bg-[var(--info-bg)] px-3 py-2 text-[12.5px] leading-snug text-[var(--info)]"
-                    >
-                      <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      <span>{p}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
             </div>
           </article>
 
@@ -915,7 +905,7 @@ function PacketWorkspace() {
               <div className="border-b border-border px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div className="text-[13px] font-semibold text-foreground">
-                    Sources ({source_count})
+                    Sources ({sourceSummary.used} used)
                   </div>
                   <ShieldCheck className="h-4 w-4 text-primary" />
                 </div>
@@ -941,6 +931,9 @@ function PacketWorkspace() {
                         active ? "bg-[var(--primary-tint)]" : "bg-background",
                       ].join(" ")}
                     >
+                      <span className="mt-1 min-w-4 shrink-0 text-right text-[10.5px] font-semibold tabular-nums text-[var(--muted-fg)]">
+                        {sourceNumberById.get(s.object_id) ?? "?"}
+                      </span>
                       <span
                         className={[
                           "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md",
@@ -993,7 +986,7 @@ function PacketWorkspace() {
                   type="text"
                   value={askInput}
                   onChange={(e) => setAskInput(e.target.value)}
-                  placeholder="Ask about this packet…"
+                  placeholder="Ask about this brief…"
                   className="flex-1 bg-transparent text-[12.5px] text-foreground placeholder:text-[var(--muted-fg)] focus:outline-none"
                 />
               </form>
