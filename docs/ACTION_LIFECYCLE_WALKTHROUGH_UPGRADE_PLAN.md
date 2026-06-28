@@ -4,6 +4,9 @@ Use this plan to turn the Action Lifecycle architecture into a coherent Acme mee
 walkthrough. The source architecture spec is `docs/ACTION_LIFECYCLE.md`; this document is the
 demo plan that should guide presenter copy, frontend behavior, and parity checks.
 
+For the current presenter run from `@Agent apply the 22% discount` through sealing the governed
+record, use `docs/DEMO_BEATS_APPLY_DISCOUNT_TO_SEAL.md`.
+
 ## Product decision
 
 The demo should make three surface roles clear:
