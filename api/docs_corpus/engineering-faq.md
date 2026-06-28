@@ -9,6 +9,10 @@ owner: "Engineering"
 body: |
   # Engineering FAQ
 
+  ## What in the video is real versus mocked?
+
+  The backend logic is real: verification, approval thresholds, action diffs, blocked execution, lifecycle recompute, record minting, record verification, access control, and eval scoring. The simulated parts are mostly people and timing: Credit Officer, Legal, and Customer Success responses.
+
   ## What is actually real in the prototype versus mocked or hardcoded?
 
   The backend pipeline is real and tested - context assembly, the deterministic verifier, brief synthesis, the action composer/executor with diffs and rollback, the revalidation engine, and the eval harness all run against a synthetic regulated corpus. The frontend defaults to bundled mocks for prototype proof safety via a flag and can fetch live from the FastAPI gateway. The corpus and Acme scenario are synthetic; the controls are not faked - the red-team gate-override test proves the engine, not the model, decides.
@@ -17,6 +21,10 @@ body: |
 
   intent -> ContextAssembler (permission-filtered ContextBundle with claims, missing evidence, conflicts, source graph) -> Verifier (deterministic rules, calculation checks, approval matrix, schema validation) -> BriefSynthesizer (typed Decision Brief) -> ActionComposer (diffs) -> human approval -> Executor (audit + rollback) -> RevalidationEngine, with the EvalRunner and privacy telemetry alongside.
 
+  ## Where is the LLM used, and where are deterministic rules used?
+
+  The model can draft language, ground answers, and propose actions. Deterministic logic decides permissions, rule outcomes, approval readiness, calculations, blocked reasons, and execution. The model proposes; the gate decides whether anything can commit.
+
   ## Where exactly are LLMs used, and where are deterministic controls used?
 
   The LLM grounds, drafts the brief, and proposes actions - phrasing and synthesis. Everything that decides is deterministic: permission filtering before retrieval, the policy gate, calculation checks, approval-matrix state, and blocked_reason recomputed server-side. The model proposes; the engine disposes. Model output never clears a hard gate.
@@ -24,6 +32,10 @@ body: |
   ## How does the system know which documents, chats, meetings, tasks, and metadata to retrieve?
 
   Context assembly turns a user and intent into a ContextBundle: the permission filter runs first, then the assembler builds sources, claims, missing evidence, conflicts, and a source graph over only the objects that user can access - documents, meetings, workflows, tasks, chats, and ACL metadata.
+
+  ## How are permissions handled across documents with different access levels?
+
+  Permissions are applied before retrieval. The context assembler builds the bundle only from sources the user can access. Restricted sources are excluded from prompts and summaries; unsupported claims become missing evidence or open questions.
 
   ## How do you handle permissions when the answer requires synthesizing across objects with different ACLs?
 
@@ -41,9 +53,17 @@ body: |
 
   Conflicting sources are surfaced as explicit conflicts - the Acme pricing doc and CS plan show different discount levels - not silently merged. Stale sources are flagged by the lifecycle layer. The agent shows the conflict and routes it rather than picking a winner.
 
+  ## Why did the agent refuse the discount first, then later reconcile the CS plan?
+
+  The first request was a direct write before approval. That stays blocked. After Credit Officer approval returns, the lifecycle recomputes and finds a downstream conflict: the CS plan still says 18%. At that point the agent proposes a diff to reconcile it, still requiring human acceptance.
+
   ## How does revalidation work when the underlying source document changes?
 
   The sealed record carries a section-dependency map. A source change maps to affected sections, marks them stale, recomputes gate state, and emits reapproval routes - a targeted recheck, not a full re-run. A record can keep a valid integrity seal and still be stale; freshness and integrity are checked independently.
+
+  ## What does "Seal" do?
+
+  Seal mints a governed record. It stores the brief, gate result, source versions, permission omissions, dependency map, and integrity seal. It does not make an unready packet ready; it records exactly what was true at the time of sealing.
 
   ## How do you define "grounded" in this system?
 

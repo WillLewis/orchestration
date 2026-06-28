@@ -37,6 +37,10 @@ body: |
 
   North star: decision-to-closed-work-product cycle time for regulated review. Plus permission-leak rate (must be zero) and human-approval/acceptance rate on proposed actions. Value, safety, trust - one each.
 
+  ## How would you measure success?
+
+  The north star is decision-to-closed-work-product cycle time. Guardrails are equally important: zero permission leaks, zero unsupported approval claims, zero stale-source misses, deterministic rule pass rate, approval burden, latency, and cost.
+
   ## What would make you decide not to ship this?
 
   If offline replay showed the gate blocking legitimate actions at a rate that makes reviewers route around it, or any permission leak in eval. A governance product that over-blocks or leaks is worse than nothing - ConnectWork should hold until the replay scorecard is clean.

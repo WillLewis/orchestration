@@ -152,7 +152,14 @@ class DeterministicDocsChatClient:
             return DocsChatDraft(response="")
         parts = []
         for doc in view.docs:
-            text = _best_sentence(doc.safe_text, view.message)
+            if (
+                doc.doc_id.endswith("-faq")
+                and doc.section
+                and _normalized(doc.section) == _normalized(view.message)
+            ):
+                text = doc.safe_text.strip()
+            else:
+                text = _best_sentence(doc.safe_text, view.message)
             if text:
                 parts.append(text)
         body = " ".join(parts).strip()
@@ -605,6 +612,7 @@ _WEAK_NAME_TOKENS: frozenset[str] = frozenset(
         "document",
         "documents",
         "material",
+        "next",
         "source",
         "sources",
     }
@@ -686,7 +694,7 @@ _INTENT_PHRASES: dict[str, tuple[str, ...]] = {
 
 _INTENT_DOC_BONUSES: dict[str, dict[str, float]] = {
     "refusal": {"gating": 4.0, "action-packets": 3.0, "audit-log": 2.0},
-    "restricted_source": {"rag": 8.0, "ui-chat": 4.0, "design-rationale": 2.0},
+    "restricted_source": {"rag": 12.0, "ui-chat": 4.0, "design-rationale": 2.0},
     "sealed_record": {"sealed-records": 5.0, "revalidation": 2.0},
     "policy_gate": {"gating": 4.0, "compliance-trace": 3.0, "action-packets": 2.0},
 }
@@ -748,6 +756,32 @@ def _retrieve(message: str, chunks: Sequence[DocsChunk]) -> _Retrieval:
             aspects=aspects,
         )
         return _Retrieval(candidates=(), signals=signals, missing=aspects)
+
+    exact_faq_match = next(
+        (
+            (score, chunk)
+            for score, _, chunk in cleared
+            if chunk.doc_id.endswith("-faq")
+            and chunk.section
+            and _normalized(chunk.section) == norm_message
+        ),
+        None,
+    )
+    if exact_faq_match is not None:
+        top_score, chunk = exact_faq_match
+        next_score = next(
+            (score for score, _, other in scored if other.chunk_id != chunk.chunk_id),
+            0.0,
+        )
+        signals = _signals(
+            message=message,
+            selected=(chunk,),
+            threshold_cleared=True,
+            top_score=top_score,
+            next_score=next_score,
+            aspects=aspects,
+        )
+        return _Retrieval(candidates=(chunk,), signals=signals, missing=_missing(aspects, (chunk,)))
 
     top_score = cleared[0][0]
     top_doc_ids: list[str] = []

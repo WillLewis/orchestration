@@ -84,10 +84,10 @@ def test_design_rationale_reads_as_documentation_not_interview_prep():
 def test_faq_docs_are_open_acl_safe_documentation():
     docs = _docs_by_id()
     expected_section_counts = {
-        "product-faq": 10,
-        "commercial-faq": 19,
-        "engineering-faq": 45,
-        "ux-faq": 29,
+        "product-faq": 16,
+        "commercial-faq": 20,
+        "engineering-faq": 50,
+        "ux-faq": 30,
         "sharp-followups-faq": 32,
     }
 
@@ -103,6 +103,34 @@ def test_faq_docs_are_open_acl_safe_documentation():
         assert doc.body.count("\n## ") == section_count
         for phrase in ("panel", "interview", "crib sheet", "question bank"):
             assert phrase not in body
+
+
+def test_faq_docs_include_demo_question_headings():
+    docs = _docs_by_id()
+    expected_locations = {
+        "Who is Dana, and why is she the right user for this demo?": "product-faq",
+        "What customer pain is this solving?": "product-faq",
+        "Why finance instead of a broader meeting-productivity use case?": "product-faq",
+        "What are the actual product capabilities you're proposing?": "product-faq",
+        "What in the video is real versus mocked?": "engineering-faq",
+        "Where is the LLM used, and where are deterministic rules used?": "engineering-faq",
+        "How are permissions handled across documents with different access levels?": (
+            "engineering-faq"
+        ),
+        "How would an everyday user know what to do next?": "ux-faq",
+        "Why did the agent refuse the discount first, then later reconcile the CS plan?": (
+            "engineering-faq"
+        ),
+        "How does this connect to the context you were given - a Conversational Insights Agent?": (
+            "product-faq"
+        ),
+        'What does "Seal" do?': "engineering-faq",
+        "What would you ship first?": "product-faq",
+        "How would you measure success?": "commercial-faq",
+    }
+
+    for heading, doc_id in expected_locations.items():
+        assert "\n## {}\n".format(heading) in docs[doc_id].body
 
 
 def test_load_chunks_adds_generated_page_sections_with_anchors():

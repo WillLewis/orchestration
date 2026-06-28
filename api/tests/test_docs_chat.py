@@ -507,13 +507,80 @@ def test_restricted_source_query_retrieves_permission_support_not_generic_vision
     retrieval = _retrieve("How does the agent handle restricted source material?", load_chunks())
     doc_ids = {chunk.doc_id for chunk in retrieval.candidates}
 
-    assert doc_ids & {"design-rationale", "rag", "ui-chat"}
+    assert doc_ids & {"design-rationale", "engineering-faq", "rag", "ui-chat"}
     assert doc_ids != {"vision"}
 
 
 @pytest.mark.parametrize(
     ("query", "doc_id", "section"),
     [
+        (
+            "Who is Dana, and why is she the right user for this demo?",
+            "product-faq",
+            "Who is Dana, and why is she the right user for this demo?",
+        ),
+        (
+            "What customer pain is this solving?",
+            "product-faq",
+            "What customer pain is this solving?",
+        ),
+        (
+            "Why finance instead of a broader meeting-productivity use case?",
+            "product-faq",
+            "Why finance instead of a broader meeting-productivity use case?",
+        ),
+        (
+            "What are the actual product capabilities you're proposing?",
+            "product-faq",
+            "What are the actual product capabilities you're proposing?",
+        ),
+        (
+            "What in the video is real versus mocked?",
+            "engineering-faq",
+            "What in the video is real versus mocked?",
+        ),
+        (
+            "Where is the LLM used, and where are deterministic rules used?",
+            "engineering-faq",
+            "Where is the LLM used, and where are deterministic rules used?",
+        ),
+        (
+            "How are permissions handled across documents with different access levels?",
+            "engineering-faq",
+            "How are permissions handled across documents with different access levels?",
+        ),
+        (
+            "How would an everyday user know what to do next?",
+            "ux-faq",
+            "How would an everyday user know what to do next?",
+        ),
+        (
+            "Why did the agent refuse the discount first, then later reconcile the CS plan?",
+            "engineering-faq",
+            "Why did the agent refuse the discount first, then later reconcile the CS plan?",
+        ),
+        (
+            "How does this connect to the context you were given - a Conversational "
+            "Insights Agent?",
+            "product-faq",
+            "How does this connect to the context you were given - a Conversational "
+            "Insights Agent?",
+        ),
+        (
+            "What does Seal do?",
+            "engineering-faq",
+            'What does "Seal" do?',
+        ),
+        (
+            "What would you ship first?",
+            "product-faq",
+            "What would you ship first?",
+        ),
+        (
+            "How would you measure success?",
+            "commercial-faq",
+            "How would you measure success?",
+        ),
         (
             "What is the crisp customer pain you are solving here?",
             "product-faq",
@@ -551,6 +618,15 @@ def test_likely_question_faq_queries_retrieve_intended_corpus_sections(query, do
     assert citation["tier"] == 2
     assert citation["route"] is None
     assert citation["section"] == section
+
+
+def test_exact_faq_match_uses_full_curated_answer():
+    body = _post("chat", "How would an everyday user know what to do next?")
+
+    assert body["status"] == "answered"
+    assert "The UI keeps the main reason visible" in body["response"]
+    assert len(body["citations"]) == 1
+    assert body["citations"][0]["section"] == "How would an everyday user know what to do next?"
 
 
 def test_likely_question_faq_docs_do_not_break_unrelated_no_results():

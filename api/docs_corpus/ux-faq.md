@@ -21,6 +21,10 @@ body: |
 
   The grounded answer or Decision Brief for the current decision, with citations, what's missing, and gate state visible - not a blank prompt. The user sees that the agent already understands the decision and what it would take to close it.
 
+  ## How would an everyday user know what to do next?
+
+  The Decision Brief shows readiness rows: what is approved, what is missing, what conflicts, and what action can unblock it. The UI keeps the main reason visible, with deeper traces behind explanation surfaces.
+
   ## How do you make the agent understandable to a user who did not opt into AI?
 
   It behaves like a colleague who did the prep: here's what was decided, here's the evidence, here's what's missing, here's what ConnectWork should do next - approve or edit. No prompt-craft required; the power-user paradigms are hidden behind a review-and-approve surface a non-opt-in user already understands.
