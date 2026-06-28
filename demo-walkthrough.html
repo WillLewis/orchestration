@@ -3,1204 +3,618 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ConnectWork ConnectAgent — Demo Run-of-Show · Box Sr PM, AI Agent Orchestration</title>
+<title>ConnectWork Command Agent - Box Round 1 Walkthrough</title>
 <style>
   :root{
-    --primary:#0061d5; --primary-hover:#004bb5; --primary-tint:#e8f0fe; --on-primary:#fff;
-    --bg:#ffffff; --canvas:#f5f7fa; --card:#ffffff; --fg:#1a2433; --secondary:#5b6b7f; --muted:#8a97a8;
-    --border:#e3e8ee; --ring:#0061d5;
-    --success:#1e8e3e; --success-bg:#e6f4ea; --warning:#c77700; --warning-bg:#fef3e0;
-    --danger:#d93025; --danger-bg:#fce8e6; --info:#0061d5; --info-bg:#e8f0fe;
-    --grad:linear-gradient(135deg,#0061d5 0%,#6c4ce0 100%);
-    --shadow-card:0 1px 2px rgba(16,24,40,.06); --shadow-panel:0 1px 2px rgba(16,24,40,.06),0 6px 16px rgba(16,24,40,.08);
-    --r:12px;
+    --blue:#0061d5;
+    --blue-dark:#004bb5;
+    --blue-soft:#e8f0fe;
+    --green:#1e8e3e;
+    --green-soft:#e6f4ea;
+    --amber:#b56b00;
+    --amber-soft:#fff4df;
+    --red:#c5221f;
+    --red-soft:#fce8e6;
+    --ink:#172033;
+    --muted:#5d6b7c;
+    --quiet:#8b97a6;
+    --line:#dde5ef;
+    --panel:#ffffff;
+    --page:#f6f8fb;
+    --code:#0f1b2b;
+    --radius:8px;
+    --shadow:0 1px 2px rgba(15,23,42,.06),0 8px 22px rgba(15,23,42,.06);
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--canvas);color:var(--fg);
-    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    font-feature-settings:"cv02","cv03","cv04","cv11";-webkit-font-smoothing:antialiased;line-height:1.45;}
-  a{color:var(--primary);text-decoration:none}
-  h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
-  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
-  .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-
-  /* Topbar */
-  .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);
-    border-bottom:1px solid var(--border)}
-  .topbar .row{display:flex;align-items:center;gap:14px;height:56px}
-  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px}
-  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--primary)}
-  .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--danger);
-    text-transform:uppercase;letter-spacing:.04em}
-  .live .pdot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:pulse 1.6s infinite}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+  h1,h2,h3,h4,p{margin:0}
+  ul{margin:0;padding-left:19px}
+  li{margin:3px 0}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+  .topbar{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar .row{min-height:58px;display:flex;align-items:center;gap:12px;padding:8px 0}
+  .brand{font-weight:800;font-size:14px;letter-spacing:.01em}
+  .brand span{color:var(--muted);font-weight:600}
   .nav{margin-left:auto;display:flex;gap:2px;flex-wrap:wrap}
-  .nav a{font-size:12.5px;font-weight:600;color:var(--secondary);padding:6px 10px;border-radius:8px}
-  .nav a:hover{background:var(--primary-tint);color:var(--primary)}
-  .role-pill{font-size:11px;font-weight:600;color:var(--secondary);border:1px solid var(--border);
-    border-radius:999px;padding:4px 10px;background:#fff;white-space:nowrap}
-
-  /* Hero */
-  .hero{padding:46px 0 30px}
-  .eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--primary)}
-  .hero h1{font-size:40px;line-height:1.08;margin:14px 0 0;max-width:18ch}
-  .hero .sub{font-size:17px;color:var(--secondary);max-width:62ch;margin-top:16px}
-  .oneliner{margin-top:22px;padding:18px 20px;background:#fff;border:1px solid var(--border);
-    border-left:4px solid var(--primary);border-radius:12px;box-shadow:var(--shadow-card);font-size:15px}
-  .oneliner b{color:var(--primary)}
-  .jobs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
-  @media(max-width:760px){.jobs{grid-template-columns:1fr}.hero h1{font-size:30px}}
-  .job{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow-card)}
-  .job .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-  .job h3{font-size:16px;margin-top:6px}
-  .job p{font-size:13.5px;color:var(--secondary);margin:7px 0 0}
-
-  /* generic section */
-  section{padding:34px 0;border-top:1px solid var(--border)}
-  .sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-  .sec-head h2{font-size:24px}
-  .sec-head .num{font-size:12px;font-weight:700;color:var(--primary);background:var(--primary-tint);
-    border-radius:8px;padding:3px 9px;letter-spacing:.03em}
-  .sec-sub{color:var(--secondary);font-size:14.5px;max-width:74ch;margin:4px 0 20px}
-
-  .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-card)}
-  .pad{padding:18px 20px}
-
-  /* chips / tags */
-  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:600}
-  .chip.info{background:var(--info-bg);color:var(--info)} .chip.warn{background:var(--warning-bg);color:var(--warning)}
-  .chip.dang{background:var(--danger-bg);color:var(--danger)} .chip.ok{background:var(--success-bg);color:var(--success)}
-  .chip.tint{background:var(--primary-tint);color:var(--primary)} .chip.ghost{background:var(--canvas);color:var(--secondary);border:1px solid var(--border)}
-
-  /* the Matt callout */
-  .matt{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
-  @media(max-width:760px){.matt{grid-template-columns:1fr}}
-  .matt .c{border:1px dashed var(--primary);background:linear-gradient(180deg,#fff, #f7faff);border-radius:12px;padding:15px 17px}
-  .matt .c .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--primary)}
-  .matt .c p{font-size:13.5px;color:var(--secondary);margin:7px 0 0}
-  .matt .c b{color:var(--fg)}
-
-  /* rubric grid */
-  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  @media(max-width:880px){.grid4{grid-template-columns:1fr 1fr}}
-  .pill-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 15px}
-  .pill-card .k{font-size:12px;font-weight:700;color:var(--fg)}
-  .pill-card .t{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
-  .pill-card p{font-size:12.5px;color:var(--secondary);margin:6px 0 0}
-
-  /* timeline */
-  .timeline{display:flex;border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-card);font-size:11px}
-  .timeline button{border:0;border-right:1px solid var(--border);background:#fff;padding:11px 8px;cursor:pointer;
-    text-align:left;color:var(--secondary);transition:background .15s;min-width:0}
-  .timeline button:last-child{border-right:0}
-  .timeline button:hover{background:var(--primary-tint)}
-  .timeline button .t{font-weight:700;color:var(--fg);display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .timeline button .m{color:var(--muted);font-size:10px}
-  .timeline button .bar{height:4px;border-radius:3px;margin-top:7px;background:var(--grad);opacity:.85}
-  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--secondary)}
-
-  /* beat */
-  .beat{margin-top:18px;overflow:hidden}
-  .beat .bhead{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);
-    background:linear-gradient(180deg,#fbfcfe,#fff)}
-  .beat .bn{width:30px;height:30px;border-radius:9px;background:var(--grad);color:#fff;display:grid;place-items:center;
-    font-weight:700;font-size:14px;flex:none}
-  .beat .bhead h3{font-size:16.5px}
-  .beat .bhead .time{margin-left:auto;font-size:12px;font-weight:700;color:var(--primary);background:var(--primary-tint);
-    border-radius:8px;padding:4px 10px;white-space:nowrap}
-  .beat .bbody{display:grid;grid-template-columns:1.05fr .95fr;gap:0}
-  @media(max-width:880px){.beat .bbody{grid-template-columns:1fr}}
-  .beat .stage{padding:18px;border-right:1px solid var(--border);background:var(--canvas)}
-  @media(max-width:880px){.beat .stage{border-right:0;border-bottom:1px solid var(--border)}}
-  .beat .notes{padding:18px}
-  .label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
-  .say{background:#fff;border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:10px;
-    padding:12px 14px;font-size:13.5px;color:var(--fg)}
-  .say em{color:var(--primary);font-style:normal;font-weight:600}
-  .do{font-size:13px;color:var(--secondary);margin-top:12px}
-  .do li{margin:3px 0}
-  .lands{margin-top:13px;display:flex;flex-wrap:wrap;gap:6px}
-  .money{margin-top:13px;background:#0d1b2a;color:#eaf2ff;border-radius:10px;padding:12px 14px;font-size:13px}
-  .money .k{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7fb4ff}
-  .money b{color:#fff}
-
-  /* app-faithful mini UI */
-  .app{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-card);overflow:hidden}
-  .app .ah{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
-  .app .ah .ic{width:24px;height:24px;border-radius:7px;background:var(--grad);display:grid;place-items:center;color:#fff;font-size:12px}
-  .app .ah .ti{font-weight:700;font-size:13px}
-  .app .ah .su{font-size:11px;color:var(--muted)}
-  .app .body{padding:12px}
-  .scopebar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border);background:#fff}
-
-  .bubble{max-width:88%;padding:9px 12px;border-radius:14px;font-size:12.5px;line-height:1.5;margin:8px 0}
-  .bubble.user{margin-left:auto;background:var(--primary);color:#fff;border-bottom-right-radius:5px}
-  .bubble.bot{background:#fff;border:1px solid var(--border);border-bottom-left-radius:5px;box-shadow:var(--shadow-card)}
-  .cites{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-  .cite{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:6px;
-    padding:2px 7px;font-size:10.5px;font-weight:600;background:#fff}
-  .ask{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-top:1px solid var(--border);background:var(--canvas)}
-  .preset{border:1px solid var(--border);background:#fff;border-radius:999px;padding:6px 11px;font-size:11.5px;
-    font-weight:600;cursor:pointer;color:var(--fg)}
-  .preset:hover{border-color:var(--primary);background:var(--primary-tint);color:var(--primary)}
-  .btn{border:0;border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
-  .btn.p{background:var(--primary);color:#fff} .btn.p:hover{background:var(--primary-hover)}
-  .btn.g{background:#fff;border:1px solid var(--border);color:var(--secondary)}
-  .btn.dark{background:#0d1b2a;color:#fff}
-  .btn:disabled{opacity:.5;cursor:default}
-  /* in-bubble suggested-action buttons */
-  .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-  .act{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;padding:5px 10px;
-    font-size:11.5px;font-weight:700;cursor:pointer}
-  .act:hover{background:var(--primary-tint)} .act.g{border-color:var(--border);color:var(--secondary)}
-
-  /* action rows */
-  .arow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin:7px 0;background:#fff}
-  .arow .at{font-size:12.5px;font-weight:600}
-  .arow .ar{font-size:11px;color:var(--muted)}
-  .arow .st{margin-left:auto;flex:none}
-  .audit{margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none}
-  .audit .h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:7px 12px;background:var(--canvas);border-bottom:1px solid var(--border)}
-  .audit .l{font-size:11.5px;padding:6px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
-  .audit .l:last-child{border-bottom:0}
-
-  /* explainer */
-  .seg{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:#fff;margin-bottom:10px;flex-wrap:wrap}
-  .seg button{border:0;background:#fff;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--secondary);border-right:1px solid var(--border)}
-  .seg button:last-child{border-right:0}
-  .seg button.on{background:var(--primary-tint);color:var(--primary)}
-  .calc{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--canvas);border:1px solid var(--border);border-radius:9px;padding:11px 13px}
-  .calc .ln{display:flex;justify-content:space-between;padding:2px 0}
-  .stamp{margin-top:9px;font-size:11.5px;color:var(--secondary)}
-  .stamp b{color:var(--primary)}
-
-  /* staleness / governed record */
-  .secrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;margin:6px 0;font-size:12.5px;background:#fff;transition:all .2s}
-  .secrow.stale{background:var(--warning-bg);border-color:var(--warning)}
-  .secrow .badge{margin-left:auto}
-
-  /* eval */
-  .vt{width:100%;border-collapse:collapse;font-size:12px}
-  .vt th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:7px 8px;border-bottom:1px solid var(--border)}
-  .vt td{padding:8px;border-bottom:1px solid var(--border)}
-  .evalrow{cursor:pointer} .evalrow:hover{background:var(--canvas)}
-  .trace{display:none;background:#0d1b2a;color:#eaf2ff;border-radius:10px;padding:13px 15px;margin-top:10px;font-size:12px}
-  .trace .k{color:#7fb4ff;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-  .trace .g{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin-top:7px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
-  .trace .lab{color:#9fb6d4}
-
-  /* Q&A */
-  .qa{border:1px solid var(--border);border-radius:10px;margin:8px 0;overflow:hidden;background:#fff}
-  .qa summary{cursor:pointer;padding:13px 16px;font-weight:600;font-size:13.5px;list-style:none;display:flex;gap:10px;align-items:center}
-  .qa summary::-webkit-details-marker{display:none}
-  .qa summary .q{width:20px;height:20px;border-radius:6px;background:var(--primary-tint);color:var(--primary);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
-  .qa[open] summary{border-bottom:1px solid var(--border);background:#fbfcfe}
-  .qa .a{padding:13px 16px;font-size:13px;color:var(--secondary)}
-  .qa .a b{color:var(--fg)}
-  .qa .a .hook{margin-top:8px;font-size:11.5px;color:var(--primary);font-weight:600}
-
-  /* coverage matrix */
-  .mtx{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-card)}
-  .mtx th,.mtx td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:center}
-  .mtx th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:#fbfcfe}
-  .mtx td:first-child,.mtx th:first-child{text-align:left;font-weight:600;color:var(--fg)}
-  .dotm{width:9px;height:9px;border-radius:50%;background:var(--primary);display:inline-block}
-  .dotm.s{background:#cfe0f6}
-
-  .foot{padding:40px 0 60px;color:var(--secondary);font-size:13px}
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px}
-  @media(max-width:880px){.kpis{grid-template-columns:1fr 1fr}}
-  .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:13px 15px}
-  .kpi .v{font-size:20px;font-weight:800;color:var(--primary)} .kpi .l{font-size:11.5px;color:var(--secondary);margin-top:3px}
-  .assume{margin-top:14px;font-size:12px;color:var(--muted)}
-  .note{font-size:11.5px;color:var(--muted);margin-top:8px}
-
-  /* storyboard — cold open shot list */
-  .sbwrap{margin-top:18px}
-  .sbstrip{display:flex;gap:12px;overflow-x:auto;padding:6px 2px 12px;scroll-snap-type:x proximity}
-  .frame{flex:0 0 202px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--shadow-card);
-    overflow:hidden;display:flex;flex-direction:column;scroll-snap-align:start}
-  .frame .scrn{background:var(--canvas);border-bottom:1px solid var(--border);padding:9px;height:150px;position:relative;overflow:hidden}
-  .frame .ts{position:absolute;top:7px;right:7px;background:#0d1b2a;color:#cfe0ff;font-size:9px;font-weight:700;
-    border-radius:6px;padding:2px 6px;letter-spacing:.03em;z-index:3}
-  .frame .cap{padding:9px 11px;font-size:11px;color:var(--secondary);line-height:1.4}
-  .frame .cap b{color:var(--fg)}
-  .mini{font-size:8.5px;line-height:1.32;color:var(--fg)}
-  .mbar{height:6px;border-radius:3px;background:#dfe6ee;margin:3px 0}
-  .mbubble{border-radius:8px;padding:4px 6px;font-size:8.5px;line-height:1.35;margin:3px 0;max-width:92%}
-  .mbubble.u{background:var(--primary);color:#fff;margin-left:auto;border-bottom-right-radius:3px}
-  .mbubble.b{background:#fff;border:1px solid var(--border);border-bottom-left-radius:3px}
-  .mchip{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:1px 5px;font-size:8px;font-weight:700}
-  .mrow{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 6px;margin:3px 0;font-size:8.5px}
-  .mrow .mr-st{margin-left:auto}
-  .mpane{display:grid;grid-template-columns:1fr .92fr;gap:6px;height:100%}
-  .mcard{background:#fff;border:1px solid var(--border);border-radius:8px;padding:7px;height:100%}
-  .mbtn{background:var(--grad);color:#fff;border-radius:5px;padding:3px 0;text-align:center;font-size:8px;font-weight:700}
-  .mbtn.g{background:#fff;border:1px solid var(--border);color:var(--secondary)}
-  .endcard{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--grad);color:#fff;border-radius:8px;text-align:center;padding:8px}
-
-  /* persona avatars + batch stages (new arc) */
-  .ava{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;flex:none;background:var(--canvas);color:var(--secondary);border:1px solid var(--border)}
-  .ava.agent{background:var(--grad);color:#fff;border:0}
-  .stages{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:2px 0 12px}
-  .stages .stg{border:1px solid var(--border);border-radius:9px;background:#fff;padding:8px 6px;text-align:center;transition:all .2s}
-  .stages .stg.on{border-color:var(--primary);background:var(--primary-tint)}
-  .stages .stg .sl{font-size:11px;font-weight:700;color:var(--fg)}
-  .stages .stg .ss{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.25}
-  .assignrow{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--border);border-radius:10px;margin:6px 0;background:#fff;font-size:12px}
-  .assignrow .who{font-weight:600}
-  .assignrow .st{margin-left:auto;flex:none}
-  .recordpills{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
-  .pill2{display:flex;flex-direction:column;gap:2px;border:1px solid var(--border);border-radius:9px;padding:7px 11px;background:#fff;min-width:96px}
-  .pill2 .ax{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
-  .pill2 .vv{font-size:12px;font-weight:700}
-  .seal{margin-top:10px;background:#0d1b2a;color:#cfe0ff;border-radius:10px;padding:11px 13px;font-size:11.5px;font-family:ui-monospace,Menlo,monospace}
-  .seal .k{color:#7fb4ff;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-family:Inter,system-ui}
-
-  /* per-beat click cue — the exact control to press in the live app */
-  .clickline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:2px}
-  .kbd{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-bottom:2px solid #cdd6e0;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:700;background:#fff;color:var(--fg);white-space:nowrap}
-  .kbd.type{border-style:dashed;border-bottom-style:dashed;font-weight:600;color:var(--secondary)}
-  .kbd.tp{border-bottom-width:1px;background:var(--canvas);color:var(--secondary);font-weight:600}
-  .clickline .sep{color:var(--muted);font-size:13px;font-weight:800}
+  .nav a{font-size:12px;font-weight:700;color:var(--muted);padding:6px 9px;border-radius:7px}
+  .nav a:hover{background:var(--blue-soft);color:var(--blue)}
+  .role{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:#fff;color:var(--muted);white-space:nowrap}
+  .hero{padding:44px 0 30px;background:#fff;border-bottom:1px solid var(--line)}
+  .eyebrow{font-size:12px;font-weight:800;color:var(--blue);letter-spacing:.08em;text-transform:uppercase}
+  h1{font-size:40px;line-height:1.08;max-width:760px;margin-top:13px;letter-spacing:-.02em}
+  .sub{font-size:17px;color:var(--muted);max-width:850px;margin-top:16px}
+  .one{margin-top:20px;border:1px solid var(--line);border-left:4px solid var(--blue);background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:17px 18px;font-size:15px;max-width:960px}
+  .one b{color:var(--blue)}
+  .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+  .summary-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  .summary-card .k{font-size:11px;font-weight:800;color:var(--quiet);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+  .summary-card h3{font-size:15px;margin-bottom:5px}
+  .summary-card p{font-size:13px;color:var(--muted)}
+  section{padding:34px 0;border-bottom:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .num{font-size:12px;font-weight:800;color:var(--blue);background:var(--blue-soft);border-radius:7px;padding:3px 8px}
+  h2{font-size:24px;letter-spacing:-.01em}
+  .sec-sub{font-size:14px;color:var(--muted);max-width:850px;margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:18px}
+  .chip{display:inline-flex;align-items:center;gap:5px;border-radius:7px;padding:3px 8px;font-size:11px;font-weight:800;white-space:nowrap}
+  .chip.blue{background:var(--blue-soft);color:var(--blue)}
+  .chip.green{background:var(--green-soft);color:var(--green)}
+  .chip.amber{background:var(--amber-soft);color:var(--amber)}
+  .chip.red{background:var(--red-soft);color:var(--red)}
+  .chip.gray{background:#eef2f7;color:var(--muted)}
+  .timeline{display:grid;grid-template-columns:repeat(11,1fr);gap:6px}
+  .timeline button{border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:9px 8px;text-align:left;cursor:pointer;min-height:74px}
+  .timeline button:hover{border-color:var(--blue);background:var(--blue-soft)}
+  .timeline .t{display:block;font-size:11px;font-weight:800;color:var(--ink);line-height:1.2}
+  .timeline .m{display:block;font-size:10px;color:var(--quiet);margin-top:5px}
+  .beat{margin-top:14px;overflow:hidden}
+  .beat-head{display:flex;align-items:center;gap:12px;padding:14px 17px;border-bottom:1px solid var(--line);background:#fbfcfe}
+  .beat-num{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:var(--blue);color:#fff;font-weight:800}
+  .beat-head h3{font-size:17px}
+  .beat-time{margin-left:auto;font-size:12px;font-weight:800;color:var(--blue);background:var(--blue-soft);padding:4px 9px;border-radius:7px;white-space:nowrap}
+  .beat-body{display:grid;grid-template-columns:1fr 1.15fr}
+  .screen{padding:17px;background:#f8fafc;border-right:1px solid var(--line)}
+  .notes{padding:17px}
+  .label{font-size:10.5px;font-weight:800;color:var(--quiet);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+  .say{border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:var(--radius);padding:12px 13px;background:#fff;font-size:13.5px}
+  .takeaway{margin-top:12px;background:var(--code);color:#e7f0ff;border-radius:var(--radius);padding:12px 13px;font-size:13px}
+  .takeaway .label{color:#9fc4ff;margin-bottom:4px}
+  .evidence,.rubric,.primitive,.click{margin-top:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .mock{border:1px solid var(--line);background:#fff;border-radius:var(--radius);overflow:hidden}
+  .mock-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .mock-logo{width:24px;height:24px;border-radius:7px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}
+  .mock-title{font-size:13px;font-weight:800}
+  .mock-sub{font-size:11px;color:var(--quiet)}
+  .mock-b{padding:12px}
+  .bubble{border-radius:12px;padding:9px 11px;font-size:12px;margin:7px 0;max-width:92%}
+  .bubble.user{margin-left:auto;background:var(--blue);color:#fff}
+  .bubble.agent{background:#fff;border:1px solid var(--line)}
+  .rowline{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:9px 10px;margin:7px 0;font-size:12px}
+  .rowline b{font-size:12.5px}
+  .rowline .status{margin-left:auto}
+  .mini-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line)}
+  .mini-table th,.mini-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+  .mini-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--quiet);background:#fbfcfe}
+  .mini-table tr:last-child td{border-bottom:0}
+  .route{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:10px}
+  .route code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--blue)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .risk-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .risk{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:#fff;font-size:13px}
+  .risk b{display:block;margin-bottom:4px}
+  details{background:#fff;border:1px solid var(--line);border-radius:var(--radius);margin:8px 0}
+  summary{cursor:pointer;padding:12px 14px;font-weight:800;font-size:13.5px}
+  details .answer{border-top:1px solid var(--line);padding:12px 14px;color:var(--muted);font-size:13px}
+  footer{padding:36px 0 54px;color:var(--muted);font-size:13px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  @media(max-width:980px){
+    .summary-grid,.cols,.risk-list{grid-template-columns:1fr}
+    .timeline{grid-template-columns:1fr 1fr}
+    .beat-body{grid-template-columns:1fr}
+    .screen{border-right:0;border-bottom:1px solid var(--line)}
+    h1{font-size:31px}
+  }
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="wrap row">
-    <div class="brand"><span class="dot"></span>ConnectWork <span style="color:var(--muted);font-weight:500">ConnectAgent</span></div>
-    <span class="live"><span class="pdot"></span>Run-of-Show</span>
+    <div class="brand">ConnectWork <span>Command Agent</span></div>
     <nav class="nav">
       <a href="#thesis">Thesis</a>
+      <a href="#coverage">Coverage</a>
       <a href="#plan">Time plan</a>
-      <a href="#coldopen">Cold open</a>
-      <a href="#beats">Demo beats</a>
-      <a href="#deepdive">Deep dive</a>
-      <a href="#rubric">Coverage</a>
+      <a href="#beats">Beats</a>
+      <a href="#map">Primitives</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#kpis">KPIs</a>
     </nav>
-    <span class="role-pill">Box · Sr PM, AI Agent Orchestration — Round 1</span>
+    <span class="role">Box Round 1 - Sr PM, AI Agents</span>
   </div>
 </div>
 
-<!-- HERO -->
 <header class="hero" id="thesis">
   <div class="wrap">
-    <div class="eyebrow">30-minute walkthrough · Product / Engineering / Design panel</div>
-    <h1>From <span class="grad-text">describing</span> conversations to <span class="grad-text">closing the loop</span>.</h1>
-    <p class="sub">A run-of-show for the ConnectWork <b>ConnectAgent</b> — a governed work-orchestration layer. This page is my presenter cockpit and your leave-behind: every beat, the exact line, the live UX, and where each moment is real (not scripted).</p>
-
-    <div class="oneliner">
-      <b>The pitch in one breath:</b> Today's Conversational Insights Agent <b>describes</b> conversations. I'm turning it into the trusted layer that <b>closes the loop from discussed to done</b> — it drafts the decision, the substrate governs every output, then it <b>fans the work across the team and tracks whether the result is still true</b>. The hard part isn't a smarter model; it's an <b>orchestration substrate</b> that makes every output permission-safe, deterministically verified, and audit-ready. <b>That substrate is the platform this role is hired to build.</b>
+    <div class="eyebrow">30-minute virtual panel walkthrough</div>
+    <h1>Move from meeting Q&amp;A to governed work orchestration.</h1>
+    <p class="sub">This page is the presenter cockpit for the final Box case walkthrough. It gives the panel the arc, the live demo beats, the evidence to point at, and the platform primitives underneath the Acme scenario.</p>
+    <div class="one">
+      <b>One thing to remember:</b> Acme is the scenario. The product is the reusable primitive set underneath it: permission-aware context, deterministic checks, reviewed actions, lifecycle events, audit, revalidation, and governed records.
     </div>
-
-    <div class="jobs">
-      <div class="job">
-        <div class="k">Job 1 — Growth</div>
-        <h3>Close the work loop</h3>
-        <p>Move past summarization into governed work products + safe actions, then orchestrate them across owners. The loop (discussed→done) is the productivity unlock customers actually pay for.</p>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="k">Recommendation</div>
+        <h3>Expand the agent's job</h3>
+        <p>Today's agent summarizes meetings. The proposed agent helps a regulated team move from discussion to a defensible decision and routed follow-through.</p>
       </div>
-      <div class="job">
-        <div class="k">Job 2 — Trust</div>
-        <h3>Make decisions defensible</h3>
-        <p>Regulated teams need AI outputs they can defend for approvals, calculations, and audits. A deterministic substrate makes each recommendation traceable before anyone acts. RAG finds content; it doesn't prove the reasoning is right.</p>
+      <div class="summary-card">
+        <div class="k">Feature pillars</div>
+        <h3>Three visible surfaces</h3>
+        <p>Decision Brief, Agent Actions, and Governed Record. Each surface maps to a platform primitive, not a one-off Acme script.</p>
       </div>
-    </div>
-
-    <div class="matt">
-      <div class="c">
-        <div class="k">★ The "rock star" bar</div>
-        <p>Most candidates will show three feature mockups and a roadmap. I'll show a <b>running governed system</b> and let the panel <b>type into it live</b> — block a discount, route it, watch it revalidate, close Legal and covenant dependencies, seal the record, then prove the same substrate can fan work across owners — and run the SAME harness, primitives, and content-free trace schema unmodified across three regulated verticals — an existence proof plus one honest, visible gap. The artifact <i>is</i> the differentiation.</p>
-      </div>
-      <div class="c">
-        <div class="k">Flipping the "customer-sense" read</div>
-        <p>The AI depth is a given. So I lead with the <b>user</b>: Dana, a Relationship Manager, 30 minutes before a credit committee, trying to <b>do her job</b>. Every beat ties to her job-to-be-done, the reluctant user, and the buyer's audit risk — not model internals.</p>
+      <div class="summary-card">
+        <div class="k">Business framing</div>
+        <h3>Time, confidence, control</h3>
+        <p>Reduce decision-to-ready time, increase confidence in evidence and approvals, and make every agent action reviewable, permission-aware, and auditable.</p>
       </div>
     </div>
-    <div class="assume">Assumptions (stated, per the brief): synthetic Acme scenario + personas; real orchestration / gates / evals. Numbers are internally consistent across memo, brief, gates, actions, the batch, and the sealed record.</div>
   </div>
 </header>
 
-<!-- WHAT THE PANEL GRADES -->
-<section id="grades">
+<section id="coverage">
   <div class="wrap">
-    <div class="sec-head"><span class="num">RUBRIC</span><h2>What this panel is grading — and how each beat answers it</h2></div>
-    <p class="sec-sub">Four evaluation pillars (from the brief) × the JD's emphasis on an orchestration platform, shared primitives, and eval rigor. I built the walkthrough backward from this.</p>
-    <div class="grid4">
-      <div class="pill-card"><div class="t">Pillar</div><div class="k">Strategic thinking</div><p>Reframe to a platform; finance as the first proof point; reusable policy artifacts; roadmap with a real Phase 0 substrate.</p></div>
-      <div class="pill-card"><div class="t">Pillar</div><div class="k">Product design</div><p>A real entry point, the live action arc, the multi-owner batch, and the empty/loading/blocked/stale states a panelist will poke at.</p></div>
-      <div class="pill-card"><div class="t">Pillar</div><div class="k">Technical & AI</div><p>The deterministic/probabilistic boundary made literal; permission filter before context; typed tools, diffs, a sealed record, eval traces.</p></div>
-      <div class="pill-card"><div class="t">Pillar</div><div class="k">Communication</div><p>One narrative, one money line per beat, and "is it computed or scripted?" answered with "computed — watch."</p></div>
+    <div class="sec-head"><span class="num">BRIEF</span><h2>What the walkthrough covers</h2></div>
+    <p class="sec-sub">The first two minutes state the user, the problem, the recommendation, and the demo path. The rest of the walkthrough proves the product pattern through one regulated workflow.</p>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="k">Entry point</div><h3>Meeting rail / chat</h3><p>Dana invokes the agent from the meeting context while her Acme credit memo draft is on screen.</p></div>
+      <div class="summary-card"><div class="k">Happy path 1</div><h3>Decision Brief generation</h3><p>The agent turns meeting context, linked content, metadata, workflow state, and permissions into typed readiness rows.</p></div>
+      <div class="summary-card"><div class="k">Happy path 2</div><h3>Approval/action routing</h3><p>Rows are staged, validated in Agent Actions, executed through approval gates, and revalidated until the brief is approval-ready.</p></div>
+      <div class="summary-card"><div class="k">Edge cases</div><h3>Controlled failures</h3><p>Blocked mutation, restricted legal source, missing evidence, source conflict, and stale governed record.</p></div>
+      <div class="summary-card"><div class="k">Close</div><h3>Roadmap and metrics</h3><p>The close covers phased roadmap, KPIs, risks, mitigations, and the Q&amp;A bridge.</p></div>
+      <div class="summary-card"><div class="k">Technical hedge</div><h3>What is prototype-local</h3><p>In this prototype, the Acme loop uses API-local lifecycle events and visible simulated responses. The design invariant is the important part: event, recompute, stage, validate, execute, audit, and revalidate. A general dispatcher and persistent lifecycle store are platform roadmap items.</p></div>
     </div>
   </div>
 </section>
 
-<!-- TIME PLAN -->
 <section id="plan">
   <div class="wrap">
-    <div class="sec-head"><span class="num">30:00</span><h2>How I spend the 30 minutes</h2></div>
-    <p class="sec-sub">Front-load a 75-second cold open to de-risk and set the arc, then spend the bulk live where trust is <i>earned</i> — the refusal, honest revalidation, explicit owner responses, and a ready-to-seal governed record. I leave the platform proof for the close. Click a segment to jump.</p>
+    <div class="sec-head"><span class="num">30:00</span><h2>Time plan</h2></div>
+    <p class="sec-sub">Use the time to reduce cognitive load first, then prove the hard part live. Optional proof stays optional.</p>
     <div class="timeline">
-      <button onclick="go('beat1')"><span class="t">Cold open</span><span class="m">0:00–1:15</span><div class="bar" style="width:100%"></div></button>
-      <button onclick="go('beat2')"><span class="t">The user</span><span class="m">1:15–3:30</span><div class="bar"></div></button>
-      <button onclick="go('beat3')"><span class="t">The refusal</span><span class="m">3:30–7:30</span><div class="bar"></div></button>
-      <button onclick="go('beat4')"><span class="t">Reframe</span><span class="m">7:30–9:30</span><div class="bar"></div></button>
-      <button onclick="go('beat5')"><span class="t">Brief + math</span><span class="m">9:30–13:00</span><div class="bar"></div></button>
-      <button onclick="go('beat6')"><span class="t">Revalidate</span><span class="m">13:00–17:00</span><div class="bar"></div></button>
-      <button onclick="go('beat7')"><span class="t">Agent Actions</span><span class="m">17:00–20:00</span><div class="bar"></div></button>
-      <button onclick="go('beat8')"><span class="t">Batch proof</span><span class="m">20:00–23:30</span><div class="bar"></div></button>
-      <button onclick="go('beat9')"><span class="t">Governed record</span><span class="m">23:30–26:00</span><div class="bar"></div></button>
-      <button onclick="go('beat10')"><span class="t">Platform</span><span class="m">26:00–28:30</span><div class="bar"></div></button>
-      <button onclick="go('beat11')"><span class="t">Close</span><span class="m">28:30–30:00</span><div class="bar"></div></button>
-    </div>
-    <div class="legend">
-      <span>⏱ <b>~60%</b> of time is live & interactive</span>
-      <span>🎯 Three money moments: the self-authority refusal · visible owner responses + honest revalidation · approval-ready only after every dependency clears</span>
-      <span>🧱 Platform proof reserved for the close</span>
+      <button onclick="go('beat1')"><span class="t">Cold open</span><span class="m">0:00-1:15</span></button>
+      <button onclick="go('beat2')"><span class="t">User / Dana</span><span class="m">1:15-2:45</span></button>
+      <button onclick="go('beat3')"><span class="t">Refusal</span><span class="m">2:45-5:00</span></button>
+      <button onclick="go('beat4')"><span class="t">Reframe</span><span class="m">5:00-6:00</span></button>
+      <button onclick="go('beat5')"><span class="t">Decision Brief</span><span class="m">6:00-8:30</span></button>
+      <button onclick="go('beat6')"><span class="t">Credit Officer loop</span><span class="m">8:30-14:00</span></button>
+      <button onclick="go('beat7')"><span class="t">Legal + covenant evidence</span><span class="m">14:00-18:00</span></button>
+      <button onclick="go('beat8')"><span class="t">Approval-ready + seal</span><span class="m">18:00-20:30</span></button>
+      <button onclick="go('beat9')"><span class="t">Optional freshness check / Agent Batch</span><span class="m">20:30-22:00</span></button>
+      <button onclick="go('beat10')"><span class="t">Primitive-to-configuration map + roadmap</span><span class="m">22:00-26:30</span></button>
+      <button onclick="go('beat11')"><span class="t">KPIs, risks, close, Q&amp;A bridge</span><span class="m">26:30-30:00</span></button>
     </div>
   </div>
 </section>
 
-<!-- COLD OPEN -->
-<section id="coldopen">
-  <div class="wrap">
-    <div class="sec-head"><span class="num">DECISION</span><h2>Yes — open with a 75-second HTML-generated cold open</h2></div>
-    <p class="sec-sub">Recommendation with rationale, because a panel will silently judge whether you can run a clean demo. Cold-open decision: <b>HTML-only</b>; this storyboard is the source, and any rendered recording should be regenerated from it.</p>
-    <div class="card pad">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="cojo">
-        <div>
-          <div class="label">Why record the cold open</div>
-          <ul class="do" style="margin-top:0">
-            <li><b>De-risks the live demo.</b> If Zoom screen-share, the gateway, or the network hiccups, the panel has already seen it work end-to-end. The live portion becomes upside, not a single point of failure.</li>
-            <li><b>Sets the arc.</b> 75 seconds of the full loop (refuse → brief → revalidate → act → owner responses → seal → platform) gives the panel a map, so the deep live portion reads as "showing the seams," not "finding my way."</li>
-            <li><b>Buys interactivity.</b> With the "what" pre-shown, I spend live minutes on the convincing part: handing them the keyboard.</li>
-          </ul>
-          <div class="note">Keep it ≤ 90s. The brief wants a <i>live</i> walkthrough; the recording is the amuse-bouche, not the meal.</div>
-        </div>
-        <div>
-          <div class="label">The 75-second recording script</div>
-          <div class="say" style="border-left-color:#6c4ce0">
-            <em>(no voiceover, captions only)</em><br>
-            00:00 — type <b>"@Agent apply the 22% discount"</b> → blocked on Dana's own 15% authority.<br>
-            00:08 — Dana's screen-shared <b>Acme credit memo draft</b> — permissions-aware.<br>
-            00:18 — generate the <b>Decision Brief</b> → stage the Credit Officer route from the failing row.<br>
-            00:28 — <b>Agent Actions</b> executes the validated route → visible <b>Simulate Credit Officer response</b> click.<br>
-            00:40 — post-CO revalidation: still not ready; <b>Changes</b> shows the CS plan 18%→22% reconciliation.<br>
-            00:52 — remaining prerequisites → route Legal, request covenant tracker, visible Legal + Priya responses.<br>
-            01:02 — platform proof → Agent Batch fans work across owners, separate from readiness.<br>
-            01:08 — Seal as governed record → Agent Ops three-vertical scorecard.<br>
-            01:15 — end card: "Now let's do it live."
-          </div>
-          <div class="lands"><span class="chip tint">Then I switch to the live app and never look back</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sbwrap">
-      <div class="label">Storyboard — the exact screen at each second (burn-in captions, no voiceover)</div>
-      <div class="sbstrip">
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:00</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700;color:var(--primary)">✦ Chat</div>
-              <div class="mbubble u">@Agent apply the 22% discount</div>
-              <div class="mbubble b">22% exceeds your delegated authority (up to 15%). Needs Credit Officer approval.</div>
-              <span class="mchip" style="background:var(--danger-bg);color:var(--danger)">⛔ Gate held</span>
-            </div>
-          </div>
-          <div class="cap"><b>Open cold on the refusal.</b> A real user hits the agent's edge — blocked on her own authority.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:08</span>
-            <div class="mpane">
-              <div class="mcard"><div class="mini" style="font-weight:700">Acme credit memo · v3</div><div class="mbar" style="width:92%"></div><div class="mbar" style="width:78%"></div><div class="mbar" style="width:88%"></div><div class="mbar" style="width:64%"></div><div class="mbar" style="width:82%"></div></div>
-              <div class="mcard" style="background:var(--canvas)">
-                <div class="mini" style="font-weight:700;color:var(--primary)">✦ Chat</div>
-                <div class="mbtn" style="margin-top:5px">Generate Brief</div>
-                <div class="mbtn g" style="margin-top:3px">What changed?</div>
-                <div style="margin-top:5px;border:1px solid var(--border);border-radius:9px;padding:3px 6px;background:#fff;font-size:7.5px;color:var(--muted)">Message or @Agent…</div>
-              </div>
-            </div>
-          </div>
-          <div class="cap"><b>Dana's draft, not the brief.</b> The center screen is her screen-shared credit memo draft.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:18</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700;color:var(--primary)">Decision Brief · readiness</div>
-              <div class="mrow">Credit Officer approval <span class="mr-st mchip" style="background:var(--danger-bg);color:var(--danger)">Missing</span></div>
-              <div class="mrow">Legal approval <span class="mr-st mchip" style="background:var(--danger-bg);color:var(--danger)">Missing</span></div>
-              <div class="mrow">Final covenant tracker <span class="mr-st mchip" style="background:var(--warning-bg);color:var(--warning)">Missing</span></div>
-              <div class="mbtn" style="margin-top:5px">Stage: route 22% to CO</div>
-            </div>
-          </div>
-          <div class="cap"><b>The brief stages.</b> It queues a remediation; it does not execute side effects.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:28</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700">Agent Actions · Next actions 1</div>
-              <div class="mrow">Route to Credit Officer <span class="mr-st mchip" style="background:var(--info-bg);color:var(--info)">22% exception</span></div>
-              <div class="mbtn" style="margin-top:5px">Execute route</div>
-              <div class="mbtn g" style="margin-top:3px">Simulate Credit Officer response</div>
-            </div>
-          </div>
-          <div class="cap"><b>Visible counterparty beat.</b> The presenter clicks the simulated CO response; no hidden timer.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:40</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700">Changes · Customer success plan</div>
-              <div style="font-family:ui-monospace,Menlo,monospace;font-size:7.5px;background:var(--canvas);border:1px solid var(--border);border-radius:6px;padding:5px;margin-top:4px;line-height:1.6">assumed_discount<br><span style="color:var(--danger)">− 18%</span><br><span style="color:var(--success)">+ 22%</span></div>
-              <div class="mini" style="margin-top:5px;color:var(--secondary)">one human-accepted edit → <b style="color:var(--success)">conflict cleared</b></div>
-            </div>
-          </div>
-          <div class="cap"><b>The cascade.</b> The approval just made one doc wrong — accept the fix.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">00:52</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700">Agent Actions · remaining prerequisites</div>
-              <div class="mrow">Route → Legal <span class="mr-st mchip" style="background:var(--success-bg);color:var(--success)">✓ Approved</span></div>
-              <div class="mrow">Final covenant tracker <span class="mr-st mchip" style="background:var(--success-bg);color:var(--success)">✓ Uploaded</span></div>
-              <div class="mrow">Decision readiness <span class="mr-st mchip" style="background:var(--success-bg);color:var(--success)">Ready</span></div>
-            </div>
-          </div>
-          <div class="cap"><b>Close the dependencies.</b> Legal and Priya use visible simulated responses; readiness flips only after both land.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">01:02</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700">Agent Batch · platform proof</div>
-              <div class="mrow">Fan to owners <span class="mr-st mchip" style="background:var(--success-bg);color:var(--success)">4 replies</span></div>
-              <div class="mrow">Escalations <span class="mr-st mchip" style="background:var(--warning-bg);color:var(--warning)">Derived</span></div>
-              <div class="mrow">Batch status <span class="mr-st mchip" style="background:var(--canvas);color:var(--secondary)">Separate proof</span></div>
-            </div>
-          </div>
-          <div class="cap"><b>Same substrate at broader scale.</b> Batch is the multi-owner proof, not the readiness gate.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">01:08</span>
-            <div class="mcard">
-              <div class="mini" style="font-weight:700">Governed record + Agent Ops</div>
-              <div class="mrow">Acme record <span class="mr-st mchip" style="background:var(--success-bg);color:var(--success)">Sealed</span></div>
-              <div class="mrow">Financial <span class="mr-st" style="font-weight:700">5/6</span></div>
-              <div class="mrow">Legal <span class="mr-st" style="font-weight:700">2/2</span></div>
-              <div class="mini" style="color:var(--danger);margin-top:4px;font-weight:600">▸ 1 honest failure — content-free trace</div>
-            </div>
-          </div>
-          <div class="cap"><b>Seal, then generalize.</b> The record is durable; the same primitives run across verticals.</div>
-        </div>
-
-        <div class="frame">
-          <div class="scrn"><span class="ts">01:15</span>
-            <div class="endcard">
-              <div style="font-size:12px;font-weight:800">Now let's do it live.</div>
-              <div style="font-size:8px;opacity:.9;margin-top:4px">ConnectWork ConnectAgent</div>
-            </div>
-          </div>
-          <div class="cap"><b>End card.</b> Cut straight to the live app.</div>
-        </div>
-
-      </div>
-      <div class="note">Each frame is one real screen state from the running app — the recording is just these, in order, at speed. Then you switch to live.</div>
-    </div>
-  </div>
-</section>
-
-<!-- BEATS -->
 <section id="beats">
   <div class="wrap">
     <div class="sec-head"><span class="num">SCRIPT</span><h2>The walkthrough, beat by beat</h2></div>
-    <p class="sec-sub">Each beat opens with a <b>Click</b> cue — the exact control to press in the live app (or "talking point" when the beat is a slide) — then the surface (interactive here), the line I say, and where it lands on the rubric. The interactive panels below mirror the running app's real data and behavior.</p>
+    <p class="sec-sub">Each beat has one job: make the panel understand one product primitive and one user outcome.</p>
 
-    <!-- BEAT 1 -->
-    <div class="card beat" id="beat1">
-      <div class="bhead"><div class="bn">1</div><h3>Cold open → "Now let's do it live"</h3><span class="time">0:00–1:15</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">ConnectAgent</div><div class="su">Grounded in this meeting + linked content</div></div></div>
-            <div class="body" style="text-align:center;color:var(--muted);font-size:12.5px;padding:24px 12px">
-              ▶ 75-sec recording: the full loop at speed<br><span style="font-size:11px">refuse → brief → stage → execute → simulate owners → ready → seal</span>
+    <article class="card beat" id="beat1">
+      <div class="beat-head"><div class="beat-num">1</div><h3>Cold open</h3><span class="beat-time">0:00-1:15</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">A</div><div><div class="mock-title">Acme walkthrough preview</div><div class="mock-sub">Blocked write - brief - approvals - revalidation - seal</div></div></div>
+            <div class="mock-b">
+              <div class="rowline"><b>User asks for 22% discount</b><span class="status chip red">Blocked</span></div>
+              <div class="rowline"><b>Decision Brief opens</b><span class="status chip amber">Not ready</span></div>
+              <div class="rowline"><b>Agent Actions routes work</b><span class="status chip blue">Reviewed</span></div>
+              <div class="rowline"><b>Record is sealed</b><span class="status chip green">Final state</span></div>
             </div>
           </div>
         </div>
         <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">▶ Play the 75-sec recording</span><span class="sep">→</span><span class="kbd">Switch to the live app</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"This isn't a smarter chatbot — it's the first surface of a governed orchestration platform; watch a real user hit its edges. Before I touch anything live — here's the whole product in 75 seconds, so you know where we're going." <em>(play)</em> "Everything you just saw is running on my machine right now. Let's go do it for real. One naming note: the brief calls this the Conversational Insights Agent — I'm proposing it graduates into ConnectAgent, a governed orchestration surface. Same agent, bigger job."</div>
-          <div class="label" style="margin-top:13px">Why it lands</div>
-          <div class="lands"><span class="chip tint">Communication</span><span class="chip ghost">De-risks the room</span><span class="chip ghost">Sets the arc</span></div>
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">Orientation</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Play 75-second preview</span><span class="chip gray">Switch to live app</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"Before we go live, here is the arc in about 75 seconds, so the live part is easy to follow. A user asks the agent to apply a discount. It declines, because the amount is above her approval limit. It produces a Decision Brief, routes the approval, revalidates when the approval comes back, clears the remaining items, and seals the result as a record. Now let's do it live."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The panel gets the map before the live clicks.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip red">blocked write</span><span class="chip blue">Decision Brief</span><span class="chip blue">Agent Actions</span><span class="chip green">Governed Record</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Communication</span><span class="chip gray">Demo control</span></div></div>
         </div>
       </div>
-    </div>
+    </article>
 
-    <!-- BEAT 2 — THE USER -->
-    <div class="card beat" id="beat2">
-      <div class="bhead"><div class="bn">2</div><h3>The user & the stakes — meet Dana</h3><span class="time">1:15–3:30</span></div>
-      <div class="bbody">
-        <div class="stage">
+    <article class="card beat" id="beat2">
+      <div class="beat-head"><div class="beat-num">2</div><h3>User / Dana</h3><span class="beat-time">1:15-2:45</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">D</div><div><div class="mock-title">Dana R. - Relationship Manager</div><div class="mock-sub">Regional bank - regulated customer</div></div></div>
+            <div class="mock-b">
+              <div class="rowline"><b>Screen-shared object</b><span class="status chip gray">Acme credit memo draft</span></div>
+              <div class="rowline"><b>Decision time</b><span class="status chip amber">2pm committee</span></div>
+              <div class="rowline"><b>Source spread</b><span class="status chip blue">model, chat, workflow, legal memo</span></div>
+              <div class="rowline"><b>User job</b><span class="status chip blue">defensible packet</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">User need</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Talking point over Dana's memo draft</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"This is Dana, a Relationship Manager at a regulated bank. At 2pm she defends a pricing exception in a credit committee. The screen is her own credit memo draft. The facts she needs are spread across a model, a deal-room chat, an approval workflow, and a legal memo she may not be allowed to open. Her job is not to summarize the meeting. It is to prepare a decision she can defend and route the follow-ups to the right people. If the agent guesses one number, the decision packet is wrong."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The user need is defensible decision preparation, not better summarization.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip gray">Dana's authored draft</span><span class="chip amber">open Credit Officer approval</span><span class="chip amber">missing tracker</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Product design</span><span class="chip blue">User need</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card beat" id="beat3">
+      <div class="beat-head"><div class="beat-num">3</div><h3>Refusal</h3><span class="beat-time">2:45-5:00</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">A</div><div><div class="mock-title">Meeting rail - ConnectAgent</div><div class="mock-sub">Permission-aware and policy-gated</div></div></div>
+            <div class="mock-b">
+              <div class="bubble user">@Agent apply the 22% discount</div>
+              <div class="bubble agent">I cannot apply that directly. A 22% discount exceeds your 15% delegated authority. I can route it for Credit Officer approval or apply the 15% you are allowed to authorize.</div>
+              <div class="bubble user">@Agent why does this need approval?</div>
+              <div class="bubble agent">The policy threshold is 15% for your role. A related legal memo exists but is restricted, so I did not use or summarize it.</div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">Policy Artifact / permission boundary</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Type "@Agent apply the 22% discount"</span><span class="chip gray">Ask why</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"This is live. Dana asks the agent to apply a 22% discount. It declines, because 22% is above her 15% approval limit. It offers two options: route it for approval, or apply the 15% she is allowed to authorize. Ask it why, and it names the limit and notes that a related legal memo exists but is restricted, so it was not used. It never reveals what she cannot see. The model can suggest. The rule layer decides whether the action is allowed."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The refusal is not a dead end. It is the first proof of governed orchestration.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip red">blocked mutation</span><span class="chip blue">15% limit</span><span class="chip amber">restricted source not used</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Technical and AI</span><span class="chip blue">Edge case</span><span class="chip blue">Product design</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card beat" id="beat4">
+      <div class="beat-head"><div class="beat-num">4</div><h3>Reframe</h3><span class="beat-time">5:00-6:00</span></div>
+      <div class="beat-body">
+        <div class="screen">
           <div class="card pad" style="box-shadow:none">
-            <div style="display:flex;gap:11px;align-items:center">
-              <div style="width:38px;height:38px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:grid;place-items:center;font-weight:700">DR</div>
-              <div><div style="font-weight:700;font-size:14px">Dana R. · Relationship Manager</div><div style="font-size:12px;color:var(--muted)">Regional bank · a regulated ConnectWork customer</div></div>
-            </div>
-            <div style="margin-top:12px;font-size:13px;color:var(--secondary)">
-              <div class="label" style="margin-bottom:4px">Job to be done</div>
-              "When I walk into the 2pm credit committee, I want to be <b>confident that everything I present is true, complete, and something I'm allowed to say</b> — and I want the follow-ups <b>actually routed to the right people</b>, not sitting in my notebook."
-            </div>
-            <div class="lands" style="margin-top:11px">
-              <span class="chip ghost">Functional: prep + route the work</span>
-              <span class="chip ghost">Emotional: look competent</span>
-              <span class="chip ghost">Social: defensible to the committee</span>
+            <div class="label">From chat answer to governed follow-through</div>
+            <table class="mini-table">
+              <tbody>
+                <tr><td><b>Current role</b></td><td>Summarize and answer from the current conversation.</td></tr>
+                <tr><td><b>Proposed role</b></td><td>Assemble context, compute readiness, stage actions, execute through gates, and preserve the final record.</td></tr>
+                <tr><td><b>Reusable layer</b></td><td>Context, policy, readiness rows, action diffs, lifecycle events, record contract, eval trace.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">ContextBundle / primitive spine</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Talking point - no app click</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"I want to pause on what just happened. I am not treating this as one more chatbot feature. The product shift is from describing a conversation to governing follow-through. The reusable layer is permission-aware context, deterministic checks, reviewed actions, lifecycle events, and an audit trail. The Acme deal is the scenario. The primitive set is the product. Now I will open the Decision Brief so you can see how those primitives turn the meeting into a readiness view."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The refusal proves the platform boundary before the readiness view appears.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip blue">context</span><span class="chip blue">checks</span><span class="chip blue">actions</span><span class="chip blue">lifecycle</span><span class="chip blue">audit</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Strategic thinking</span><span class="chip blue">Communication</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card beat" id="beat5">
+      <div class="beat-head"><div class="beat-num">5</div><h3>Decision Brief</h3><span class="beat-time">6:00-8:30</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">B</div><div><div class="mock-title">Decision Brief - Acme renewal</div><div class="mock-sub">System-generated readiness view</div></div></div>
+            <div class="mock-b">
+              <div class="rowline"><b>Approval-ready</b><span class="status chip red">No</span></div>
+              <div class="rowline"><b>Credit Officer approval</b><span class="status chip red">Missing</span></div>
+              <div class="rowline"><b>Legal approval</b><span class="status chip red">Missing</span></div>
+              <div class="rowline"><b>Final covenant tracker</b><span class="status chip amber">Missing</span></div>
+              <div class="rowline"><b>DSCR calculation</b><span class="status chip green">Pass</span></div>
+              <div class="rowline"><b>Legal memo</b><span class="status chip gray">Restricted - not used</span></div>
             </div>
           </div>
         </div>
         <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd tp">Talking point — no app click (persona slide over Dana's credit memo draft)</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"What you just saw rests on three enhancements — permission-aware grounding across meetings, docs, metadata and workflows; safe action with previewable diffs and approval gates; and governed records that revalidate when sources change. Grounding is Phase 0, underneath everything; I'm spending our live time on the harder part: acting on it safely." "It's 1:30. At 2:00 Dana defends a pricing exception for Acme. The home screen is her screen-shared credit memo draft: the 22% request, changed forecast, prior/current DSCR, RM approval, Credit Officer outstanding, and final covenant tracker missing. The deeper facts are scattered across an updated model, a deal-room chat, an approval workflow — and a Legal memo she may not even be allowed to open. Her options today: spend 30 minutes hand-reconciling, then another hour chasing people. And if the agent 'helps' by hallucinating one figure, that's not a bad summary — <em>that's a sanctioned credit decision.</em> So her real job isn't 'summarize the meeting.' It's <em>close the loop, safely.</em>"</div>
-          <div class="label" style="margin-top:13px">Why it lands</div>
-          <div class="lands"><span class="chip tint">Product design</span><span class="chip dang">★ Customer sense (the Matt flip)</span><span class="chip ghost">Buyer's risk = user's risk</span></div>
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">DecisionReadiness row + gate</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Open Decision Brief</span><span class="chip gray">Click explain on threshold</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"The home screen was Dana's draft. This is the system-generated readiness view. It shows what changed, which checks pass or fail, what evidence is missing, and what the agent was not allowed to use. A fair question is whether the 15% limit is computed or typed in, so I click explain. Here are the inputs, the rule, and the pass/fail. The model reads the messy evidence. The rule layer owns every pass/fail where a mistake is costly."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The brief is a typed readiness surface, not a chat answer.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip red">Approval-ready: No</span><span class="chip red">Credit Officer missing</span><span class="chip red">Legal missing</span><span class="chip amber">tracker missing</span><span class="chip green">DSCR passes</span><span class="chip gray">restricted source visible</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Technical and AI</span><span class="chip blue">Product design</span><span class="chip blue">Happy path 1</span></div></div>
         </div>
       </div>
-    </div>
+    </article>
 
-    <!-- BEAT 3 — LIVE CHAT: THE REFUSAL (interactive) -->
-    <div class="card beat" id="beat3">
-      <div class="bhead"><div class="bn">3</div><h3>The refusal — she asks the agent to do her job, and it says no</h3><span class="time">3:30–7:30 · hero</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">ConnectAgent</div><div class="su">Permissions-aware · cites only sources you can access</div></div></div>
-            <div class="scopebar">
-              <span class="chip info">🛡 I only use content you're permitted to see</span><span class="chip ghost">Acme renewal</span>
-            </div>
-            <div class="body" id="chatlog" style="min-height:140px">
-              <div style="color:var(--muted);font-size:12px;text-align:center;padding:18px 8px">Pick a prompt — the agent answers from permitted sources only, and the deterministic gate owns every pass/fail.</div>
-            </div>
-            <div class="ask">
-              <button class="preset" onclick="chat('apply')">@Agent apply the 22% discount</button>
-              <button class="preset" onclick="chat('why')">@Agent why does this need approval?</button>
-              <button class="preset" onclick="chat('capped')">Use the max I can authorize (15%)</button>
-              <button class="btn g" onclick="chatReset()" style="margin-left:auto">Reset</button>
-            </div>
-          </div>
-          <div class="note">↑ Mirrors the running <code>/chat</code> endpoint — governance is enforced in the wrapper, identical whether the model is on or off.</div>
-        </div>
-        <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd type">⌨ Type "@Agent apply the 22% discount"</span><span class="sep">→</span><span class="kbd">"@Agent why does this need approval?"</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"This is live and I didn't script the answers — someone on the panel, type something. Watch what happens when Dana invokes the private agent and tries to just <em>do it</em>: <em>'@Agent apply the 22% discount.'</em> The model doesn't get to be helpful here — 22% is over Dana's own 15% delegated authority, so the deterministic verifier holds the gate and offers two honest paths: route it up, or take the 15% she's actually allowed. Now ask <em>'@Agent why?'</em> — it names the threshold and tells you a related Legal memo exists but is restricted, so it wasn't used. It never reveals what it can't show."</div>
-          <div class="label" style="margin-top:13px">The two edge cases, live</div>
-          <ul class="do" style="margin-top:0">
-            <li><b>Deterministic policy block</b> — the model can't grant or apply approval, even asked directly or via injection.</li>
-            <li><b>Permission boundary</b> — the restricted Legal memo is flagged but never revealed, summarized, or cited.</li>
-          </ul>
-          <div class="money"><div class="k">Money line</div>"She asked the agent to do her job and it told her <b>no — and exactly why.</b> I can turn the model off and this refusal is byte-identical, because the authority lives in the Policy Artifact, not the model."</div>
-          <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip tint">Product design</span><span class="chip dang">Edge cases earned, not staged</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 4 — REFRAME -->
-    <div class="card beat" id="beat4">
-      <div class="bhead"><div class="bn">4</div><h3>Reframe: a platform problem, not a chatbot feature</h3><span class="time">7:30–9:30</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="card pad" style="box-shadow:none">
-            <div class="label">The reframe on one slide</div>
-            <p style="font-size:13.5px;margin:0 0 10px">Today: <b>summarize</b> &nbsp;→&nbsp; Next: answer <b>what changed, what matters, what's missing, what's allowed, what to do, who owns it, and whether it's still true.</b></p>
-            <div class="lands">
-              <span class="chip ghost">ContextBundle</span><span class="chip ghost">Policy Artifact</span><span class="chip ghost">ToolCard</span>
-              <span class="chip ghost">ActionDiff</span><span class="chip ghost">WorkProductContract</span><span class="chip ghost">EvalTrace</span>
-            </div>
-            <div class="note">Six reusable primitives — vertical-agnostic by design. Verticals differ only by Policy Artifact + recipe + eval pack.</div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd tp">Talking point — no app click (the reframe slide)</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"I treated this less as a chatbot enhancement and more as the first visible surface of a regulated <em>work-orchestration platform</em>. The category is being commoditized — summaries and transcript Q&A are table stakes the moment Copilot ships them. The short version: the governance layer doesn't slow retrieval down — it makes it both more accurate and more trustworthy, and the research backs that up. And the deterministic layer isn't overhead on retrieval — emerging neurosymbolic-RAG research points the other way. RuleRAG reports an ~89% Recall@10 improvement from using symbolic rules to guide retrieval; the recent Saxena survey on neurosymbolic retrievers argues this matters most in high-stakes domains where opaque retrieval erodes trust. So this layer makes retrieval better AND trustworthy. The durable wedge is the unglamorous substrate: permission-aware context, deterministic verification, safe actions, multi-owner orchestration, lifecycle, and a privacy-preserving eval loop."</div>
-          <div class="note">RuleRAG's figure, cited in Saxena et al. 2026 (arXiv 2601.04568) — emerging research, not consensus.</div>
-          <div class="label" style="margin-top:13px">Why it lands</div>
-          <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip info">Platform mindset (JD)</span><span class="chip ghost">Names the primitives early</span><span class="chip ghost">"Not just RAG" rebuttal</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 5 — BRIEF + EXPLAINER (interactive) -->
-    <div class="card beat" id="beat5">
-      <div class="bhead"><div class="bn">5</div><h3>The brief — "where did that 15% come from? Is it computed or scripted?"</h3><span class="time">9:30–13:00</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">Decision Brief · Draft</div><div class="su">Confidence: medium · 12 sources</div></div></div>
-            <div class="body">
-              <div class="label">Decision needed</div>
-              <div style="font-size:13.5px;font-weight:600;margin-bottom:8px">Approve or reject Acme's pricing exception (22% discount) + covenant modification.</div>
-              <span class="chip dang">✕ Approval-ready: No</span>
-              <span class="chip dang" style="margin-left:6px">✕ Credit Officer: missing</span>
-              <span class="chip warn" style="margin-left:6px">△ Missing: final covenant tracker</span>
-              <div class="label" style="margin-top:12px">Gates failing — click <b>explain</b></div>
-              <div class="seg">
-                <button class="on" id="seg-thr" onclick="explain('thr')">Approval threshold</button>
-                <button id="seg-dscr" onclick="explain('dscr')">DSCR calculation</button>
-              </div>
-              <div id="calcbox"></div>
+    <article class="card beat" id="beat6">
+      <div class="beat-head"><div class="beat-num">6</div><h3>Credit Officer loop</h3><span class="beat-time">8:30-14:00</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">A</div><div><div class="mock-title">Agent Actions - Next actions and Changes</div><div class="mock-sub">Stage, validate, execute, wait, revalidate</div></div></div>
+            <div class="mock-b">
+              <div class="route"><b>1. Brief row:</b> <code>Stage: route 22% to Credit Officer</code></div>
+              <div class="route" style="margin-top:7px"><b>2. Drawer card:</b> Route to Credit Officer - 22% pricing exception - validated from row provenance.</div>
+              <div class="route" style="margin-top:7px"><b>3. Visible response:</b> Simulate Credit Officer response.</div>
+              <div class="route" style="margin-top:7px"><b>4. Recompute:</b> Credit clears. Legal and tracker remain open. CS plan appears as 18% vs 22% conflict.</div>
             </div>
           </div>
         </div>
         <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">"Generate Decision Brief"</span><span class="sep">→</span><span class="kbd">"explain" on a failing gate</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"That 15% wasn't a vibe — open the brief. The home memo was Dana's draft; this is the system-generated readiness surface. It shows what changed, the gates, missing evidence, stageable remediations, and what it <em>wasn't allowed</em> to use. A panelist always asks: is that number computed or scripted? So I click 'explain.' Here are the inputs, the formula, the threshold, PASS/FAIL — stamped <em>decided by Policy Artifact finance_credit_v1, not the model.</em> The LLM interpreted the messy evidence; the deterministic layer owns every pass/fail where a mistake is expensive."</div>
-          <div class="label" style="margin-top:13px">What I point at</div>
-          <ul class="do" style="margin-top:0">
-            <li>The CS-plan conflict is intentionally absent here; it appears only after the Credit Officer approval returns and revalidation checks dependent sources.</li>
-            <li>Missing evidence surfaced, not hallucinated: final covenant tracker.</li>
-            <li>Clickable provenance → the exact span in the real memo (not a vector match).</li>
-          </ul>
-          <div class="money"><div class="k">Money line</div>"This is the core control. The model assembled context, but <b>the Policy Artifact made the allow-or-block decision, and here's the arithmetic.</b>"</div>
-          <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip info">Eval rigor (JD)</span><span class="chip ghost">"Not just RAG" rebuttal</span></div>
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">Lifecycle event -> recompute</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Stage CO route</span><span class="chip gray">Open Agent Actions</span><span class="chip gray">Route</span><span class="chip gray">Simulate CO response</span><span class="chip gray">Accept CS plan edit</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"Dana does not run anything from the brief. The brief stages the work; the drawer executes it. She stages the Credit Officer route, opens Agent Actions, and runs the validated route. It is now pending. I click the visible control to simulate the Credit Officer response. That response triggers a recompute: the approval clears, but the brief still says not ready because Legal and the covenant tracker remain open. Only now does a downstream document show up as out of date: a customer success plan that still assumes 18%. One reviewed edit brings it to 22%, and the conflict clears. The point of this beat is the recompute: a returned approval re-derives readiness."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The system updates from lifecycle state, not from another prompt.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip blue">Next actions 1</span><span class="chip amber">pending route</span><span class="chip blue">visible simulated response</span><span class="chip amber">Changes 1</span><span class="chip amber">18% to 22% diff</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Technical and AI</span><span class="chip blue">Happy path 2</span><span class="chip blue">Edge case</span></div></div>
         </div>
       </div>
-    </div>
+    </article>
 
-    <!-- BEAT 6 — STAGE → ROUTE → VISIBLE RESPONSE → REVALIDATION + CHANGES (interactive) -->
-    <div class="card beat" id="beat6">
-      <div class="bhead"><div class="bn">6</div><h3>Stage → execute → visible CO response → <i>live revalidation</i></h3><span class="time">13:00–17:00 · hero</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">ConnectAgent · revalidation</div><div class="su">Stage, route, simulate response → watch the packet re-derive</div></div></div>
-            <div class="body" id="revalbody">
-              <div id="revalsteps"></div>
-              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-                <button class="btn p" id="revalBtn" onclick="revalNext()">Stage: route 22% to Credit Officer</button>
-                <button class="btn g" onclick="revalReset()">Reset</button>
-              </div>
-            </div>
-          </div>
-          <div class="note">↑ The CO response requires the visible simulated counterparty control; the agent <em>re-derives</em> the gates after that event.</div>
-        </div>
-        <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">"Stage: route 22% to Credit Officer"</span><span class="sep">→</span><span class="kbd">Agent Actions · Next actions 1</span><span class="sep">→</span><span class="kbd">"Route to Credit Officer"</span><span class="sep">→</span><span class="kbd">"Simulate Credit Officer response"</span><span class="sep">→</span><span class="kbd">Changes · Review reconciliation</span><span class="sep">→</span><span class="kbd">"Accept"</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"So Dana doesn't run the action from the brief. She stages the Credit Officer row, opens Agent Actions, and executes the validated route. Now the route is pending. I click the visible simulated counterparty control — this is the deterministic Credit Officer response, not a hidden timer. That approval-returned event triggers revalidation: the authority gate and CO approval now clear… and it <em>still says not approval-ready</em>, because the covenant tracker is missing and Legal is still pending. Only now does Changes show the downstream doc the approval made stale: the customer success plan still assumes 18%. One human-accepted edit reconciles it to 22% and the conflict clears."</div>
-          <div class="label" style="margin-top:13px">What I point at</div>
-          <ul class="do" style="margin-top:0">
-            <li><b>Surface boundary</b> — Decision Brief stages; Agent Actions executes the validated route.</li>
-            <li><b>Honest partial recompute</b> — two gates flip to pass; Legal and the covenant tracker remain unresolved.</li>
-            <li><b>Cascade as Changes</b> — CS-plan conflict resolution is a previewable, approved diff (18% → 22%), not a silent overwrite.</li>
-          </ul>
-          <div class="money"><div class="k">Money line</div>"The Credit Officer signed off and it <b>still</b> says not-ready. An agent that tells you it isn't done yet is the one you can trust when it finally says it is."</div>
-          <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip tint">Product design</span><span class="chip dang">Honesty as the trust unlock</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 7 — AGENT ACTIONS (interactive) -->
-    <div class="card beat" id="beat7">
-      <div class="bhead"><div class="bn">7</div><h3>Agent Actions — clear Legal and covenant evidence, then become ready</h3><span class="time">17:00–20:00</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">Agent Actions · remaining prerequisites</div><div class="su">Route Legal · request tracker · visible responses · audit</div></div></div>
-            <div class="body">
-              <div id="actionlist"></div>
-              <div style="display:flex;gap:8px;margin-top:6px">
-                <button class="btn p" id="approveBtn" onclick="approveAll()">Route Legal + request tracker</button>
-                <button class="btn g" onclick="actionsReset()">Reset</button>
-              </div>
-              <div class="audit" id="auditlog"><div class="h">Audit trail · server-recomposed plan</div><div id="auditrows"></div></div>
-            </div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">"Agent Actions" (top bar)</span><span class="sep">→</span><span class="kbd">"Route Legal + request tracker"</span><span class="sep">→</span><span class="kbd">"Simulate Legal + Priya responses"</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"After the Credit Officer approval and CS-plan reconciliation, two decision prerequisites remain: Legal has to sign off on the covenant modification, and Priya has to upload the final covenant tracker. These are different objects, so they get different action shapes: a route for Legal and a missing-evidence request for Priya. I execute both, then click the visible simulated responses. Only after Legal returns and the tracker is uploaded does the Decision Brief turn approval-ready."</div>
-          <div class="money"><div class="k">Money line</div>"The agent does not declare victory after the exciting approval. It waits for the boring dependencies too — and that is why the final ready state is credible."</div>
-          <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip tint">Strategic thinking</span><span class="chip info">Tool invocation + audit (JD)</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 8 — AGENT BATCH (interactive) -->
-    <div class="card beat" id="beat8">
-      <div class="bhead"><div class="bn">8</div><h3>Agent Batch — platform proof for multi-owner loops</h3><span class="time">20:00–23:30 · orchestration proof</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">Agent Batch · orchestration proof</div><div class="su">Approve the batch → fan to owners → collect replies → audit-ready dossier</div></div></div>
-            <div class="body">
-              <div class="stages" id="batchstages"></div>
-              <div id="batchbody"></div>
-              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-                <button class="btn p" id="batchBtn" onclick="batchRun()">Approve &amp; run batch</button>
-                <button class="btn g" onclick="batchReset()">Reset</button>
-              </div>
-            </div>
-          </div>
-          <div class="note">↑ This is a broader orchestration proof, separate from the Decision Brief readiness loop that just became ready.</div>
-        </div>
-        <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">"Agent Batch" (top bar)</span><span class="sep">→</span><span class="kbd">"Approve &amp; run batch"</span><span class="sep">→</span><span class="kbd">"Close &amp; export dossier"</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"Now that the decision path has shown the core lifecycle, I use Batch as the platform proof: the same action primitives can fan work across owners, collect structured replies, derive escalations, and export an audit-ready dossier. This is deliberately separate from the Acme readiness state we just closed. The batch demo is about multi-owner orchestration at scale, and it stays honest when a broader cycle still has unresolved escalations."</div>
-          <div class="label" style="margin-top:13px">What I point at</div>
-          <ul class="do" style="margin-top:0">
-            <li><b>Distribute → collect → escalate → schedule → close</b> — assignments and replies across typed owners.</li>
-            <li><b>Escalations are derived</b> — Legal → Compliance plus two human-review escalations for the blocked actions.</li>
-            <li><b>Honest about what is still open</b> — the banner reads the unresolved work, not the closed flag.</li>
-          </ul>
-          <div class="money"><div class="k">Money line</div>"The same governed action substrate handles the single-decision path and the broader team loop — and it stays explicit about what is resolved versus still open."</div>
-          <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip tint">Technical & AI</span><span class="chip info">Multi-agent orchestration (JD)</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 9 — GOVERNED RECORD (interactive) -->
-    <div class="card beat" id="beat9">
-      <div class="bhead"><div class="bn">9</div><h3>Governed record — the agent owns the <i>trust state</i></h3><span class="time">23:30–26:00</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">Governed record · gwp_acme_001</div><div class="su">Server-sealed · change a source → impact routes deterministically</div></div></div>
-            <div class="body">
-              <div class="recordpills" id="recordpills"></div>
-              <div class="label">Simulate a source change, then verify</div>
-              <div class="seg">
-                <button class="on" id="ev-legal" onclick="recordPick('legal')">Legal → Needs Review</button>
-                <button id="ev-fin" onclick="recordPick('fin')">Financials revised (v2)</button>
-              </div>
-              <div style="margin:0 0 4px"><button class="btn p" id="verifyBtn" onclick="recordVerify()">Verify record</button></div>
-              <div id="recordbox"></div>
-            </div>
-          </div>
-        </div>
-        <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">"Seal as governed record"</span><span class="sep">→</span><span class="kbd">"Legal → Needs Review"</span><span class="sep">→</span><span class="kbd">"Verify record"</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"When the packet's ready, Dana seals it as a <em>governed record</em> — a server-minted certificate with an integrity seal, full provenance, and the permission omissions baked in. ConnectWork already surfaces content lineage and provenance, so to be precise: the new thing here isn't <em>recording</em> lineage — it's the agent <em>acting</em> on it. It seals the decision as a governed record and then owns whether that decision is still true. Now decisions go stale. I change a <em>different</em> source each time and verify — and the impact routes to a <em>different</em> place. Legal moves to 'Needs Review' → the approval sections go stale and reapproval routes to Legal. The financial model revs to v2 → DSCR drops to 1.18, <em>breaches the covenant floor</em>, and the factual sections go stale — but there's no reapproval route, because it's a data change, not an approval change. This is derived from a real source-dependency graph. For a regulated credit decision this isn't a nice-to-have. Credit scoring is a named Annex III high-risk category under the EU AI Act, and Article 14 requires a human-interpretable record surfacing the factors behind each decision — with penalties up to 7% of global turnover. I built the regulation's requirement as a primitive."</div>
-          <div class="money"><div class="k">Money line</div>"The agent stops saying 'I generated an answer' and starts saying <b>'I'm tracking whether this is still true'</b> — and proves it with a server seal."</div>
-          <div class="lands"><span class="chip tint">Product design</span><span class="chip info">Real-world usage signals (JD)</span><span class="chip ghost">Edge case: stale work product</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BEAT 10 — PLATFORM PROOF (interactive) -->
-    <div class="card beat" id="beat10">
-      <div class="bhead"><div class="bn">10</div><h3>Platform proof — one substrate, three regulated verticals</h3><span class="time">26:00–28:30 · the close-setup</span></div>
-      <div class="bbody">
-        <div class="stage">
-          <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">Agent Ops · three-vertical scorecard</div><div class="su">Same primitives · Policy Artifact + eval pack swap per vertical</div></div></div>
-            <div class="body">
-              <table class="vt">
-                <thead><tr><th>Vertical</th><th>Recipe</th><th>Eval pass</th><th>Signature gate</th></tr></thead>
+    <article class="card beat" id="beat7">
+      <div class="beat-head"><div class="beat-num">7</div><h3>Legal + covenant evidence</h3><span class="beat-time">14:00-18:00</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">R</div><div><div class="mock-title">Readiness rows</div><div class="mock-sub">Different blockers, same execution chokepoint</div></div></div>
+            <div class="mock-b">
+              <table class="mini-table">
+                <thead><tr><th>Row type</th><th>Acme row</th><th>Action</th></tr></thead>
                 <tbody>
-                  <tr><td>Financial</td><td>finance_credit_v1</td><td><b>5/6</b></td><td>approval matrix · MNPI</td></tr>
-                  <tr><td>Legal</td><td>legal_contract_v1</td><td><b>2/2</b></td><td>privilege · hallucinated-cite</td></tr>
-                  <tr><td>Healthcare</td><td>health_protocol_v1</td><td><b>2/2</b></td><td>PHI minimum-necessary</td></tr>
-                  <tr class="evalrow" onclick="toggleTrace()"><td colspan="4" style="color:var(--danger);font-weight:600">▸ 1 honest failure — click to drill in (content-free)</td></tr>
+                  <tr><td>Needs a person</td><td>Legal approval</td><td>Route approval</td></tr>
+                  <tr><td>Needs an artifact</td><td>Final covenant tracker</td><td>Request evidence from Priya</td></tr>
+                  <tr><td>Readiness</td><td>Approval-ready</td><td>Recompute after dependencies clear</td></tr>
                 </tbody>
               </table>
-              <div class="trace" id="evaltrace">
-                <div class="k">Eval trace · fin_ambig_01 · typed signals only</div>
-                <div class="g">
-                  <span class="lab">input_class</span><span>clarify_ambiguous_followup</span>
-                  <span class="lab">expected_signal</span><span>known_gap=clarification_routing_quality</span>
-                  <span class="lab">observed_signal</span><span>passed=False; clarification_routing_quality=not_yet_scored (declared capability gap)</span>
-                  <span class="lab">latency / cost</span><span>2–4s / $</span>
-                  <span class="lab">raw content</span><span>— none captured (schema forbids it) —</span>
-                </div>
-                <div style="margin-top:8px;color:#9fb6d4;font-size:11px">No prompt, response, or document text — ever. We learn from typed signals, tenant-local runs, and DP aggregates.</div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">Row taxonomy</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Stage Legal route</span><span class="chip gray">Simulate Legal response</span><span class="chip gray">Request tracker</span><span class="chip gray">Simulate Priya upload</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"Two items remain: Legal sign-off on the covenant change, and the final covenant tracker. These are different kinds of blockers. One needs a person. The other needs an artifact. They use the same execution path, but the user job is different. Legal is routed and returns. The tracker is requested from Priya and then uploaded. The brief advances only when those dependencies actually clear."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>Person approvals and missing artifacts are not the same row type.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip blue">Legal pending then approved</span><span class="chip amber">tracker requested</span><span class="chip green">tracker uploaded</span><span class="chip amber">approval_ready stays false until clear</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Product design</span><span class="chip blue">Technical and AI</span><span class="chip blue">Workflow coverage</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card beat" id="beat8">
+      <div class="beat-head"><div class="beat-num">8</div><h3>Approval-ready + seal</h3><span class="beat-time">18:00-20:30</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">G</div><div><div class="mock-title">Governed record - Acme renewal</div><div class="mock-sub">Final brief state, source versions, seal</div></div></div>
+            <div class="mock-b">
+              <div class="rowline"><b>Credit Officer</b><span class="status chip green">Approved</span></div>
+              <div class="rowline"><b>Legal</b><span class="status chip green">Approved</span></div>
+              <div class="rowline"><b>Covenant tracker</b><span class="status chip green">Attached</span></div>
+              <div class="rowline"><b>CS plan reconciliation</b><span class="status chip green">Cleared</span></div>
+              <div class="rowline"><b>Approval-ready</b><span class="status chip green">Yes</span></div>
+              <div class="route">Seal contains final decision, evidence, approvals, permission omissions, source versions, dependency map, and integrity seal.</div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">PolicyGraph / WorkProductContract</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Confirm approval-ready</span><span class="chip gray">Seal as governed record</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"Now the prerequisites are satisfied: Credit Officer approval, Legal approval, covenant evidence, and source reconciliation. The brief can become approval-ready because every required dependency has cleared. Sealing turns the live brief into a durable governed work product. It preserves the final decision, evidence, approvals, source versions, permission omissions, dependency map, and integrity seal."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The sealed record contains the final brief state, not an earlier incomplete state.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip green">Approval-ready: Yes</span><span class="chip green">all blockers cleared</span><span class="chip blue">source versions</span><span class="chip blue">dependency map</span><span class="chip blue">integrity seal</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Product design</span><span class="chip blue">Technical and AI</span><span class="chip blue">Governed record</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card beat" id="beat9">
+      <div class="beat-head"><div class="beat-num">9</div><h3>Optional freshness check / Agent Batch</h3><span class="beat-time">20:30-22:00</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="cols">
+            <div class="mock">
+              <div class="mock-h"><div class="mock-logo">V</div><div><div class="mock-title">Freshness check</div><div class="mock-sub">Sealed-record path</div></div></div>
+              <div class="mock-b">
+                <div class="rowline"><b>Source changes</b><span class="status chip amber">Freshness stale</span></div>
+                <div class="rowline"><b>Affected sections</b><span class="status chip blue">Targeted</span></div>
+                <div class="rowline"><b>Integrity</b><span class="status chip green">Valid</span></div>
+              </div>
+            </div>
+            <div class="mock">
+              <div class="mock-h"><div class="mock-logo">B</div><div><div class="mock-title">Agent Batch</div><div class="mock-sub">Optional platform proof</div></div></div>
+              <div class="mock-b">
+                <div class="rowline"><b>Fan out work</b><span class="status chip blue">Owners</span></div>
+                <div class="rowline"><b>Collect replies</b><span class="status chip blue">Structured</span></div>
+                <div class="rowline"><b>Keep separate</b><span class="status chip gray">Not Acme readiness</span></div>
               </div>
             </div>
           </div>
         </div>
         <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd">"Agent Ops" (top bar)</span><span class="sep">→</span><span class="kbd">the failed eval row</span></div>
-          <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"Here's the whole bet in one screen: the exact same machinery runs three regulated verticals, unchanged. Same ContextBundle, Policy Artifact, ActionDiff, the same batch loop, the same EvalTrace — I swap only the Policy Artifact and eval pack per vertical, nothing else. That's not 'it generalizes' hand-waving; it's an <em>existence proof</em> — one substrate running finance, legal, and healthcare, with one honest gap left visible. This row is an ambiguous 'follow up on that' that exposes a known gap — we don't yet score clarification-routing quality, so the case stays red and visible instead of hidden. I drill in: <em>no prompt, response, or document text anywhere</em> — only typed signals, the expected against the observed 'not yet scored.' As an enterprise vendor we can't inspect customer content, so the eval loop runs on typed signals, tenant-local runs, and differential-privacy aggregates. Marking our own gap red instead of gaming it green <em>is</em> the credibility."</div>
-          <div class="money"><div class="k">Money line</div>"<b>Finance is the wedge, not the architecture.</b> This is the platform: shared primitives, measured by typed signals — exactly the orchestration layer this role owns."</div>
-          <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip info">Eval frameworks + privacy (JD)</span><span class="chip ghost">Honesty as a flex</span></div>
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">RevalidationRule or ToolCard / ActionDiff compose</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Only if on time</span><span class="chip gray">Verify record</span><span class="chip gray">or show Agent Batch</span></div></div>
+          <div class="label" style="margin-top:12px">Say for freshness</div>
+          <div class="say">"The sealed record knows which sources it depended on. If a source changes later, the system can identify affected sections and route targeted review instead of rerunning the whole packet."</div>
+          <div class="label" style="margin-top:12px">Say for Agent Batch</div>
+          <div class="say">"This is optional platform proof. Batch is not part of the Acme readiness gate. It shows that the same action primitives can fan work out across owners when the recipe calls for it."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>Optional platform proof should not distract from the main readiness arc.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip amber">stale source</span><span class="chip blue">targeted sections</span><span class="chip gray">Batch is skippable</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Edge case</span><span class="chip blue">Platform thinking</span></div></div>
         </div>
       </div>
-    </div>
+    </article>
 
-    <!-- BEAT 11 — CLOSE -->
-    <div class="card beat" id="beat11">
-      <div class="bhead"><div class="bn">11</div><h3>Close — roadmap + the strategic line</h3><span class="time">28:30–30:00</span></div>
-      <div class="bbody">
-        <div class="stage">
+    <article class="card beat" id="beat10">
+      <div class="beat-head"><div class="beat-num">10</div><h3>Primitive-to-configuration map + roadmap</h3><span class="beat-time">22:00-26:30</span></div>
+      <div class="beat-body">
+        <div class="screen">
           <div class="card pad" style="box-shadow:none">
-            <div class="label">Roadmap (phased, Phase 0 first — that's the judgment)</div>
-            <div style="display:grid;gap:8px;font-size:12.5px">
-              <div><span class="chip tint">Phase 0</span> Substrate: permission-aware grounding &amp; retrieval (the foundation) · Policy Artifact/gates · ActionDiff · EvalTrace.</div>
-              <div><span class="chip tint">Phase 1</span> Financial Decision Brief — grounded retrieval into a verified, cited packet (the first proof point).</div>
-              <div><span class="chip tint">Phase 2</span> Controlled work loop: typed tools, diffs, approval, multi-owner batch, audit.</div>
-              <div><span class="chip tint">Phase 3</span> Lifecycle, sealed records, evals, AI Studio recipes, Legal + Health.</div>
-            </div>
-            <div class="note">Grounding is the foundation, demonstrated throughout — the deterministic substrate is what makes it safe to act on. Read first, then governed action.</div>
+            <div class="label">Configuration, not a one-off script</div>
+            <table class="mini-table">
+              <thead><tr><th>Primitive</th><th>Configured by</th><th>Acme example</th></tr></thead>
+              <tbody>
+                <tr><td>AgentRecipe</td><td>Recipe ID, sources, actions, output contract, eval pack</td><td>Acme renewal credit decision</td></tr>
+                <tr><td>Policy Artifact</td><td>Rules, thresholds, formulas, blocked actions</td><td>22% needs Credit Officer approval</td></tr>
+                <tr><td>PolicyGraph</td><td>Dependency order and readiness criteria</td><td>Credit, Legal, tracker, CS-plan reconciliation</td></tr>
+                <tr><td>WorkProductContract</td><td>Required sections, source dependencies, seal</td><td>Final Acme Decision Brief</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
         <div class="notes">
-          <div class="label">Click</div>
-          <div class="clickline"><span class="kbd tp">Talking point — no app click (roadmap slide)</span></div>
-          <div class="label" style="margin-top:13px">Say (verbatim close)</div>
-          <div class="say">"Most teams will make the agent more powerful. I made its context, outputs, actions, and evaluation <em>measurable</em> first — then closed the loop on top, all the way across the team and into a sealed record that knows when it's gone stale. Finance is the wedge; the platform is regulated work-product orchestration. The model is a component. <em>The substrate is the product</em> — and it's a wedge Microsoft can recognize but can't easily replicate inside Box's native content, workflow, and permission graph. That's the orchestration layer I want to own."</div>
-          <div class="lands"><span class="chip tint">Communication</span><span class="chip tint">Strategic thinking</span><span class="chip info">Maps 1:1 to the JD</span></div>
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">AgentRecipe / EvalTrace</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">Primitive map</span><span class="chip gray">Roadmap slide</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"The demo has several surfaces, but they reuse the same primitives. Acme is the scenario. The configurable pieces are the recipe, allowed sources, rules, approvers, dependency graph, actions, record contract, revalidation rules, and eval pack. A different enterprise workflow swaps those configurations while keeping the same product pattern: permission-aware context, typed readiness, reviewed actions, lifecycle events, and governed records."</div>
+          <div class="label" style="margin-top:12px">Roadmap speaker note</div>
+          <div class="say">"I would not start with broad automation. I would start with the substrate: context, authority, previews, and evaluation. Then the agent reads, then it acts through gates, then it governs the lifecycle and opens the pattern to admins and developers."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>Acme is configurable proof of a reusable orchestration layer.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip blue">AgentRecipe</span><span class="chip blue">Policy Artifact</span><span class="chip blue">ActionDiff</span><span class="chip blue">LifecycleEvent</span><span class="chip blue">EvalTrace</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Strategic thinking</span><span class="chip blue">Roadmap</span><span class="chip blue">Technical depth</span></div></div>
         </div>
       </div>
-    </div>
+    </article>
 
+    <article class="card beat" id="beat11">
+      <div class="beat-head"><div class="beat-num">11</div><h3>KPIs, risks, close, Q&amp;A bridge</h3><span class="beat-time">26:30-30:00</span></div>
+      <div class="beat-body">
+        <div class="screen">
+          <div class="mock">
+            <div class="mock-h"><div class="mock-logo">K</div><div><div class="mock-title">Close</div><div class="mock-sub">Metrics, risks, and Q&amp;A bridge</div></div></div>
+            <div class="mock-b">
+              <div class="rowline"><b>North star</b><span class="status chip blue">Decision-to-ready cycle time</span></div>
+              <div class="rowline"><b>Safety</b><span class="status chip blue">Permission and action correctness</span></div>
+              <div class="rowline"><b>Operations</b><span class="status chip blue">Latency, cost, tool success</span></div>
+              <div class="rowline"><b>Q&amp;A bridge</b><span class="status chip gray">Pick product, engineering, or design</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="primitive"><div class="label">Primitive proven</div><span class="chip blue">Thesis</span></div>
+          <div class="click"><div class="label">Click</div><div class="chips"><span class="chip gray">No app click</span><span class="chip gray">Close over KPI/risk slide</span></div></div>
+          <div class="label" style="margin-top:12px">Say</div>
+          <div class="say">"The demo starts with a blocked write request and ends with a sealed, approval-ready governed record. The path is explicit: stage, validate, execute, wait for owner response, revalidate, and seal. Acme is the scenario. The product is the reusable orchestration layer underneath it."</div>
+          <div class="takeaway"><div class="label">Presenter takeaway</div>The model is one component. The governed substrate is the product.</div>
+          <div class="evidence"><div class="label">Evidence on screen</div><div class="chips"><span class="chip blue">KPIs</span><span class="chip blue">risks</span><span class="chip blue">mitigations</span><span class="chip gray">Q&amp;A options</span></div></div>
+          <div class="rubric"><div class="label">Rubric coverage</div><div class="chips"><span class="chip blue">Communication</span><span class="chip blue">Metrics</span><span class="chip blue">Risks</span></div></div>
+        </div>
+      </div>
+    </article>
   </div>
 </section>
 
-<!-- KPIs -->
-<section id="kpis">
+<section id="map">
   <div class="wrap">
-    <div class="sec-head"><span class="num">KPIs</span><h2>How I'd know it's working</h2></div>
-    <p class="sec-sub">North star + the platform-health signals the JD asks a PM to define. I'll name these only if asked — but they're ready.</p>
-    <div class="kpi" style="margin-bottom:12px"><div class="v">Decision → closed-work-product cycle time</div><div class="l">North star — for regulated review workflows. Everything else is a driver.</div></div>
-    <div class="kpis">
-      <div class="kpi"><div class="v">Trust</div><div class="l">citation correctness · permission-denial pass · deterministic-rule pass · missing-evidence honesty</div></div>
-      <div class="kpi"><div class="v">Action safety</div><div class="l">diff-preview coverage · invalid-action rate · approve/edit/reject · audit completeness · escalation accuracy</div></div>
-      <div class="kpi"><div class="v">Platform health</div><div class="l">latency p50/p95 · cost / successful workflow · tool success · eval-regression pass · stale-detection lead time</div></div>
-      <div class="kpi"><div class="v">Business</div><div class="l">regulated-workflow adoption · AI attach · recipe creation in AI Studio</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- DEEP DIVE -->
-<section id="deepdive">
-  <div class="wrap">
-    <div class="sec-head"><span class="num">20:00</span><h2>The deep-dive — what they'll push on, and my answers</h2></div>
-    <p class="sec-sub">I'll invite them to role-play departments (Eng/Design/GTM) and dig. Pre-loaded answers, each with an "I built this" hook.</p>
-
-    <details class="qa"><summary><span class="q">?</span>Isn't this just RAG with extra steps?</summary>
-      <div class="a"><b>RAG is necessary, not sufficient.</b> It finds content; it doesn't validate an approval matrix, recompute a covenant ratio, or prove an action is safe. Published financial-reasoning benchmarks put RAG-with-reranking near ~50% factual correctness; a neurosymbolic layer reaches ~95%. And the symbolic layer doesn't just sit on top of retrieval — it improves it: RuleRAG reports an ~89% Recall@10 improvement from using symbolic rules to guide retrieval (RuleRAG's figure, cited in Saxena et al. 2026, arXiv 2601.04568 — emerging research, not consensus), and the Saxena survey argues this matters most in high-stakes domains where opaque retrieval erodes trust. So the symbolic layer <b>improves retrieval AND owns the pass/fail</b> — you watched the arithmetic, not a vibe.<div class="hook">Hook: understander → planner → verifier → executor with explicit typed contracts.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>The "Agent Batch" — is that real orchestration or a scripted animation?</summary>
-      <div class="a">Real. The batch is a typed loop — <b>assignments</b> to typed owners, <b>replies</b> with a decision enum, <b>escalations</b>, <b>scheduled</b> items, and an <b>audit</b> — the same shape the gateway returns from <code>POST /actions/loop</code>. The Legal→Compliance escalation is <b>derived</b> from authority being exceeded, and the two engine-refused actions escalate to human review because the gates still hold after approval.<div class="hook">Hook: <code>closed</code> means the cycle ran; unresolved status is computed from escalations plus blocked action indices, so a closed batch can still be honest about what is still open.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>Aren't you competing with Microsoft Copilot?</summary>
-      <div class="a">On <b>regulated work-product trust</b>, yes — permissions, source graph, deterministic gates, action diffs, multi-owner orchestration, audit, revalidation. Not on generic copilot parity. The moat is Box's <b>native content + workflow + permission graph</b>; a horizontal assistant can't deterministically gate what it doesn't own.<div class="hook">Hook: permission filter runs <i>before</i> content enters the prompt — denied content never reaches the model.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>Is this cross-app agent orchestration?</summary>
-      <div class="a">Not as the first wedge. We make Box's <b>own</b> work graph actionable and trustworthy, and reach external systems only through typed connectors — we're the <b>governed layer other agents call into via MCP</b>. That's also the headless direction the platform is heading.<div class="hook">Hook: ToolCard registry with side-effect classes + approval policy per tool.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>How do you evaluate without inspecting customer prompts and content?</summary>
-      <div class="a">Layered and content-free: synthetic evals, <b>tenant-local</b> runners (raw stays in the tenant), consented redacted samples, AI Studio feedback, and <b>differential-privacy</b> aggregates. The honest caveat: DP helps aggregate trend learning, not row-level debugging — that's what tenant-local + redacted samples are for. You saw the trace: typed signals only, enforced by schema.<div class="hook">Hook: offline-replay eval harness; accept/edit/reject telemetry becomes the regression set.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>Why finance first — isn't it over-engineered?</summary>
-      <div class="a">Finance has the clearest deterministic surface — calculations, approvals, MNPI, auditability. It's also where the regulation is most concrete: credit scoring is a named Annex III high-risk category under the EU AI Act, and Article 14 requires a human-interpretable record of the factors behind each decision — so the depth is the buyer's compliance requirement, not extra process. The primitives are platform primitives, which is why the demo ends with Legal + Health on the <b>same substrate</b>. Configuration, not code.<div class="hook">Hook: verticals differ only by Policy Artifact + recipe + eval pack.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>Single most important deterministic component?</summary>
-      <div class="a">The <b>approval / policy gate.</b> It directly addresses the trust gap — and it's the one place you must never let the model decide. You saw it hold when Dana tried to apply the discount herself, when she approved every action at once, and after a sign-off when two blockers remained.<div class="hook">Hook: the gate is enforced in the wrapper and re-run server-side on execute; any model "approved" text is neutralized.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>What would you cut if scope got tight?</summary>
-      <div class="a">Cut full AI Studio to a static Phase-3 mock. <b>Keep</b> Phase-0 substrate, the Decision Brief, the deterministic policy block, live revalidation, the Agent Actions drawer, the Agent Batch loop, the sealed governed record + stale alert, eval traces, and the three-vertical proof. The trust spine is non-negotiable; the authoring UI can wait.<div class="hook">Hook: I sequence by what earns trust, not what demos flashiest.</div></div></details>
-
-    <details class="qa"><summary><span class="q">?</span>Design: what about the user who didn't opt into AI?</summary>
-      <div class="a">The agent <b>proposes; the human owns the go.</b> Provenance on every claim, a visible "what I couldn't use," no forced default-accept, reversible diffs, and an honest "still not ready" when it isn't. The reluctant user gets an assistant that's auditable, not an autopilot they distrust. Adoption is a change-management problem as much as a model problem.<div class="hook">Hook: every action carries a before/after diff + required approver + rollback.</div></div></details>
-  </div>
-</section>
-
-<!-- COVERAGE MATRIX -->
-<section id="rubric">
-  <div class="wrap">
-    <div class="sec-head"><span class="num">MAP</span><h2>Coverage — every beat is doing rubric work</h2></div>
-    <p class="sec-sub">Deliberate, not accidental. ● = primary, <span style="color:#9bbef0">●</span> = supporting.</p>
-    <table class="mtx">
-      <thead><tr><th>Beat</th><th>Strategic</th><th>Product design</th><th>Technical & AI</th><th>Communication</th><th>Customer sense</th></tr></thead>
+    <div class="sec-head"><span class="num">MAP</span><h2>Primitive-to-configuration map</h2></div>
+    <p class="sec-sub">This is the platform answer if the panel asks whether the demo only works for Acme.</p>
+    <table class="mini-table">
+      <thead><tr><th>Primitive</th><th>What it owns</th><th>Configured by admin / platform owner</th><th>Acme example</th></tr></thead>
       <tbody>
-        <tr><td>2 · The user</td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td></tr>
-        <tr><td>3 · The refusal</td><td></td><td><span class="dotm"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
-        <tr><td>4 · Reframe</td><td><span class="dotm"></span></td><td></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td></td></tr>
-        <tr><td>5 · Brief + math</td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
-        <tr><td>6 · Revalidate</td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td></tr>
-        <tr><td>7 · Agent Actions</td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
-        <tr><td>8 · Agent Batch</td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td><span class="dotm s"></span></td></tr>
-        <tr><td>9 · Governed record</td><td><span class="dotm s"></span></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td></td><td><span class="dotm s"></span></td></tr>
-        <tr><td>10 · Platform proof</td><td><span class="dotm"></span></td><td></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td><td></td></tr>
-        <tr><td>11 · Close</td><td><span class="dotm"></span></td><td></td><td></td><td><span class="dotm"></span></td><td><span class="dotm s"></span></td></tr>
+        <tr><td>AgentRecipe</td><td>Workflow pattern and allowed surfaces</td><td>Recipe ID, sources, actions, row taxonomy, output contract, eval pack</td><td>Acme renewal credit decision</td></tr>
+        <tr><td>Permission Boundary</td><td>What the user and agent can retrieve, summarize, cite, and act on</td><td>User role, document scopes, metadata filters, restricted-source display state</td><td>Legal memo restricted, not summarized</td></tr>
+        <tr><td>Context Bundle</td><td>Meeting, content, metadata, workflow, source-version, lifecycle state</td><td>Source types, retrieval scope, recency window, cache policy, version capture</td><td>Memo + CS plan + approvals + tracker</td></tr>
+        <tr><td>Policy Artifact</td><td>Deterministic gates, thresholds, calculations, blocked actions</td><td>Thresholds, formulas, severity, exception policy, blocked-action messages</td><td>22% needs Credit Officer approval</td></tr>
+        <tr><td>ApprovalMatrix</td><td>Owner mapping for rules and actions</td><td>Approver role, threshold bands, SLA, escalation path</td><td>Credit Officer and Legal routes</td></tr>
+        <tr><td>PolicyGraph</td><td>Dependency order and readiness criteria</td><td>Blocking gates, prerequisite order, recompute triggers</td><td>Credit, Legal, tracker, CS-plan reconciliation</td></tr>
+        <tr><td>DecisionReadiness Row</td><td>One typed blocker and one stageable remediation</td><td>Row type, row ID, owner, evidence refs, target object</td><td>Approval, missing evidence, conflict rows</td></tr>
+        <tr><td>ActionDiff</td><td>Validated preview of a change</td><td>Target object, before/after diff, rollback policy, audit text</td><td>CS plan 18% to 22%</td></tr>
+        <tr><td>LifecycleEvent</td><td>What happened and what should recompute</td><td>Event class, actor, payload, reducer, timestamp, persistence</td><td>approval_returned, evidence_uploaded</td></tr>
+        <tr><td>WorkProductContract</td><td>Governed record schema and seal</td><td>Required sections, source dependencies, permission omissions, retention</td><td>Final Acme Decision Brief</td></tr>
+        <tr><td>RevalidationRule</td><td>What becomes stale when sources change</td><td>Trigger object IDs, affected sections, freshness policy, reapproval routing</td><td>Source change marks section stale</td></tr>
+        <tr><td>EvalTrace</td><td>Quality, safety, and platform health</td><td>Trace fields, eval dataset, regression suite, KPI definitions</td><td>Citation, permission, action, stale-record KPIs</td></tr>
       </tbody>
     </table>
   </div>
 </section>
 
-<footer class="foot">
+<section id="roadmap">
   <div class="wrap">
-    <div style="font-size:15px;color:var(--fg);font-weight:600">The substrate is the product. The model is a component.</div>
-    <p>Leave-behind for the ConnectWork / Box panel · run live at <code>localhost:5173</code> (frontend) + <code>localhost:8000</code> (governed gateway). Synthetic Acme scenario; real orchestration, gates, batch loop, and evals.</p>
+    <div class="sec-head"><span class="num">ROADMAP</span><h2>Phased roadmap</h2></div>
+    <p class="sec-sub">Use the product roadmap sequence: substrate first, then read, then governed action, then lifecycle and openness.</p>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="k">Phase 0</div><h3>Substrate</h3><p>Permission-aware context assembly, deterministic gate + Policy Artifact, Action Diff, Eval Trace.</p></div>
+      <div class="summary-card"><div class="k">Phase 1</div><h3>Read</h3><p>Permission-aware grounding, Decision Brief, proactive insight cards.</p></div>
+      <div class="summary-card"><div class="k">Phase 2</div><h3>Governed action</h3><p>Actions, multi-owner orchestration, audit trail.</p></div>
+      <div class="summary-card"><div class="k">Phase 3</div><h3>Lifecycle &amp; openness</h3><p>Sealed governed record + active revalidation, AI Studio &amp; API, vertical expansion.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="kpis">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">KPIs</span><h2>Success metrics</h2></div>
+    <p class="sec-sub">These preserve the approved KPI set and are grouped for a short close or deeper Q&amp;A.</p>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="k">North star</div><h3>Decision-to-ready cycle time</h3><p>How long it takes a regulated team to move from discussion to an approval-ready work product.</p></div>
+      <div class="summary-card"><div class="k">Trust</div><h3>Citations and permissions</h3><p>Percent of agent answers with valid citations; permission-denial correctness; restricted-source leakage rate.</p></div>
+      <div class="summary-card"><div class="k">Action safety</div><h3>Review and block rates</h3><p>Action approval / edit / reject rates; invalid-action block rate; workflow completion rate.</p></div>
+      <div class="summary-card"><div class="k">Lifecycle</div><h3>Freshness and review</h3><p>Stale-record detection time; targeted reapproval accuracy.</p></div>
+      <div class="summary-card"><div class="k">Platform health</div><h3>Reliability and cost</h3><p>p50 / p95 latency; tool success rate; cost per completed workflow.</p></div>
+      <div class="summary-card"><div class="k">Quality system</div><h3>Eval regression pass rate</h3><p>Whether the platform continues to pass the scenarios it claims to support.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="risks">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">RISKS</span><h2>Risks and mitigations</h2></div>
+    <div class="risk-list">
+      <div class="risk"><b>Too much automation</b>Human review, diffs, approvals, and audit.</div>
+      <div class="risk"><b>Permission leakage</b>Permission filtering before retrieval or model drafting.</div>
+      <div class="risk"><b>Bad or missing source quality</b>Restricted, missing, and conflicting states shown explicitly.</div>
+      <div class="risk"><b>User trust</b>Visible provenance, diffs, audit log, and reversible actions.</div>
+      <div class="risk"><b>Cost and latency</b>Staged computation, cached context bundles, separate brief generation from action execution.</div>
+      <div class="risk"><b>Prototype overclaim</b>State that the Acme loop uses API-local lifecycle events today; general dispatcher and persistent lifecycle store are roadmap work.</div>
+    </div>
+  </div>
+</section>
+
+<section id="qa">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">Q&amp;A</span><h2>Deep-dive bridge</h2></div>
+    <p class="sec-sub">Invite the panel to choose a lane: Product, Engineering, or Design. Keep answers tied to the primitive set.</p>
+    <details>
+      <summary>Is this just document Q&amp;A with a nicer package?</summary>
+      <div class="answer">No. Document Q&amp;A grounds an answer. This product computes readiness, stages remediations, validates actions, records lifecycle events, and seals a work product that can later be checked for freshness.</div>
+    </details>
+    <details>
+      <summary>What is real versus simulated in the prototype?</summary>
+      <div class="answer">The Acme loop uses API-local lifecycle events and visible simulated responses for Credit, Legal, and Priya. The invariant being proven is the product boundary: event, recompute, stage, validate, execute, audit, and revalidate.</div>
+    </details>
+    <details>
+      <summary>How would this generalize beyond credit?</summary>
+      <div class="answer">Swap the recipe, allowed sources, policy artifact, approval matrix, dependency graph, work-product contract, revalidation rules, and eval pack. The surface pattern remains permission-aware context, typed readiness, reviewed actions, lifecycle events, and governed records.</div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <b style="color:var(--ink)">Close in one sentence:</b>
+    The model is one component; the governed orchestration substrate is the product.
   </div>
 </footer>
 
 <script>
-  function go(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
-
-  /* ---------- Beat 4: governed chat (the refusal) ---------- */
-  var REPLIES={
-    apply:{
-      q:"@Agent apply the 22% discount",
-      txt:"I can't apply that. A 22% discount exceeds your delegated authority (up to 15%). This needs Credit Officer approval before it can be applied.",
-      chips:[["dang","⛔ Gate held"]],
-      cites:["Pricing exception","Acme approval workflow"],
-      acts:[["Explain","g"],["Route to Credit Officer",""],["Use the max I can authorize (15%)","g"]]
-    },
-    why:{
-      q:"@Agent why does this need approval?",
-      txt:"Your authority allows discounts up to 15%; 22% requires Credit Officer sign-off. I based this only on the pricing policy and approval workflow you can access — a related Legal memo is restricted, so it wasn't used.",
-      chips:[["info","🔒 Permission boundary"]],
-      cites:["Pricing exception","Acme approval workflow"],
-      acts:[["Route to Credit Officer",""]]
-    },
-    capped:{
-      q:"Use the max I can authorize (15%)",
-      txt:"Applied the 15% you're authorized for. The 22% exception stays with the Credit Officer — I haven't moved any gate.",
-      chips:[["ok","✓ Within authority"]],
-      cites:["Pricing exception"],
-      acts:[]
-    }
-  };
-  function chat(kind){
-    var log=document.getElementById('chatlog');
-    if(log.dataset.fresh!=="1"){log.innerHTML="";log.dataset.fresh="1";}
-    var r=REPLIES[kind];
-    var u=document.createElement('div');u.className='bubble user';u.textContent=r.q;log.appendChild(u);
-    var b=document.createElement('div');b.className='bubble bot';
-    var chips=r.chips.map(function(c){return '<span class="chip '+c[0]+'" style="margin-top:8px">'+c[1]+'</span>';}).join(' ');
-    var cites=r.cites.length?('<div class="cites">'+r.cites.map(function(c){return '<span class="cite">📄 '+c+'</span>';}).join('')+'</div>'):'';
-    var acts=r.acts.length?('<div class="acts">'+r.acts.map(function(a){return '<span class="act '+a[1]+'">'+a[0]+'</span>';}).join('')+'</div>'):'';
-    b.innerHTML='<div>'+r.txt+'</div>'+(chips?('<div style="margin-top:8px">'+chips+'</div>'):'')+cites+acts;
-    log.appendChild(b);log.scrollTop=log.scrollHeight;
+  function go(id){
+    var el=document.getElementById(id);
+    if(el){el.scrollIntoView({behavior:"smooth",block:"start"});}
   }
-  function chatReset(){var log=document.getElementById('chatlog');log.dataset.fresh="0";log.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:18px 8px">Pick a prompt — the agent answers from permitted sources only, and the deterministic gate owns every pass/fail.</div>';}
-
-  /* ---------- Beat 5: calc explainer ---------- */
-  var CALC={
-    thr:{rows:[["requested_discount","0.22"],["delegated_authority","0.15"]],formula:"requested_discount ≤ delegated_authority",result:"0.22 ≤ 0.15  →  FAIL",pass:false},
-    dscr:{rows:[["cash_flow","9,200,000"],["debt_service","7,187,500"],["tolerance","0.005"]],formula:"cash_flow / debt_service",result:"= 1.28x  vs model 1.28x  →  PASS (within tolerance)",pass:true}
-  };
-  function explain(k){
-    document.getElementById('seg-thr').classList.toggle('on',k==='thr');
-    document.getElementById('seg-dscr').classList.toggle('on',k==='dscr');
-    var c=CALC[k];
-    var rows=c.rows.map(function(r){return '<div class="ln"><span style="color:var(--secondary)">'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('');
-    var col=c.pass?'var(--success)':'var(--danger)';
-    document.getElementById('calcbox').innerHTML=
-      '<div class="calc">'+rows+
-      '<div class="ln" style="border-top:1px dashed var(--border);margin-top:5px;padding-top:6px"><span style="color:var(--secondary)">formula</span><b>'+c.formula+'</b></div>'+
-      '<div class="ln"><span style="color:var(--secondary)">result</span><b style="color:'+col+'">'+c.result+'</b></div></div>'+
-      '<div class="stamp">Decided by Policy Artifact <b>finance_credit_v1 · v1</b> — not the model. Output schema validated ✓</div>';
-  }
-
-  /* ---------- Beat 6: route → sign-off → revalidation + cascade ---------- */
-  var revalStep=0;
-  var GATES=[
-    ["RM approval","ok","Approved"],
-    ["Authority gate (22% ≤ 15%)","dang","Held"],
-    ["Credit Officer approval","dang","Missing"],
-    ["Final covenant tracker","warn","Missing"],
-    ["Legal sign-off","warn","Pending"]
-  ];
-  function gateTable(after){
-    return GATES.map(function(g){
-      var tone=g[1],txt=g[2];
-      if(after){
-        if(g[0].indexOf("Authority")===0){tone="ok";txt="Now passes";}
-        if(g[0].indexOf("Credit Officer")===0){tone="ok";txt="Signed off";}
-      }
-      return '<div class="arow" style="padding:8px 10px;margin:5px 0"><div class="at">'+g[0]+'</div><span class="st chip '+tone+'">'+txt+'</span></div>';
-    }).join('');
-  }
-  function revalRender(){
-    var el=document.getElementById('revalsteps');var btn=document.getElementById('revalBtn');
-    if(revalStep===0){
-      el.innerHTML='<div class="label">Current gates · not approval-ready</div>'+gateTable(false);
-      btn.textContent="Stage: route 22% to Credit Officer";btn.disabled=false;
-    }else if(revalStep===1){
-      el.innerHTML='<div class="bubble bot" style="max-width:100%">Staged from the Decision Brief row. Agent Actions now has <b>Next actions 1</b>: Route to Credit Officer for the <b>22% pricing exception</b>. The drawer card carries row provenance and validated diffs before execution.</div>'+
-        '<div class="arow" style="padding:8px 10px"><div><div class="at">Route to Credit Officer</div><div class="ar">origin: decision_readiness / credit_officer_approval</div></div><span class="st chip info">Next actions 1</span></div>';
-      btn.textContent="Route to Credit Officer";btn.disabled=false;
-    }else if(revalStep===2){
-      el.innerHTML='<div class="bubble bot" style="max-width:100%">Routed. The 22% pricing exception is now with the Credit Officer. I\'ll revalidate the packet when it\'s decided. <span class="chip ghost" style="margin-left:4px">⏳ Pending · Credit Officer</span></div>';
-      btn.textContent="Simulate Credit Officer response";btn.disabled=false;
-    }else if(revalStep===3){
-      el.innerHTML='<div class="bubble bot" style="max-width:100%">Simulated Credit Officer response received: signed off on the 22% exception. I revalidated the packet — the authority gate and CO approval now clear, but the final covenant tracker is still missing and Legal is still pending. <b>Still not approval-ready.</b> Agent Actions now has <b>Changes 1</b>.</div>'+
-        gateTable(true)+
-        '<div class="arow" style="padding:8px 10px"><div class="at">Changes · customer success plan needs reconciliation</div><span class="st chip warn">18% vs approved 22%</span></div>';
-      btn.textContent="Open Changes";btn.disabled=false;
-    }else if(revalStep===4){
-      el.innerHTML='<div class="bubble bot" style="max-width:100%">Changes shows the downstream dependency created by the returned approval: the customer success plan still assumes 18%.</div>'+
-        '<div class="label" style="margin-top:10px">Cascade · one human-accepted edit</div>'+
-        '<div class="calc">customer_success_plan.assumed_discount<div class="ln"><span style="color:var(--danger)">− "18%"</span></div><div class="ln"><span style="color:var(--success)">+ "22%"</span></div></div>';
-      btn.textContent="Accept reconciliation (18% → 22%)";btn.disabled=false;
-    }else{
-      el.innerHTML='<div class="bubble bot" style="max-width:100%">Accepted. The customer success plan now reflects the approved 22%, and the 22%-vs-18% conflict is cleared. Two blockers remain — the final covenant tracker and Legal sign-off — so it\'s still not approval-ready. <span class="chip ok" style="margin-left:4px">✓ Conflict cleared</span></div>'+
-        '<div class="arow" style="padding:8px 10px"><div class="at">Next: hand the follow-ups to Agent Actions</div><span class="st chip tint">→ Beat 7</span></div>';
-      btn.textContent="Done";btn.disabled=true;
-    }
-  }
-  function revalNext(){if(revalStep<5){revalStep++;revalRender();}}
-  function revalReset(){revalStep=0;revalRender();}
-
-  /* ---------- Beat 7: Agent Actions ---------- */
-  var actionStage=0;
-  var ACTIONS=[
-    {t:"Route approval → Legal",r:"covenant modification approval pending",kind:"route"},
-    {t:"Request final covenant tracker",r:"assignee: Priya N. (Analyst) · required evidence",kind:"artifact"},
-    {t:"Decision readiness",r:"waiting on Legal approval and covenant evidence",kind:"readiness"}
-  ];
-  function badge(kind,done){
-    if(!done){
-      if(kind==='route')return '<span class="chip info">Needs approval</span>';
-      if(kind==='artifact')return '<span class="chip warn">Needs artifact</span>';
-      return '<span class="chip dang">Not ready</span>';
-    }
-    if(kind==='route')return '<span class="chip ok">✓ Legal approved</span>';
-    if(kind==='artifact')return '<span class="chip ok">✓ Uploaded</span>';
-    return '<span class="chip ok">✓ Approval-ready</span>';
-  }
-  function renderActions(done){
-    document.getElementById('actionlist').innerHTML=ACTIONS.map(function(a){
-      return '<div class="arow"><div><div class="at">'+a.t+'</div><div class="ar">'+a.r+'</div></div><span class="st">'+badge(a.kind,done)+'</span></div>';
-    }).join('');
-  }
-  function approveAll(){
-    var rows;
-    if(actionStage===0){
-      rows=[
-        ['info','routed','Route approval · Legal'],
-        ['info','requested','Request evidence · final covenant tracker']
-      ];
-      document.getElementById('approveBtn').textContent='Simulate Legal + Priya responses';
-      actionStage=1;
-    }else{
-      renderActions(true);
-      document.getElementById('approveBtn').disabled=true;
-      rows=[
-        ['ok','returned','Simulated Legal response · approved'],
-        ['ok','uploaded','Simulated Priya upload · covenant tracker attached'],
-        ['ok','ready','Decision Brief · approval-ready']
-      ];
-      actionStage=2;
-    }
-    document.getElementById('auditrows').innerHTML=rows.map(function(r){
-      return '<div class="l"><span class="chip '+r[0]+'" style="padding:1px 7px">'+r[1]+'</span><span style="color:var(--secondary)">'+r[2]+'</span></div>';
-    }).join('');
-    document.getElementById('auditlog').style.display='block';
-  }
-  function actionsReset(){actionStage=0;renderActions(false);document.getElementById('approveBtn').textContent='Route Legal + request tracker';document.getElementById('approveBtn').disabled=false;document.getElementById('auditlog').style.display='none';}
-
-  /* ---------- Beat 8: Agent Batch (the loop) ---------- */
-  var STAGES=[
-    ["Plan","Proposed batch"],["Distribute","Fan to owners"],["Collect","Async replies"],
-    ["Escalate","Beyond authority"],["Schedule","Next forum"],["Close","Audit-ready"]
-  ];
-  var ASSIGN=[
-    {who:"Sam L. · Legal",task:"route_approval — covenant modification",reply:"Exceeds my authority; escalating to Compliance.",tone:"warn",rlabel:"Escalated"},
-    {who:"Priya N. · Analyst",task:"create_task — upload covenant tracker",reply:"Acknowledged — upload in progress.",tone:"ghost",rlabel:"Acknowledged"},
-    {who:"Priya N. · Analyst",task:"schedule_meeting — missing evidence follow-up",reply:"Acknowledged — waiting on final tracker.",tone:"ghost",rlabel:"Acknowledged"},
-    {who:"Priya N. · Analyst",task:"draft_internal_note — mosaic review packet",reply:"Acknowledged — holding until Compliance clears use.",tone:"ghost",rlabel:"Acknowledged"}
-  ];
-  function renderStages(active){
-    document.getElementById('batchstages').innerHTML=STAGES.map(function(s,i){
-      return '<div class="stg'+(i<=active?' on':'')+'"><div class="sl">'+s[0]+'</div><div class="ss">'+s[1]+'</div></div>';
-    }).join('');
-  }
-  function batchRun(){
-    renderStages(5);
-    document.getElementById('batchBtn').disabled=true;
-    var rows=ASSIGN.map(function(a){
-      return '<div class="assignrow"><span class="ava">'+a.who.split(' ')[0][0]+a.who.split(' ')[1][0]+'</span>'+
-        '<div><div class="who">'+a.who+'</div><div style="font-size:10.5px;color:var(--muted)">'+a.task+'</div>'+
-        '<div style="font-size:11px;margin-top:2px">"'+a.reply+'"</div></div>'+
-        '<span class="st chip '+a.tone+'">'+a.rlabel+'</span></div>';
-    }).join('');
-    document.getElementById('batchbody').innerHTML=
-      rows+
-      '<div class="arow" style="padding:8px 10px;background:var(--warning-bg);border-color:var(--warning)"><div class="at">↗ Escalation · Legal → Compliance</div><span class="st chip warn">In flight</span></div>'+
-      '<div class="arow" style="padding:8px 10px;background:var(--warning-bg);border-color:var(--warning)"><div class="at">↗ Escalation · Schedule committee → Human Review</div><span class="st chip warn">Missing evidence</span></div>'+
-      '<div class="arow" style="padding:8px 10px;background:var(--warning-bg);border-color:var(--warning)"><div class="at">↗ Escalation · Mosaic note → Human Review</div><span class="st chip warn">Information barrier</span></div>'+
-      '<div class="arow" style="padding:8px 10px"><div class="at">📅 Scheduled · Final committee decision</div><span class="st chip ghost">Queued behind 3 item(s) unresolved</span></div>'+
-      '<div class="seal" style="background:#0d1b2a;color:#eaf2ff"><span class="k">Batch status</span><br>Cycle <b>closed</b> · <b style="color:#ffd27f">3 item(s) unresolved</b> — Compliance review, final covenant tracker, and mosaic review remain open; committee meeting is queued behind unresolved prerequisites.</div>'+
-      '<div style="margin-top:8px"><span class="chip ok">✓ Dossier exported — audit-ready record of this batch</span></div>';
-  }
-  function batchReset(){renderStages(0);document.getElementById('batchBtn').disabled=false;document.getElementById('batchbody').innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:14px 8px">Approve the batch to fan the remaining follow-ups across owners, collect four replies, and watch three escalations derive from the gates.</div>';}
-
-  /* ---------- Beat 9: governed record + revalidation ---------- */
-  var recordSel='legal';
-  var RECORD={
-    legal:{
-      changed:'Acme approval workflow · legal_status: "pending" → "Needs Review"',
-      gate:null,
-      sections:[["Policy & approval gates",true],["Required approvals",true],["Key financial facts",false],["Conflicting evidence",false]],
-      route:"Reapproval routed → Legal (approval change)"
-    },
-    fin:{
-      changed:'Acme financial model · revenue $38M → $36.5M · DSCR 1.28 → 1.18',
-      gate:"covenant_floor: PASS → FAIL — DSCR 1.18 breaches the covenant minimum 1.25.",
-      sections:[["Key financial facts",true],["What changed since last review",true],["Policy & approval gates",false],["Required approvals",false]],
-      route:"No reapproval route — data change, not an approval change."
-    }
-  };
-  function renderPills(stale){
-    document.getElementById('recordpills').innerHTML=
-      '<div class="pill2"><span class="ax">Integrity</span><span class="vv" style="color:var(--success)">✓ Valid seal</span></div>'+
-      '<div class="pill2"><span class="ax">Freshness</span><span class="vv" style="color:'+(stale?'var(--warning)':'var(--success)')+'">'+(stale?'△ Stale':'● Current')+'</span></div>'+
-      '<div class="pill2"><span class="ax">Approval</span><span class="vv" style="color:var(--danger)">✕ Not ready</span></div>';
-  }
-  function recordPick(k){
-    recordSel=k;
-    document.getElementById('ev-legal').classList.toggle('on',k==='legal');
-    document.getElementById('ev-fin').classList.toggle('on',k==='fin');
-    renderPills(false);
-    document.getElementById('recordbox').innerHTML='<div class="seal"><span class="k">Integrity seal</span><br>HMAC-SHA256 over canonical JSON · recipe finance_credit_committee · policy artifact finance_credit_v1<br><span style="color:#9fb6d4">Pick an event, then Verify to re-derive freshness from the source-dependency graph.</span></div>';
-  }
-  function recordVerify(){
-    var s=RECORD[recordSel];
-    renderPills(true);
-    var secs=s.sections.map(function(r){
-      return '<div class="secrow'+(r[1]?' stale':'')+'">'+(r[1]?'△':'•')+' '+r[0]+(r[1]?'<span class="badge chip warn">Stale</span>':'<span class="badge chip ok">Current</span>')+'</div>';
-    }).join('');
-    var gate=s.gate?'<div class="arow" style="padding:8px 10px;background:var(--danger-bg);border-color:var(--danger)"><div class="at">Gate change · '+s.gate+'</div></div>':'';
-    document.getElementById('recordbox').innerHTML=
-      '<div class="seal"><span class="k">Changed source</span><br>'+s.changed+'</div>'+
-      gate+
-      '<div class="label" style="margin-top:10px">Section freshness</div>'+secs+
-      '<div style="margin-top:9px"><span class="chip tint">'+s.route+'</span></div>';
-  }
-
-  /* ---------- Beat 10: eval trace ---------- */
-  function toggleTrace(){var t=document.getElementById('evaltrace');t.style.display=t.style.display==='block'?'none':'block';}
-
-  /* init */
-  explain('thr');revalRender();renderActions(false);renderStages(0);batchReset();recordPick('legal');
 </script>
 </body>
 </html>
