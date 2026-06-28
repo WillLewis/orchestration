@@ -29,6 +29,7 @@ import { Route as DevelopersRevalidationRouteImport } from './routes/developers/
 import { Route as DevelopersRagRouteImport } from './routes/developers/rag'
 import { Route as DevelopersPrioritizationRouteImport } from './routes/developers/prioritization'
 import { Route as DevelopersPrimitivesRouteImport } from './routes/developers/primitives'
+import { Route as DevelopersP0RouteImport } from './routes/developers/p0'
 import { Route as DevelopersOverviewRouteImport } from './routes/developers/overview'
 import { Route as DevelopersOrchestrationRouteImport } from './routes/developers/orchestration'
 import { Route as DevelopersMetricsRouteImport } from './routes/developers/metrics'
@@ -147,6 +148,11 @@ const DevelopersPrimitivesRoute = DevelopersPrimitivesRouteImport.update({
   path: '/developers/primitives',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersP0Route = DevelopersP0RouteImport.update({
+  id: '/developers/p0',
+  path: '/developers/p0',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevelopersOverviewRoute = DevelopersOverviewRouteImport.update({
   id: '/developers/overview',
   path: '/developers/overview',
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/developers/metrics': typeof DevelopersMetricsRoute
   '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
+  '/developers/p0': typeof DevelopersP0Route
   '/developers/primitives': typeof DevelopersPrimitivesRoute
   '/developers/prioritization': typeof DevelopersPrioritizationRoute
   '/developers/rag': typeof DevelopersRagRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/developers/metrics': typeof DevelopersMetricsRoute
   '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
+  '/developers/p0': typeof DevelopersP0Route
   '/developers/primitives': typeof DevelopersPrimitivesRoute
   '/developers/prioritization': typeof DevelopersPrioritizationRoute
   '/developers/rag': typeof DevelopersRagRoute
@@ -313,6 +321,7 @@ export interface FileRoutesById {
   '/developers/metrics': typeof DevelopersMetricsRoute
   '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
+  '/developers/p0': typeof DevelopersP0Route
   '/developers/primitives': typeof DevelopersPrimitivesRoute
   '/developers/prioritization': typeof DevelopersPrioritizationRoute
   '/developers/rag': typeof DevelopersRagRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/developers/metrics'
     | '/developers/orchestration'
     | '/developers/overview'
+    | '/developers/p0'
     | '/developers/primitives'
     | '/developers/prioritization'
     | '/developers/rag'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/developers/metrics'
     | '/developers/orchestration'
     | '/developers/overview'
+    | '/developers/p0'
     | '/developers/primitives'
     | '/developers/prioritization'
     | '/developers/rag'
@@ -423,6 +434,7 @@ export interface FileRouteTypes {
     | '/developers/metrics'
     | '/developers/orchestration'
     | '/developers/overview'
+    | '/developers/p0'
     | '/developers/primitives'
     | '/developers/prioritization'
     | '/developers/rag'
@@ -460,6 +472,7 @@ export interface RootRouteChildren {
   DevelopersMetricsRoute: typeof DevelopersMetricsRoute
   DevelopersOrchestrationRoute: typeof DevelopersOrchestrationRoute
   DevelopersOverviewRoute: typeof DevelopersOverviewRoute
+  DevelopersP0Route: typeof DevelopersP0Route
   DevelopersPrimitivesRoute: typeof DevelopersPrimitivesRoute
   DevelopersPrioritizationRoute: typeof DevelopersPrioritizationRoute
   DevelopersRagRoute: typeof DevelopersRagRoute
@@ -620,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopersPrimitivesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developers/p0': {
+      id: '/developers/p0'
+      path: '/developers/p0'
+      fullPath: '/developers/p0'
+      preLoaderRoute: typeof DevelopersP0RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/developers/overview': {
       id: '/developers/overview'
       path: '/developers/overview'
@@ -740,6 +760,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersMetricsRoute: DevelopersMetricsRoute,
   DevelopersOrchestrationRoute: DevelopersOrchestrationRoute,
   DevelopersOverviewRoute: DevelopersOverviewRoute,
+  DevelopersP0Route: DevelopersP0Route,
   DevelopersPrimitivesRoute: DevelopersPrimitivesRoute,
   DevelopersPrioritizationRoute: DevelopersPrioritizationRoute,
   DevelopersRagRoute: DevelopersRagRoute,

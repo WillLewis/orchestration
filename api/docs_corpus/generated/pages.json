@@ -113,6 +113,23 @@
     ]
   },
   {
+    "id": "p0",
+    "route": "/developers/p0",
+    "title": "Phase 0 Narrow Wedge Loop",
+    "sections": [
+      {
+        "heading": "Phase 0 Narrow Wedge Loop",
+        "anchor": "phase-0-narrow-wedge-loop",
+        "text": "P0 is the smallest finance launch loop that still proves the substrate: a blocked write, an explained Decision Brief, a staged approval route, reviewed execution, and readiness recomputation after the response returns."
+      },
+      {
+        "heading": "Launch wedge and measures",
+        "anchor": "launch-wedge-and-measures",
+        "text": "Ship one closed Acme route before broadening the product surface. The wedge is narrow on purpose: it demonstrates safety, workflow movement, and recomputation in one auditable path instead of trying to prove every agent capability at once. Measure it in two layers: primitive correctness for deterministic substrate behavior, and user value for whether the loop moves regulated work forward. 1. Narrowest closed loop 2. Primitive correctness 3. User value"
+      }
+    ]
+  },
+  {
     "id": "primitives",
     "route": "/developers/primitives",
     "title": "Primitives",

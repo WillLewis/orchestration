@@ -16,6 +16,7 @@ const expectedHeadingsByRoute: Record<LiveDocsRoute, string[]> = {
   "/developers/vision": ["Agent Vision", "What fundamentally changes for the user"],
   "/developers/prioritization": ["Prioritization", "How the themes rank"],
   "/developers/roadmap": ["Roadmap", "Substrate"],
+  "/developers/p0": ["Phase 0 Narrow Wedge Loop", "Launch wedge and measures"],
   "/developers/primitives": ["Primitives", "Primitive map"],
   "/developers/whats-live": ["What's Live", "Substrate - real vs simulated"],
   "/developers/metrics": ["Success Metrics", "Success metrics by area"],
