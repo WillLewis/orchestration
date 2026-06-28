@@ -40,6 +40,7 @@ from core.schemas import (
 from corpus import apply_change, load
 from lifecycle.revalidation import build_dependency_graph
 
+from api.lifecycle_events import lifecycle_state
 from api.models import (
     ChangedSource,
     GateChange,
@@ -60,17 +61,13 @@ from api.orchestrator import (
     revalidate,
     verify_context,
 )
+from api.presentation import build_display_brief
 
 # Which workspace object each deterministic change event mutates (no such map exists upstream).
 _EVENT_CHANGED_OBJECT = {"legal_needs_review": "wf_approval", "financials_v2": "doc_financials"}
 
-_RECORD_TITLE = "Acme renewal — committee decision packet"
+_RECORD_TITLE = "Acme renewal — Decision Brief"
 _MINTED_BY = "Dana R."
-_PATH_TO_READY = [
-    "Route the pricing exception to the Credit Officer.",
-    "Complete Legal approval.",
-    "Upload the final covenant tracker.",
-]
 
 
 def _now() -> datetime:
@@ -181,30 +178,143 @@ def _approval_reason(gate: DeterministicDecision) -> str:
     return " ".join(failing)
 
 
+def _approval_ready_from_state(state) -> bool:
+    return (
+        state.credit_signed
+        and state.legal_signed
+        and state.covenant_uploaded
+        and state.cs_reconciled
+    )
+
+
+def _path_to_ready_from_state(state) -> list[str]:
+    if _approval_ready_from_state(state):
+        return []
+    steps: list[str] = []
+    if not state.credit_signed:
+        steps.append("Route the pricing exception to the Credit Officer.")
+    if state.credit_signed and not state.cs_reconciled:
+        steps.append("Reconcile the customer success plan to the approved 22% discount.")
+    if not state.legal_signed:
+        steps.append("Complete Legal approval.")
+    if not state.covenant_uploaded:
+        steps.append("Upload the final covenant tracker.")
+    return steps
+
+
+def _approval_reason_from_state(gate: DeterministicDecision, state) -> str:
+    if _approval_ready_from_state(state):
+        return "Credit Officer, Legal, covenant evidence, and source revalidation are complete."
+    if state.credit_signed:
+        return "Remaining prerequisites must clear before committee decision."
+    return _approval_reason(gate)
+
+
+def _loop_summary_from_state(state) -> dict[str, str] | None:
+    if _approval_ready_from_state(state):
+        return {
+            "summary": (
+                "Discount exception approved at 22%; Legal approved the covenant modification; "
+                "final covenant tracker uploaded; customer success plan reconciled."
+            )
+        }
+    if state.credit_signed and state.cs_reconciled:
+        return {
+            "summary": (
+                "Discount exception approved at 22%; customer success plan reconciled. Legal "
+                "approval and the final covenant tracker remain open."
+            )
+        }
+    if state.credit_signed:
+        return {
+            "summary": (
+                "Discount exception approved at 22%; downstream customer success plan "
+                "reconciliation is pending."
+            )
+        }
+    return None
+
+
+def _apply_lifecycle_to_source_versions(
+    versions: list[SourceVersionSnapshot],
+    state,
+) -> list[SourceVersionSnapshot]:
+    updated: list[SourceVersionSnapshot] = []
+    saw_covenant = False
+    for source in versions:
+        if source.object_id == "wf_approval":
+            metadata = {
+                **source.metadata,
+                "legal_status": "approved" if state.legal_signed else "pending",
+                "credit_officer_approval": state.credit_signed,
+            }
+            updated.append(
+                source.model_copy(
+                    update={
+                        "version": 2
+                        if state.credit_signed or state.legal_signed
+                        else source.version,
+                        "metadata": metadata,
+                    }
+                )
+            )
+        elif source.object_id == "doc_cs_plan" and state.cs_reconciled:
+            updated.append(
+                source.model_copy(update={"version": 2, "metadata": {"assumed_discount": "22%"}})
+            )
+        elif source.object_id == "doc_covenant_tracker":
+            saw_covenant = True
+            updated.append(
+                source.model_copy(
+                    update={
+                        "version": 1,
+                        "metadata": {"uploaded": state.covenant_uploaded},
+                    }
+                )
+            )
+        else:
+            updated.append(source)
+    if state.covenant_uploaded and not saw_covenant:
+        updated.append(
+            SourceVersionSnapshot(
+                object_id="doc_covenant_tracker",
+                title="Final covenant tracker",
+                type="document",
+                version=1,
+                metadata={"uploaded": True},
+            )
+        )
+    return updated
+
+
 # --------------------------------------------------------------------------- #
 # Mint / get / verify
 # --------------------------------------------------------------------------- #
 def mint(user_id: str, intent: str) -> MintResponse:
-    """Seal the decision packet into a governed record. Composes the live brief + gate, snapshots
+    """Seal the Decision Brief into a governed record. Composes the live brief + gate, snapshots
     the source versions, and attaches a server-minted HMAC seal. Runs NO actions and NO loop."""
     brief, bundle = assemble_brief(user_id, intent)
+    state = lifecycle_state(user_id=user_id, intent=intent)
+    display_brief = build_display_brief(brief, bundle, state)
     contract = _pin_contract(user_id, bundle)
     workspace = {obj.id: obj for obj in load(FINANCE_VERTICAL)}
 
     snapshot = _snapshot(contract.source_dependencies, workspace)
-    gate = brief.policy_gates  # the deterministic decision, copied into the brief untouched
+    gate = display_brief.policy_gates  # the deterministic decision, copied into the brief untouched
+    approval_ready = _approval_ready_from_state(state)
     governance = GovernanceEnvelope(
-        approval_ready=gate.approval_ready,
-        approval_stamp="NOT APPROVAL-READY" if not gate.approval_ready else "APPROVAL-READY",
-        approval_reason=_approval_reason(gate),
-        path_to_ready=list(_PATH_TO_READY),
+        approval_ready=approval_ready,
+        approval_stamp="APPROVAL-READY" if approval_ready else "NOT APPROVAL-READY",
+        approval_reason=_approval_reason_from_state(gate, state),
+        path_to_ready=_path_to_ready_from_state(state),
         permission_omissions=_permission_omissions(bundle, workspace),
-        source_versions=list(snapshot.values()),
-        section_dependencies=build_dependency_graph(brief, contract).section_dependencies,
+        source_versions=_apply_lifecycle_to_source_versions(list(snapshot.values()), state),
+        section_dependencies=build_dependency_graph(display_brief, contract).section_dependencies,
         rulepack_id=RULEPACK_ID,
+        loop_summary=_loop_summary_from_state(state),
     )
 
-    canonical = _canonical_bytes(_ContentCore(decision_brief=brief, governance=governance))
+    canonical = _canonical_bytes(_ContentCore(decision_brief=display_brief, governance=governance))
     payload_hash = hashlib.sha256(canonical).hexdigest()
     governance.seal = RecordSeal(
         payload_hash=payload_hash,
@@ -218,13 +328,13 @@ def mint(user_id: str, intent: str) -> MintResponse:
         title=_RECORD_TITLE,
         minted_by=_MINTED_BY,
         minted_at=_now(),
-        decision_brief=brief,
+        decision_brief=display_brief,
         sources=_record_sources(bundle, workspace),
         governance=governance,
     )
     _STORE[record_id] = _StoredRecord(
         record=record,
-        brief=brief,
+        brief=display_brief,
         contract=contract,
         bundle=bundle,
         snapshot=snapshot,

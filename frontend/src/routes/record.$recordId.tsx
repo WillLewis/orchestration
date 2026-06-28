@@ -29,7 +29,7 @@ export const Route = createFileRoute("/record/$recordId")({
       {
         name: "description",
         content:
-          "Server-sealed governance certificate for the Acme renewal decision packet. Integrity, freshness, and approval status with full source provenance.",
+          "Server-sealed governance certificate for the Acme renewal Decision Brief. Integrity, freshness, and approval status with full source provenance.",
       },
     ],
   }),
@@ -89,6 +89,19 @@ const DEP_SECTIONS = [
   { key: "missing_evidence", label: "Missing evidence" },
 ] as const;
 
+type ApprovalStatus = "approved" | "missing" | "pending";
+type ApprovalRequirementLike = {
+  role: string;
+  present?: boolean;
+  status?: ApprovalStatus;
+};
+
+function approvalStatus(requirement: ApprovalRequirementLike): ApprovalStatus {
+  if (requirement.status) return requirement.status;
+  if (requirement.present) return "approved";
+  return requirement.role === "legal" ? "pending" : "missing";
+}
+
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
@@ -127,6 +140,7 @@ function RecordPage() {
   const b = cert.decision_brief;
   const gov = cert.governance;
   const approvalReady = Boolean(gov.approval_ready);
+  const failingFirings = b.policy_gates.firings.filter((f) => !f.passed);
   const depMap = (gov.section_dependencies ?? {}) as Record<string, readonly string[]>;
   const isStale = v?.freshness === "stale";
   const integrityValid = v ? v.integrity_valid : true;
@@ -380,7 +394,7 @@ function RecordPage() {
           </div>
         </section>
 
-        {/* Decision packet body (read-only) */}
+        {/* Decision Brief body (read-only) */}
         <article className="mt-6 rounded-2xl border border-border bg-background p-7 shadow-card">
           <div className="space-y-8">
             <section>
@@ -435,14 +449,21 @@ function RecordPage() {
                     Failing rules
                   </div>
                   <ul className="divide-y divide-border">
-                    {b.policy_gates.firings
-                      .filter((f) => !f.passed)
-                      .map((f) => (
+                    {failingFirings.length > 0 ? (
+                      failingFirings.map((f) => (
                         <li key={f.rule_id} className="flex items-start gap-3 px-4 py-2.5">
                           <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
                           <div className="flex-1 text-[13.5px] text-foreground">{f.detail}</div>
                         </li>
-                      ))}
+                      ))
+                    ) : (
+                      <li className="flex items-start gap-3 px-4 py-2.5">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
+                        <div className="flex-1 text-[13.5px] text-foreground">
+                          All approval gates cleared.
+                        </div>
+                      </li>
+                    )}
                   </ul>
                 </div>
                 <div className="bg-background">
@@ -477,14 +498,15 @@ function RecordPage() {
               <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border">
                 {b.required_approvals.requirements.map((r) => {
                   const label = approval_role_labels[r.role] ?? r.role;
+                  const status = approvalStatus(r);
                   const chip =
-                    r.status === "approved"
+                    status === "approved"
                       ? {
                           cls: "bg-[var(--success-bg)] text-[var(--success)]",
                           text: "Approved",
                           icon: CheckCircle2,
                         }
-                      : r.status === "missing"
+                      : status === "missing"
                         ? {
                             cls: "bg-[var(--danger-bg)] text-[var(--danger)]",
                             text: "Missing",
@@ -517,59 +539,63 @@ function RecordPage() {
               </ul>
             </section>
 
-            <section>
-              <SectionLabel>Missing evidence</SectionLabel>
-              <div className="mt-2 space-y-2">
-                {b.missing_evidence.map((m) => (
-                  <div
-                    key={m.code}
-                    className="flex items-start gap-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-4 py-3"
-                  >
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                    <div className="flex-1 text-[13.5px] text-foreground">
-                      {m.description}
-                      {m.blocking && (
-                        <span className="ml-2 rounded-full bg-[var(--danger)]/15 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--danger)]">
-                          Blocking
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <SectionLabel>Conflicting evidence</SectionLabel>
-              <div className="mt-2 space-y-2">
-                {b.conflicts.map((c, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-4 py-3"
-                  >
-                    <GitCompareArrows className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                    <div className="flex-1 text-[13.5px] text-foreground">
-                      {c.description}
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
-                        Between
-                        {c.sources.map((s) => {
-                          const src = packet_sources.find((x) => x.object_id === s.object_id);
-                          return (
-                            <span
-                              key={s.object_id}
-                              className="inline-flex items-center gap-1 rounded border border-[var(--warning)]/30 bg-background px-1.5 py-0.5 text-[11.5px] font-medium text-foreground"
-                            >
-                              <FileText className="h-3 w-3" />
-                              {src?.title ?? s.object_id}
-                            </span>
-                          );
-                        })}
+            {b.missing_evidence.length > 0 && (
+              <section>
+                <SectionLabel>Missing evidence</SectionLabel>
+                <div className="mt-2 space-y-2">
+                  {b.missing_evidence.map((m) => (
+                    <div
+                      key={m.code}
+                      className="flex items-start gap-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-4 py-3"
+                    >
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
+                      <div className="flex-1 text-[13.5px] text-foreground">
+                        {m.description}
+                        {m.blocking && (
+                          <span className="ml-2 rounded-full bg-[var(--danger)]/15 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--danger)]">
+                            Blocking
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {b.conflicts.length > 0 && (
+              <section>
+                <SectionLabel>Conflicting evidence</SectionLabel>
+                <div className="mt-2 space-y-2">
+                  {b.conflicts.map((c, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-4 py-3"
+                    >
+                      <GitCompareArrows className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
+                      <div className="flex-1 text-[13.5px] text-foreground">
+                        {c.description}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--secondary-text)]">
+                          Between
+                          {c.sources.map((s) => {
+                            const src = packet_sources.find((x) => x.object_id === s.object_id);
+                            return (
+                              <span
+                                key={s.object_id}
+                                className="inline-flex items-center gap-1 rounded border border-[var(--warning)]/30 bg-background px-1.5 py-0.5 text-[11.5px] font-medium text-foreground"
+                              >
+                                <FileText className="h-3 w-3" />
+                                {src?.title ?? s.object_id}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section
               className={
@@ -592,17 +618,22 @@ function RecordPage() {
               </ul>
             </section>
 
-            <section>
-              <SectionLabel>Open questions</SectionLabel>
-              <ul className="mt-2 space-y-1.5">
-                {b.open_questions.map((q, i) => (
-                  <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-foreground">
-                    <span className="mt-1.5 text-[var(--muted-fg)]">?</span>
-                    <span>{q}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {b.open_questions.length > 0 && (
+              <section>
+                <SectionLabel>Open questions</SectionLabel>
+                <ul className="mt-2 space-y-1.5">
+                  {b.open_questions.map((q, i) => (
+                    <li
+                      key={i}
+                      className="flex gap-2.5 text-[14px] leading-relaxed text-foreground"
+                    >
+                      <span className="mt-1.5 text-[var(--muted-fg)]">?</span>
+                      <span>{q}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <section>
               <SectionLabel>Recommended next steps</SectionLabel>
@@ -641,7 +672,7 @@ function RecordPage() {
             ))}
           </ul>
           <p className="mt-3 text-[12.5px] font-medium text-[var(--secondary-text)]">
-            Restricted content was not used in the decision packet.
+            Restricted content was not used in the Decision Brief.
           </p>
         </section>
 

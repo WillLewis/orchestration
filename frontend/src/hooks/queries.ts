@@ -565,7 +565,7 @@ export function useRecordQuery(recordId: string) {
   const initialRecord = { ...governance_certificate, record_id: recordId } as GovernanceCertificate;
   return useQuery<GovernanceCertificate>({
     queryKey: recordKey(recordId),
-    initialData: initialRecord,
+    initialData: LIVE ? undefined : initialRecord,
     staleTime: STALE,
     queryFn: async (): Promise<GovernanceCertificate> => {
       if (!LIVE) return initialRecord;

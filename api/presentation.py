@@ -73,13 +73,13 @@ def build_display_brief(
     show_conflict = bool(credit_signed and not cs_reconciled)
     executive_summary = (
         "Acme's 22% pricing exception, covenant modification, Legal sign-off, final covenant "
-        "tracker, and downstream source revalidation are complete. The packet is "
+        "tracker, and downstream source revalidation are complete. The Decision Brief is "
         "approval-ready for committee decision."
         if approval_ready
         else (
             "Acme requests a pricing exception (22% discount) and a covenant modification on "
             "its renewal facility. The updated model lowers the revenue forecast, and required "
-            "approvals are incomplete, so the packet is not approval-ready."
+            "approvals are incomplete, so the brief is not approval-ready."
         )
     )
     what_changed = ["Revenue forecast revised from $42M to $38M in the updated model."]
@@ -96,6 +96,23 @@ def build_display_brief(
         what_changed.append("Customer success plan now reflects the approved 22% discount.")
     else:
         what_changed.append("Project plan still references the prior approval date.")
+    missing_evidence = [
+        item for item in brief.missing_evidence if item.code == "missing_covenant_tracker"
+    ]
+    if covenant_uploaded:
+        missing_evidence = []
+    next_steps: list[str] = []
+    if approval_ready:
+        next_steps.append("Proceed to committee decision.")
+    else:
+        if not credit_signed:
+            next_steps.append("Route the pricing exception to the Credit Officer.")
+        if credit_signed and not cs_reconciled:
+            next_steps.append("Reconcile the customer success plan to the approved 22% discount.")
+        if not covenant_uploaded:
+            next_steps.append("Request the final covenant tracker from the analyst.")
+        if not legal_signed:
+            next_steps.append("Confirm Legal approval status.")
     policy_gates = brief.policy_gates
     required_approvals = brief.required_approvals
     if lifecycle_state and (credit_signed or legal_signed or approval_ready):
@@ -161,12 +178,14 @@ def build_display_brief(
             ]
             if show_conflict
             else [],
+            "missing_evidence": missing_evidence,
             "open_questions": []
             if approval_ready
             else [
                 "Will the covenant modification hold if revenue lands below $38M?",
                 "Does the 22% discount require committee sign-off beyond Credit?",
             ],
+            "next_steps": next_steps,
             "permission_limitations": permission_limitations,
         }
     )
@@ -209,7 +228,7 @@ def build_decision_readiness(
                 else "blocking"
             ),
             details=(
-                "Final covenant tracker uploaded and attached to the committee packet."
+                "Final covenant tracker uploaded and attached to the Decision Brief."
                 if covenant_uploaded
                 else "Requested — pending Priya's final covenant tracker upload."
                 if covenant_requested
@@ -343,7 +362,7 @@ def build_decision_readiness(
 
     return DecisionReadiness(
         summary=(
-            "All prerequisites are satisfied. The packet is approval-ready for committee decision."
+            "All prerequisites are satisfied. The Decision Brief is approval-ready for committee decision."
             if approval_ready
             else (
                 "Credit Officer signed off on the 22% exception. Reconcile the customer success "
@@ -356,7 +375,7 @@ def build_decision_readiness(
             )
             if credit_signed and not (legal_signed and covenant_uploaded)
             else (
-                "Committee packet is not ready. Two blockers remain: Credit Officer approval and "
+                "The Decision Brief is not ready. Two blockers remain: Credit Officer approval and "
                 "final covenant tracker."
             )
         ),

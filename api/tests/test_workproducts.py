@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api.workproducts as workproducts
+from api.lifecycle_events import record_lifecycle_event, reset_lifecycle_events
 from api.main import app
 
 client = TestClient(app)
@@ -21,11 +22,14 @@ ACME = {"user_id": "u_rm", "intent": "prepare_decision_brief"}
 @pytest.fixture(autouse=True)
 def _force_offline(monkeypatch):
     """Deterministic + offline, and force the dev-default seal key (no ambient secret)."""
+    reset_lifecycle_events()
     monkeypatch.delenv("PERSONA_MODEL", raising=False)
     monkeypatch.delenv("PLANNER_MODEL", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("WORKPRODUCT_SECRET", raising=False)
+    yield
+    reset_lifecycle_events()
 
 
 def _mint() -> dict:
@@ -77,6 +81,49 @@ def test_mint_triggers_no_loop_side_effects():
     assert "audit" not in record
     assert "actions" not in record
     assert record["governance"]["loop_summary"] is None
+
+
+def test_mint_reflects_returned_credit_approval_lifecycle_state():
+    record_lifecycle_event(
+        "approval_returned",
+        object_id="doc_pricing_exception",
+        detail={"approver": "credit_officer"},
+    )
+
+    record = _mint()["record"]
+    gov = record["governance"]
+
+    assert gov["approval_ready"] is False
+    assert "Reconcile the customer success plan" in " ".join(gov["path_to_ready"])
+    assert record["decision_brief"]["conflicts"]
+    assert any(
+        req["role"] == "credit_officer" and req["present"]
+        for req in record["decision_brief"]["required_approvals"]["requirements"]
+    )
+
+
+def test_mint_can_be_approval_ready_after_all_lifecycle_events():
+    record_lifecycle_event(
+        "approval_returned",
+        object_id="doc_pricing_exception",
+        detail={"approver": "credit_officer"},
+    )
+    record_lifecycle_event(
+        "approval_returned",
+        object_id="wf_approval",
+        detail={"approver": "legal"},
+    )
+    record_lifecycle_event("evidence_uploaded", object_id="doc_covenant_tracker")
+    record_lifecycle_event("revalidation_applied", object_id="doc_cs_plan")
+
+    record = _mint()["record"]
+    gov = record["governance"]
+
+    assert gov["approval_ready"] is True
+    assert gov["approval_stamp"] == "APPROVAL-READY"
+    assert gov["path_to_ready"] == []
+    assert record["decision_brief"]["missing_evidence"] == []
+    assert record["decision_brief"]["conflicts"] == []
 
 
 # --------------------------------------------------------------------------- #

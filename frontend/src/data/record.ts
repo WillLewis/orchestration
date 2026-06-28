@@ -8,7 +8,7 @@ type SourceSnapshot = typeof sources;
 export const governance_certificate = {
   record_id: "gwp_acme_001",
   work_product_id: "wp_acme_committee_packet",
-  title: "Acme renewal — committee decision packet",
+  title: "Acme renewal — Decision Brief",
   minted_by: "Dana R.",
   minted_at: "2026-06-20T10:42:00Z",
 
@@ -184,6 +184,9 @@ export function buildGovernanceCertificate(input: {
     ? []
     : [
         ...(input.creditSigned ? [] : ["Route the pricing exception to the Credit Officer."]),
+        ...(input.creditSigned && !input.csReconciled
+          ? ["Reconcile the customer success plan to the approved 22% discount."]
+          : []),
         ...(input.legalSigned ? [] : ["Complete Legal approval."]),
         ...(input.covenantUploaded ? [] : ["Upload the final covenant tracker."]),
       ];
@@ -263,12 +266,12 @@ export const verify_result_stale: VerifyResult = {
     {
       section: "policy_gates",
       stale: true,
-      reason: "Legal workflow changed to Needs Review; revalidate before using this packet.",
+      reason: "Legal workflow changed to Needs Review; revalidate before using this brief.",
     },
     {
       section: "required_approvals",
       stale: true,
-      reason: "Legal workflow changed to Needs Review; revalidate before using this packet.",
+      reason: "Legal workflow changed to Needs Review; revalidate before using this brief.",
     },
   ],
   reapproval_routes: [
