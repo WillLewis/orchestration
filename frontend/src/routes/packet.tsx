@@ -192,7 +192,7 @@ function pct(n: number) {
   return `${Math.round(n * 100)}%`;
 }
 
-function RulepackFooter({ id, version }: { id: string; version: number }) {
+function PolicyArtifactFooter({ id, version }: { id: string; version: number }) {
   return (
     <div className="mt-3 flex items-center gap-1.5 border-t border-border pt-2 text-[10.5px] leading-snug text-[var(--muted-fg)]">
       <ShieldCheck className="h-3 w-3 shrink-0 text-primary" />
@@ -256,7 +256,7 @@ function CalcExplainer({
             {calc.matches ? "Match" : "Mismatch"}
           </span>
         </div>
-        <RulepackFooter id={rulepackId} version={rulepackVersion} />
+        <PolicyArtifactFooter id={rulepackId} version={rulepackVersion} />
       </PopoverContent>
     </Popover>
   );
@@ -310,7 +310,7 @@ function ThresholdExplainer({
             {exceeds ? "Fail" : "Pass"}
           </span>
         </div>
-        <RulepackFooter id={rulepackId} version={rulepackVersion} />
+        <PolicyArtifactFooter id={rulepackId} version={rulepackVersion} />
       </PopoverContent>
     </Popover>
   );

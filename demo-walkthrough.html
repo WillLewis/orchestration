@@ -303,8 +303,8 @@
       </div>
       <div class="job">
         <div class="k">Job 2 — Trust</div>
-        <h3>Stop the churn</h3>
-        <p>Regulated customers leave because AI can't be trusted for approvals, calculations, and audits. A deterministic substrate is what wins them back. RAG finds content; it doesn't prove the reasoning is right.</p>
+        <h3>Make decisions defensible</h3>
+        <p>Regulated teams need AI outputs they can defend for approvals, calculations, and audits. A deterministic substrate makes each recommendation traceable before anyone acts. RAG finds content; it doesn't prove the reasoning is right.</p>
       </div>
     </div>
 
@@ -328,7 +328,7 @@
     <div class="sec-head"><span class="num">RUBRIC</span><h2>What this panel is grading — and how each beat answers it</h2></div>
     <p class="sec-sub">Four evaluation pillars (from the brief) × the JD's emphasis on an orchestration platform, shared primitives, and eval rigor. I built the walkthrough backward from this.</p>
     <div class="grid4">
-      <div class="pill-card"><div class="t">Pillar</div><div class="k">Strategic thinking</div><p>Reframe to a platform; finance as the wedge; two-vertical churn/trust thesis; roadmap with a real Phase 0 substrate.</p></div>
+      <div class="pill-card"><div class="t">Pillar</div><div class="k">Strategic thinking</div><p>Reframe to a platform; finance as the first proof point; reusable policy artifacts; roadmap with a real Phase 0 substrate.</p></div>
       <div class="pill-card"><div class="t">Pillar</div><div class="k">Product design</div><p>A real entry point, the live action arc, the multi-owner batch, and the empty/loading/blocked/stale states a panelist will poke at.</p></div>
       <div class="pill-card"><div class="t">Pillar</div><div class="k">Technical & AI</div><p>The deterministic/probabilistic boundary made literal; permission filter before context; typed tools, diffs, a sealed record, eval traces.</p></div>
       <div class="pill-card"><div class="t">Pillar</div><div class="k">Communication</div><p>One narrative, one money line per beat, and "is it computed or scripted?" answered with "computed — watch."</p></div>
@@ -610,7 +610,7 @@
             <li><b>Deterministic policy block</b> — the model can't grant or apply approval, even asked directly or via injection.</li>
             <li><b>Permission boundary</b> — the restricted Legal memo is flagged but never revealed, summarized, or cited.</li>
           </ul>
-          <div class="money"><div class="k">Money line</div>"She asked the agent to do her job and it told her <b>no — and exactly why.</b> I can turn the model off and this refusal is byte-identical, because the authority lives in the rulepack, not the model."</div>
+          <div class="money"><div class="k">Money line</div>"She asked the agent to do her job and it told her <b>no — and exactly why.</b> I can turn the model off and this refusal is byte-identical, because the authority lives in the Policy Artifact, not the model."</div>
           <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip tint">Product design</span><span class="chip dang">Edge cases earned, not staged</span></div>
         </div>
       </div>
@@ -625,10 +625,10 @@
             <div class="label">The reframe on one slide</div>
             <p style="font-size:13.5px;margin:0 0 10px">Today: <b>summarize</b> &nbsp;→&nbsp; Next: answer <b>what changed, what matters, what's missing, what's allowed, what to do, who owns it, and whether it's still true.</b></p>
             <div class="lands">
-              <span class="chip ghost">ContextBundle</span><span class="chip ghost">RulePack</span><span class="chip ghost">ToolCard</span>
+              <span class="chip ghost">ContextBundle</span><span class="chip ghost">Policy Artifact</span><span class="chip ghost">ToolCard</span>
               <span class="chip ghost">ActionDiff</span><span class="chip ghost">WorkProductContract</span><span class="chip ghost">EvalTrace</span>
             </div>
-            <div class="note">Six reusable primitives — vertical-agnostic by design. Verticals differ only by RulePack + recipe + eval pack.</div>
+            <div class="note">Six reusable primitives — vertical-agnostic by design. Verticals differ only by Policy Artifact + recipe + eval pack.</div>
           </div>
         </div>
         <div class="notes">
@@ -669,14 +669,14 @@
           <div class="label">Click</div>
           <div class="clickline"><span class="kbd">"Generate Decision Brief"</span><span class="sep">→</span><span class="kbd">"explain" on a failing gate</span></div>
           <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"That 15% wasn't a vibe — open the brief. The home memo was Dana's draft; this is the system-generated readiness surface. It shows what changed, the gates, missing evidence, stageable remediations, and what it <em>wasn't allowed</em> to use. A panelist always asks: is that number computed or scripted? So I click 'explain.' Here are the inputs, the formula, the threshold, PASS/FAIL — stamped <em>decided by RulePack finance_credit_v1, not the model.</em> The LLM interpreted the messy evidence; the deterministic layer owns every pass/fail where a mistake is expensive."</div>
+          <div class="say">"That 15% wasn't a vibe — open the brief. The home memo was Dana's draft; this is the system-generated readiness surface. It shows what changed, the gates, missing evidence, stageable remediations, and what it <em>wasn't allowed</em> to use. A panelist always asks: is that number computed or scripted? So I click 'explain.' Here are the inputs, the formula, the threshold, PASS/FAIL — stamped <em>decided by Policy Artifact finance_credit_v1, not the model.</em> The LLM interpreted the messy evidence; the deterministic layer owns every pass/fail where a mistake is expensive."</div>
           <div class="label" style="margin-top:13px">What I point at</div>
           <ul class="do" style="margin-top:0">
             <li>The CS-plan conflict is intentionally absent here; it appears only after the Credit Officer approval returns and revalidation checks dependent sources.</li>
             <li>Missing evidence surfaced, not hallucinated: final covenant tracker.</li>
             <li>Clickable provenance → the exact span in the real memo (not a vector match).</li>
           </ul>
-          <div class="money"><div class="k">Money line</div>"This is the answer to the churn driver. A good summarizer tops out near 50% factual correctness on financial work. <b>The model never made this call — the rulepack did, and here's the arithmetic.</b>"</div>
+          <div class="money"><div class="k">Money line</div>"This is the core control. The model assembled context, but <b>the Policy Artifact made the allow-or-block decision, and here's the arithmetic.</b>"</div>
           <div class="lands"><span class="chip tint">Technical & AI</span><span class="chip info">Eval rigor (JD)</span><span class="chip ghost">"Not just RAG" rebuttal</span></div>
         </div>
       </div>
@@ -815,7 +815,7 @@
       <div class="bbody">
         <div class="stage">
           <div class="app">
-            <div class="ah"><div class="ic">✦</div><div><div class="ti">Agent Ops · three-vertical scorecard</div><div class="su">Same primitives · RulePack + eval pack swap per vertical</div></div></div>
+            <div class="ah"><div class="ic">✦</div><div><div class="ti">Agent Ops · three-vertical scorecard</div><div class="su">Same primitives · Policy Artifact + eval pack swap per vertical</div></div></div>
             <div class="body">
               <table class="vt">
                 <thead><tr><th>Vertical</th><th>Recipe</th><th>Eval pass</th><th>Signature gate</th></tr></thead>
@@ -844,7 +844,7 @@
           <div class="label">Click</div>
           <div class="clickline"><span class="kbd">"Agent Ops" (top bar)</span><span class="sep">→</span><span class="kbd">the failed eval row</span></div>
           <div class="label" style="margin-top:13px">Say</div>
-          <div class="say">"Here's the whole bet in one screen: the exact same machinery runs three regulated verticals, unchanged. Same ContextBundle, RulePack, ActionDiff, the same batch loop, the same EvalTrace — I swap only the RulePack and eval pack per vertical, nothing else. That's not 'it generalizes' hand-waving; it's an <em>existence proof</em> — one substrate running finance, legal, and healthcare, with one honest gap left visible. This row is an ambiguous 'follow up on that' that exposes a known gap — we don't yet score clarification-routing quality, so the case stays red and visible instead of hidden. I drill in: <em>no prompt, response, or document text anywhere</em> — only typed signals, the expected against the observed 'not yet scored.' As an enterprise vendor we can't inspect customer content, so the eval loop runs on typed signals, tenant-local runs, and differential-privacy aggregates. Marking our own gap red instead of gaming it green <em>is</em> the credibility."</div>
+          <div class="say">"Here's the whole bet in one screen: the exact same machinery runs three regulated verticals, unchanged. Same ContextBundle, Policy Artifact, ActionDiff, the same batch loop, the same EvalTrace — I swap only the Policy Artifact and eval pack per vertical, nothing else. That's not 'it generalizes' hand-waving; it's an <em>existence proof</em> — one substrate running finance, legal, and healthcare, with one honest gap left visible. This row is an ambiguous 'follow up on that' that exposes a known gap — we don't yet score clarification-routing quality, so the case stays red and visible instead of hidden. I drill in: <em>no prompt, response, or document text anywhere</em> — only typed signals, the expected against the observed 'not yet scored.' As an enterprise vendor we can't inspect customer content, so the eval loop runs on typed signals, tenant-local runs, and differential-privacy aggregates. Marking our own gap red instead of gaming it green <em>is</em> the credibility."</div>
           <div class="money"><div class="k">Money line</div>"<b>Finance is the wedge, not the architecture.</b> This is the platform: shared primitives, measured by typed signals — exactly the orchestration layer this role owns."</div>
           <div class="lands"><span class="chip tint">Strategic thinking</span><span class="chip info">Eval frameworks + privacy (JD)</span><span class="chip ghost">Honesty as a flex</span></div>
         </div>
@@ -859,8 +859,8 @@
           <div class="card pad" style="box-shadow:none">
             <div class="label">Roadmap (phased, Phase 0 first — that's the judgment)</div>
             <div style="display:grid;gap:8px;font-size:12.5px">
-              <div><span class="chip tint">Phase 0</span> Substrate: permission-aware grounding &amp; retrieval (the foundation) · RulePack/gates · ActionDiff · EvalTrace.</div>
-              <div><span class="chip tint">Phase 1</span> Financial Decision Brief — grounded retrieval into a verified, cited packet (the churning vertical).</div>
+              <div><span class="chip tint">Phase 0</span> Substrate: permission-aware grounding &amp; retrieval (the foundation) · Policy Artifact/gates · ActionDiff · EvalTrace.</div>
+              <div><span class="chip tint">Phase 1</span> Financial Decision Brief — grounded retrieval into a verified, cited packet (the first proof point).</div>
               <div><span class="chip tint">Phase 2</span> Controlled work loop: typed tools, diffs, approval, multi-owner batch, audit.</div>
               <div><span class="chip tint">Phase 3</span> Lifecycle, sealed records, evals, AI Studio recipes, Legal + Health.</div>
             </div>
@@ -890,7 +890,7 @@
       <div class="kpi"><div class="v">Trust</div><div class="l">citation correctness · permission-denial pass · deterministic-rule pass · missing-evidence honesty</div></div>
       <div class="kpi"><div class="v">Action safety</div><div class="l">diff-preview coverage · invalid-action rate · approve/edit/reject · audit completeness · escalation accuracy</div></div>
       <div class="kpi"><div class="v">Platform health</div><div class="l">latency p50/p95 · cost / successful workflow · tool success · eval-regression pass · stale-detection lead time</div></div>
-      <div class="kpi"><div class="v">Business</div><div class="l">regulated-vertical churn ↓ · AI attach · recipe creation in AI Studio</div></div>
+      <div class="kpi"><div class="v">Business</div><div class="l">regulated-workflow adoption · AI attach · recipe creation in AI Studio</div></div>
     </div>
   </div>
 </section>
@@ -917,10 +917,10 @@
       <div class="a">Layered and content-free: synthetic evals, <b>tenant-local</b> runners (raw stays in the tenant), consented redacted samples, AI Studio feedback, and <b>differential-privacy</b> aggregates. The honest caveat: DP helps aggregate trend learning, not row-level debugging — that's what tenant-local + redacted samples are for. You saw the trace: typed signals only, enforced by schema.<div class="hook">Hook: offline-replay eval harness; accept/edit/reject telemetry becomes the regression set.</div></div></details>
 
     <details class="qa"><summary><span class="q">?</span>Why finance first — isn't it over-engineered?</summary>
-      <div class="a">Finance has the clearest churn signal and the richest deterministic surface — calculations, approvals, MNPI, auditability. It's also where the regulation is most concrete: credit scoring is a named Annex III high-risk category under the EU AI Act, and Article 14 requires a human-interpretable record of the factors behind each decision — so the "over-engineering" is the buyer's compliance requirement, not gold-plating. The depth is intentional, but the primitives are platform primitives, which is why the demo ends with Legal + Health on the <b>same substrate</b>. Configuration, not code.<div class="hook">Hook: verticals differ only by RulePack + recipe + eval pack.</div></div></details>
+      <div class="a">Finance has the clearest deterministic surface — calculations, approvals, MNPI, auditability. It's also where the regulation is most concrete: credit scoring is a named Annex III high-risk category under the EU AI Act, and Article 14 requires a human-interpretable record of the factors behind each decision — so the depth is the buyer's compliance requirement, not extra process. The primitives are platform primitives, which is why the demo ends with Legal + Health on the <b>same substrate</b>. Configuration, not code.<div class="hook">Hook: verticals differ only by Policy Artifact + recipe + eval pack.</div></div></details>
 
     <details class="qa"><summary><span class="q">?</span>Single most important deterministic component?</summary>
-      <div class="a">The <b>approval / policy gate.</b> It directly addresses the churn-driving trust gap — and it's the one place you must never let the model decide. You saw it hold when Dana tried to apply the discount herself, when she approved every action at once, and after a sign-off when two blockers remained.<div class="hook">Hook: the gate is enforced in the wrapper and re-run server-side on execute; any model "approved" text is neutralized.</div></div></details>
+      <div class="a">The <b>approval / policy gate.</b> It directly addresses the trust gap — and it's the one place you must never let the model decide. You saw it hold when Dana tried to apply the discount herself, when she approved every action at once, and after a sign-off when two blockers remained.<div class="hook">Hook: the gate is enforced in the wrapper and re-run server-side on execute; any model "approved" text is neutralized.</div></div></details>
 
     <details class="qa"><summary><span class="q">?</span>What would you cut if scope got tight?</summary>
       <div class="a">Cut full AI Studio to a static Phase-3 mock. <b>Keep</b> Phase-0 substrate, the Decision Brief, the deterministic policy block, live revalidation, the Agent Actions drawer, the Agent Batch loop, the sealed governed record + stale alert, eval traces, and the three-vertical proof. The trust spine is non-negotiable; the authoring UI can wait.<div class="hook">Hook: I sequence by what earns trust, not what demos flashiest.</div></div></details>
@@ -1016,7 +1016,7 @@
       '<div class="calc">'+rows+
       '<div class="ln" style="border-top:1px dashed var(--border);margin-top:5px;padding-top:6px"><span style="color:var(--secondary)">formula</span><b>'+c.formula+'</b></div>'+
       '<div class="ln"><span style="color:var(--secondary)">result</span><b style="color:'+col+'">'+c.result+'</b></div></div>'+
-      '<div class="stamp">Decided by RulePack <b>finance_credit_v1 · v1</b> — not the model. Output schema validated ✓</div>';
+      '<div class="stamp">Decided by Policy Artifact <b>finance_credit_v1 · v1</b> — not the model. Output schema validated ✓</div>';
   }
 
   /* ---------- Beat 6: route → sign-off → revalidation + cascade ---------- */
@@ -1180,7 +1180,7 @@
     document.getElementById('ev-legal').classList.toggle('on',k==='legal');
     document.getElementById('ev-fin').classList.toggle('on',k==='fin');
     renderPills(false);
-    document.getElementById('recordbox').innerHTML='<div class="seal"><span class="k">Integrity seal</span><br>HMAC-SHA256 over canonical JSON · recipe finance_credit_committee · rulepack finance_credit_v1<br><span style="color:#9fb6d4">Pick an event, then Verify to re-derive freshness from the source-dependency graph.</span></div>';
+    document.getElementById('recordbox').innerHTML='<div class="seal"><span class="k">Integrity seal</span><br>HMAC-SHA256 over canonical JSON · recipe finance_credit_committee · policy artifact finance_credit_v1<br><span style="color:#9fb6d4">Pick an event, then Verify to re-derive freshness from the source-dependency graph.</span></div>';
   }
   function recordVerify(){
     var s=RECORD[recordSel];

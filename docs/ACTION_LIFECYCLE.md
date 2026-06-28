@@ -445,7 +445,7 @@ This should be explainable as primitives, not an Acme script.
 | Primitive | Panel question | Configuration knob |
 |---|---|---|
 | `AgentRecipe` | Does this only work for credit? | Swap recipe id and allowed sources/actions. |
-| `RulePack` / `Rule` | Who decided the 15% threshold? | Rule parameters and versioned policy artifact. |
+| `Policy Artifact` / `Rule` | Who decided the 15% threshold? | Versioned policy artifact parameters. |
 | `ApprovalMatrix` / approval policy | Why Credit Officer? | Required approver by rule or side-effect class. |
 | `PolicyGraph` | Why this order? | Dependency edges and prerequisite ordering. |
 | `WorkProductContract` | What makes a brief stale? | Source dependencies and revalidation rules. |
