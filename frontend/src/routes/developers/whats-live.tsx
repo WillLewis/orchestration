@@ -51,11 +51,11 @@ const surfaces: Surface[] = [
     badgeTone: "green",
     liveBorder: true,
     rows: [
-      { status: "live", label: "Chat input + @Agent routing", meta: "/chat - scripted in mock" },
-      { status: "live", label: "Memo + brief recompute", meta: "/api/brief + /api/lifecycle" },
-      { status: "live", label: "Decision readiness rows", meta: "/api/brief" },
-      { status: "live", label: "Suggested-action arc", meta: "/api/lifecycle/events" },
-      { status: "mock", label: "Generate brief thinking", meta: "animation" },
+      { status: "live", label: "Chat + @Agent", meta: "/chat - scripted" },
+      { status: "live", label: "Memo/brief recompute", meta: "/brief + lifecycle" },
+      { status: "live", label: "Readiness rows", meta: "/api/brief" },
+      { status: "live", label: "Suggested-action arc", meta: "/lifecycle/events" },
+      { status: "mock", label: "Brief thinking", meta: "animation" },
       { status: "mock", label: "Participant rail", meta: "mock" },
     ],
   },
@@ -66,12 +66,12 @@ const surfaces: Surface[] = [
     badgeTone: "green",
     liveBorder: true,
     rows: [
-      { status: "live", label: "Brief - readiness - gates - calcs", meta: "/api/brief" },
-      { status: "live", label: "Approval-ready banner", meta: "policy_gates.approval_ready" },
-      { status: "live", label: "Readiness row -> stage", meta: "/actions/staged-remediation" },
-      { status: "live", label: "Ask about packet", meta: "/chat" },
-      { status: "live", label: "Seal as governed record", meta: "/workproducts/mint" },
-      { status: "mock", label: "Source rail - pin", meta: "client UI" },
+      { status: "live", label: "Brief, gates, calcs", meta: "/api/brief" },
+      { status: "live", label: "Approval banner", meta: "policy gates" },
+      { status: "live", label: "Readiness -> stage", meta: "/actions/staged" },
+      { status: "live", label: "Ask packet", meta: "/chat" },
+      { status: "live", label: "Seal record", meta: "/workproducts/mint" },
+      { status: "mock", label: "Source pin", meta: "client UI" },
     ],
   },
   {
@@ -82,11 +82,11 @@ const surfaces: Surface[] = [
     liveBorder: true,
     rows: [
       { status: "live", label: "Action plan + diffs", meta: "/api/actions" },
-      { status: "live", label: "Staged remediation cards", meta: "/actions/staged-remediation" },
-      { status: "live", label: "Execute staged row", meta: "/staged-remediation/execute" },
-      { status: "live", label: "Run all on gateway", meta: "/actions/execute" },
-      { status: "live", label: "Changes count", meta: "/api/lifecycle" },
-      { status: "mock", label: "Approve / edit staging", meta: "client store" },
+      { status: "live", label: "Staged cards", meta: "/actions/staged" },
+      { status: "live", label: "Execute staged", meta: "/staged/execute" },
+      { status: "live", label: "Run gateway", meta: "/actions/execute" },
+      { status: "live", label: "Change count", meta: "/api/lifecycle" },
+      { status: "mock", label: "Approve/edit", meta: "client store" },
     ],
   },
   {
@@ -97,10 +97,10 @@ const surfaces: Surface[] = [
     liveBorder: true,
     rows: [
       { status: "live", label: "3-vertical scorecard", meta: "/ops/evals" },
-      { status: "live", label: "Eval rows + failed-row trace", meta: "/ops/evals" },
-      { status: "live", label: "Telemetry mix + taxonomy", meta: "/ops/evals" },
+      { status: "live", label: "Eval rows + trace", meta: "/ops/evals" },
+      { status: "live", label: "Telemetry taxonomy", meta: "/ops/evals" },
       { status: "live", label: "Run evals", meta: "refetch + animation" },
-      { status: "mock", label: "Tenant-local toggle", meta: "stub (no-op)" },
+      { status: "mock", label: "Tenant toggle", meta: "stub" },
     ],
   },
   {
@@ -109,12 +109,12 @@ const surfaces: Surface[] = [
     badge: "batch live - run orphaned",
     badgeTone: "amber",
     rows: [
-      { status: "live", label: "Loop dossier data", meta: "GET /api/loop" },
-      { status: "live", label: "Approve + run batch", meta: "/actions/execute - re-gates" },
+      { status: "live", label: "Loop dossier", meta: "GET /api/loop" },
+      { status: "live", label: "Approve + batch", meta: "/actions/execute" },
       { status: "live", label: "Approval matrix", meta: "/api/loop" },
-      { status: "mock", label: "Distribute -> close playback", meta: "status - animation" },
-      { status: "mock", label: "CS / Legal replies", meta: "simulated - delay" },
-      { status: "backlog", label: "Run loop server-side", meta: "POST /actions/loop" },
+      { status: "mock", label: "Close playback", meta: "status animation" },
+      { status: "mock", label: "CS/Legal replies", meta: "simulated" },
+      { status: "backlog", label: "Server loop", meta: "POST /actions/loop" },
     ],
   },
   {
@@ -124,12 +124,12 @@ const surfaces: Surface[] = [
     badgeTone: "green",
     liveBorder: true,
     rows: [
-      { status: "live", label: "Mint + fetch record", meta: "/workproducts/*" },
-      { status: "live", label: "Verify - HMAC + freshness", meta: "/verify" },
+      { status: "live", label: "Mint/fetch record", meta: "/workproducts/*" },
+      { status: "live", label: "Verify HMAC + freshness", meta: "/verify" },
       { status: "live", label: "Dependency map", meta: "section_dependencies" },
-      { status: "live", label: "Event picker - legal/financials", meta: "/verify" },
-      { status: "live", label: "Print / save PDF", meta: "real" },
-      { status: "mock", label: "Share - download cert", meta: "stub" },
+      { status: "live", label: "Event picker", meta: "/verify" },
+      { status: "live", label: "Print/save PDF", meta: "real" },
+      { status: "mock", label: "Share cert", meta: "stub" },
     ],
   },
   {
@@ -138,10 +138,10 @@ const surfaces: Surface[] = [
     badge: "static docs - live chat",
     badgeTone: "blue",
     rows: [
-      { status: "live", label: "Docs chat inset", meta: "/docs/chat - LLM/det mode" },
-      { status: "live", label: "Docs-chat observability", meta: "/ops/docs-chat" },
-      { status: "mock", label: "~25 doc pages", meta: "static content" },
-      { status: "mock", label: "API ref - gating - traces", meta: "canned JSON - data/*" },
+      { status: "live", label: "Docs chat inset", meta: "/docs/chat" },
+      { status: "live", label: "Docs-chat telemetry", meta: "/ops/docs-chat" },
+      { status: "mock", label: "~25 docs", meta: "static content" },
+      { status: "mock", label: "API refs", meta: "canned JSON" },
     ],
   },
 ];
@@ -150,75 +150,75 @@ const backlogRows: CapabilityRow[] = [
   {
     status: "backlog",
     label: "POST /actions/loop",
-    meta: "loop animates GET + runs /actions/execute",
+    meta: "loop UI uses execute",
   },
-  { status: "backlog", label: "POST /revalidate", meta: "UI uses lifecycle + record verify" },
+  { status: "backlog", label: "POST /revalidate", meta: "UI uses record verify" },
   {
     status: "backlog",
     label: "POST /actions/compose",
-    meta: "superseded by staged-remediation path",
+    meta: "superseded by staging",
   },
   { status: "backlog", label: "GET /api/ops/scorecard", meta: "superseded by /ops/evals" },
   {
     status: "backlog",
     label: "POST /brief - /context - /verify",
-    meta: "canonical/debug - UI uses GET /api/* shims",
+    meta: "debug path",
   },
 ];
 
 const substrateRows: SubstrateRow[] = [
-  { status: "live", label: "Permission filtering / context bundle", meta: "", result: "real" },
-  { status: "live", label: "Deterministic gate / approval threshold", meta: "", result: "real" },
-  { status: "live", label: "/chat refusal + permission behavior", meta: "", result: "real" },
+  { status: "live", label: "Permission filtering", meta: "", result: "real" },
+  { status: "live", label: "Approval threshold", meta: "", result: "real" },
+  { status: "live", label: "/chat refusal", meta: "", result: "real" },
   {
     status: "live",
-    label: "Action diffs / blocked execution",
+    label: "Blocked execution",
     meta: "",
-    result: "real - server re-gate",
+    result: "real - re-gate",
   },
   {
     status: "live",
-    label: "Staged remediation - row -> drawer card",
+    label: "Staged remediation card",
     meta: "",
-    result: "real - composer-validated",
+    result: "real - validated",
   },
   {
     status: "live",
-    label: "Lifecycle / event-driven recompute",
+    label: "Lifecycle recompute",
     meta: "",
-    result: "real event log - deterministic actors",
+    result: "real event log",
   },
   {
     status: "live",
-    label: "Record revalidation / stale state",
+    label: "Record stale check",
     meta: "",
-    result: "real WS-F - simulated trigger",
+    result: "real WS-F trigger",
   },
-  { status: "live", label: "Eval scorecard", meta: "", result: "real harness - synthetic packs" },
+  { status: "live", label: "Eval scorecard", meta: "", result: "real harness" },
   {
     status: "live",
-    label: "Docs chat ACL + sealed derivatives",
+    label: "Docs chat ACL",
     meta: "",
     result: "real - LLM optional",
   },
   {
     status: "mock",
-    label: "Batch loop / owner replies",
+    label: "Owner replies",
     meta: "",
-    result: "real engine - simulated CS+Legal",
+    result: "engine - simulated",
   },
   {
     status: "mock",
-    label: "Synthetic Acme workspace / personas",
+    label: "Acme personas",
     meta: "",
     result: "simulated corpus",
   },
 ];
 
 const statusCopy: Record<Status, { label: string; className: string }> = {
-  live: { label: "wired - live-capable", className: "text-emerald-400" },
-  mock: { label: "simulated - deterministic demo", className: "text-amber-400" },
-  backlog: { label: "backlog - backend exists", className: "text-red-300" },
+  live: { label: "live-capable", className: "text-emerald-400" },
+  mock: { label: "simulated demo", className: "text-amber-400" },
+  backlog: { label: "backend exists", className: "text-red-300" },
 };
 
 const badgeClasses: Record<BadgeTone, string> = {
@@ -230,7 +230,7 @@ const badgeClasses: Record<BadgeTone, string> = {
 function StatusIcon({ status, className = "mt-[5px]" }: { status: Status; className?: string }) {
   return (
     <Circle
-      className={`${className} h-2.5 w-2.5 shrink-0 fill-current stroke-0 ${statusCopy[status].className}`}
+      className={`${className} h-2 w-2 shrink-0 fill-current stroke-0 ${statusCopy[status].className}`}
       aria-hidden="true"
     />
   );
@@ -259,29 +259,29 @@ function SurfaceCard({ surface }: { surface: Surface }) {
   return (
     <article
       className={[
-        "min-w-0 rounded-lg border bg-zinc-950/45 p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]",
+        "min-w-0 rounded-lg border bg-zinc-950/45 p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]",
         surface.liveBorder ? "border-emerald-500/25" : "border-zinc-800",
       ].join(" ")}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2.5">
         <div className="min-w-0">
           <h3
             id={headingId(surface.title)}
-            className="truncate text-[15px] font-semibold tracking-tight text-zinc-100"
+            className="truncate text-[14px] font-semibold tracking-tight text-zinc-100"
           >
             {surface.title}
           </h3>
-          <div className="mt-1 font-mono text-[11px] text-zinc-500">{surface.route}</div>
+          <div className="mt-0.5 font-mono text-[10px] text-zinc-500">{surface.route}</div>
         </div>
         <span
-          className={`shrink-0 rounded-md border px-2 py-1 text-[10.5px] font-medium ${badgeClasses[surface.badgeTone]}`}
+          className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9.5px] font-medium ${badgeClasses[surface.badgeTone]}`}
           data-docs-corpus-skip="true"
         >
           {surface.badge}
         </span>
       </div>
 
-      <div className="mt-4 space-y-2.5">
+      <div className="mt-3 space-y-2">
         {surface.rows.map((row) => (
           <StatusRow key={`${surface.title}-${row.label}`} row={row} />
         ))}
@@ -292,12 +292,12 @@ function SurfaceCard({ surface }: { surface: Surface }) {
 
 function StatusRow({ row }: { row: CapabilityRow }) {
   return (
-    <div className="grid grid-cols-[14px_minmax(0,1fr)] gap-x-2 gap-y-1 sm:grid-cols-[14px_minmax(0,1fr)_auto]">
+    <div className="grid grid-cols-[11px_minmax(0,1fr)] gap-x-1.5 gap-y-0.5 sm:grid-cols-[11px_minmax(0,1fr)_auto]">
       <StatusIcon status={row.status} />
-      <div className="min-w-0 text-[12.5px] font-medium leading-snug text-zinc-200">
+      <div className="min-w-0 text-[11.5px] font-medium leading-snug text-zinc-200">
         {row.label}
       </div>
-      <div className="min-w-0 font-mono text-[11.5px] leading-snug text-zinc-500 sm:max-w-[220px] sm:text-right">
+      <div className="min-w-0 font-mono text-[10.5px] leading-snug text-zinc-500 sm:max-w-[180px] sm:text-right">
         {row.meta}
       </div>
     </div>
@@ -306,12 +306,12 @@ function StatusRow({ row }: { row: CapabilityRow }) {
 
 function WideStatusRow({ row }: { row: CapabilityRow }) {
   return (
-    <div className="grid grid-cols-[14px_minmax(0,1fr)] gap-x-2 gap-y-1 sm:grid-cols-[14px_minmax(0,1fr)_minmax(180px,auto)]">
+    <div className="grid grid-cols-[11px_minmax(0,1fr)] gap-x-1.5 gap-y-0.5 sm:grid-cols-[11px_minmax(0,1fr)_minmax(140px,auto)]">
       <StatusIcon status={row.status} className="mt-[4px]" />
-      <div className="min-w-0 font-mono text-[12.5px] font-medium leading-snug text-zinc-200">
+      <div className="min-w-0 font-mono text-[11.5px] font-medium leading-snug text-zinc-200">
         {row.label}
       </div>
-      <div className="min-w-0 font-mono text-[11.5px] leading-snug text-zinc-500 sm:text-right">
+      <div className="min-w-0 font-mono text-[10.5px] leading-snug text-zinc-500 sm:text-right">
         {row.meta}
       </div>
     </div>
@@ -322,12 +322,12 @@ function SubstrateStatusRow({ row }: { row: SubstrateRow }) {
   const resultClass = row.status === "mock" ? "text-amber-300" : "text-emerald-300";
 
   return (
-    <div className="grid grid-cols-[14px_minmax(0,1fr)] gap-x-2 gap-y-1 sm:grid-cols-[14px_minmax(0,1fr)_minmax(160px,auto)]">
+    <div className="grid grid-cols-[11px_minmax(0,1fr)] gap-x-1.5 gap-y-0.5 sm:grid-cols-[11px_minmax(0,1fr)_minmax(140px,auto)]">
       <StatusIcon status={row.status} className="mt-[4px]" />
-      <div className="min-w-0 text-[12.5px] font-medium leading-snug text-zinc-200">
+      <div className="min-w-0 text-[11.5px] font-medium leading-snug text-zinc-200">
         {row.label}
       </div>
-      <div className={`min-w-0 font-mono text-[11.5px] leading-snug sm:text-right ${resultClass}`}>
+      <div className={`min-w-0 font-mono text-[10.5px] leading-snug sm:text-right ${resultClass}`}>
         {row.result}
       </div>
     </div>
@@ -337,67 +337,66 @@ function SubstrateStatusRow({ row }: { row: SubstrateRow }) {
 function LiveStatusInset() {
   return (
     <section className="overflow-hidden rounded-xl border border-zinc-800 bg-[#101112] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-      <div className="flex flex-col gap-3 border-b border-zinc-800 bg-zinc-950/70 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-col gap-2.5 border-b border-zinc-800 bg-zinc-950/70 px-3.5 py-2.5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
           {(Object.keys(statusCopy) as Status[]).map((status) => (
-            <div key={status} className="inline-flex items-center gap-2 text-[12px] font-medium">
+            <div key={status} className="inline-flex items-center gap-1.5 text-[11px] font-medium">
               <StatusIcon status={status} className="mt-0" />
               <span className="text-zinc-300">{statusCopy[status].label}</span>
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-500">
-          <span>default mocks; live = VITE_USE_MOCKS=false + make api</span>
+        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
+          <span>live mode: VITE_USE_MOCKS=false + make api</span>
           <span
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-500"
+            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-500"
             data-docs-corpus-skip="true"
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <MoreHorizontal className="h-3.5 w-3.5" />
           </span>
         </div>
       </div>
 
-      <div className="grid gap-3 p-3 lg:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid gap-2.5 p-2.5 lg:grid-cols-2 2xl:grid-cols-3">
         {surfaces.map((surface) => (
           <SurfaceCard key={surface.title} surface={surface} />
         ))}
       </div>
 
       <div className="border-t border-zinc-800">
-        <div className="flex items-center gap-3 bg-red-500/12 px-4 py-3 text-red-200">
+        <div className="flex items-center gap-2.5 bg-red-500/12 px-3.5 py-2.5 text-red-200">
           <ChromeIcon icon={Unlink2} tone="red" />
           <h2
             id={headingId("Still built and tested, but no primary UI calls it")}
-            className="text-[14px] font-semibold tracking-tight"
+            className="text-[13px] font-semibold tracking-tight"
           >
             Still built and tested, but no primary UI calls it
           </h2>
         </div>
-        <div className="space-y-2.5 px-4 py-4">
+        <div className="space-y-2 px-3.5 py-3">
           {backlogRows.map((row) => (
             <WideStatusRow key={row.label} row={row} />
           ))}
         </div>
-        <div className="flex items-center gap-3 border-t border-emerald-500/15 bg-emerald-500/12 px-4 py-3 text-[12.5px] font-medium text-emerald-300">
+        <div className="flex items-center gap-2.5 border-t border-emerald-500/15 bg-emerald-500/12 px-3.5 py-2.5 text-[11.5px] font-medium text-emerald-300">
           <ChromeIcon icon={Link2} tone="green" />
           <span>
-            Newly wired: /api/lifecycle + events - /actions/staged-remediation + execute -
-            /docs/chat - /ops/docs-chat
+            Newly wired: lifecycle events - staged remediation - docs chat - docs-chat ops
           </span>
         </div>
       </div>
 
-      <div className="border-t border-zinc-800 p-4">
-        <div className="mb-3 flex items-center gap-3">
+      <div className="border-t border-zinc-800 p-3.5">
+        <div className="mb-2.5 flex items-center gap-2.5">
           <ChromeIcon icon={Layers3} tone="zinc" />
           <h2
             id={headingId("Substrate - real vs simulated")}
-            className="text-[14px] font-semibold tracking-tight text-zinc-100"
+            className="text-[13px] font-semibold tracking-tight text-zinc-100"
           >
             Substrate - real vs simulated
           </h2>
         </div>
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {substrateRows.map((row) => (
             <SubstrateStatusRow key={row.label} row={row} />
           ))}
@@ -424,12 +423,53 @@ function TruthCard({
         : "border-zinc-800 bg-zinc-900/35";
 
   return (
-    <div className={`rounded-lg border p-4 ${className}`}>
-      <h3 id={headingId(title)} className="text-[14px] font-semibold tracking-tight text-zinc-100">
+    <div className={`rounded-lg border p-3.5 ${className}`}>
+      <h3 id={headingId(title)} className="text-[13px] font-semibold tracking-tight text-zinc-100">
         {title}
       </h3>
-      <div className="mt-2 text-[13px] leading-relaxed text-zinc-400">{children}</div>
+      <div className="mt-2 text-[12.5px] leading-relaxed text-zinc-400">{children}</div>
     </div>
+  );
+}
+
+function BoundarySection() {
+  return (
+    <section className="border-t border-zinc-900 pt-8">
+      <div className="font-mono text-[11px] text-zinc-500" data-docs-corpus-skip="true">
+        § 03
+      </div>
+      <h2
+        id={headingId("Demo boundaries")}
+        className="mt-3 text-[20px] font-semibold tracking-tight text-zinc-50"
+      >
+        Demo boundaries
+      </h2>
+      <p className="mt-2 max-w-[72ch] text-[13.5px] leading-relaxed text-zinc-400">
+        These are the three promises behind the live-status map: what the system computes, what the
+        demo simulates, and how to switch the UI to gateway-backed mode.
+      </p>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <TruthCard title="Proof boundary" tone="emerald">
+          <p>
+            Approval-ready is computed from policy, missing approvals, and thresholds. 22% vs. 15%
+            is backend logic, not a badge.
+          </p>
+        </TruthCard>
+        <TruthCard title="Demo boundary" tone="amber">
+          <p>
+            Simulated people advance the flow. They do not rewrite rules; lifecycle, action, and
+            verify recompute after each response.
+          </p>
+        </TruthCard>
+        <TruthCard title="Live-mode boundary">
+          <p>
+            Set <code>VITE_USE_MOCKS=false</code> with the API running to hit gateway paths; mocks
+            stay default for repeatability.
+          </p>
+        </TruthCard>
+      </div>
+    </section>
   );
 }
 
@@ -565,28 +605,7 @@ function WhatsLiveDocsPage() {
             </p>
           </StaticSection>
 
-          <section className="grid gap-3 lg:grid-cols-3">
-            <TruthCard title="Proof boundary" tone="emerald">
-              <p>
-                The approval-ready result is computed from the policy gate, missing approvals, and
-                threshold checks. A 22% request against 15% delegated authority is a backend
-                decision, not a decorative badge.
-              </p>
-            </TruthCard>
-            <TruthCard title="Demo boundary" tone="amber">
-              <p>
-                Simulated counterparties move the workflow forward, but they do not rewrite the
-                rules. Once their response lands, the same lifecycle, action, and verification paths
-                recompute the state.
-              </p>
-            </TruthCard>
-            <TruthCard title="Live-mode boundary">
-              <p>
-                The same UI can point at live gateway paths with <code>VITE_USE_MOCKS=false</code>{" "}
-                and the API running. The visible walkthrough defaults to mocks for repeatability.
-              </p>
-            </TruthCard>
-          </section>
+          <BoundarySection />
 
           <RelatedLinks
             links={[
