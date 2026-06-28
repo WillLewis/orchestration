@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 
 import {
   Callout,
@@ -44,7 +44,7 @@ type PageDefinition = {
   title: string;
   description: ReactNode;
   related: RelatedLink[];
-  content: () => ReactNode;
+  content: ComponentType;
 };
 
 const financeReplay = gatingExamples.finance.replayResponse;
@@ -108,96 +108,189 @@ const evalKpiRows = [
     signal: "Replay aggregates latency, cost, tool outcomes, and regression pass rate.",
   },
 ];
-const primitiveRows = [
+type PrimitiveVertical = "finance" | "legal" | "health";
+
+type PrimitiveRow = {
+  primitive: ReactNode;
+  whatItIs: string;
+  configuredBy: string;
+  examples: Record<PrimitiveVertical, ReactNode>;
+};
+
+const PRIMITIVE_VERTICALS: PrimitiveVertical[] = ["finance", "legal", "health"];
+
+const PRIMITIVE_VERTICAL_LABELS: Record<PrimitiveVertical, string> = {
+  finance: "Finance",
+  legal: "Legal",
+  health: "Health",
+};
+
+const primitiveRows: PrimitiveRow[] = [
   {
     primitive: "AgentRecipe",
     whatItIs: "Defines the governed use case an agent is allowed to run.",
     configuredBy: "Use case, source scopes, allowed actions, eval pack",
-    acmeExample: "Acme renewal credit decision",
+    examples: {
+      finance: "Acme renewal credit decision",
+      legal: "Contract redline review for a customer MSA.",
+      health: "Clinical protocol packet review before external sharing.",
+    },
   },
   {
     primitive: <DocLink to="/developers/context-assembly">Permission Boundary</DocLink>,
     whatItIs: "Defines which sources and content the current user may use.",
     configuredBy: "User/document permissions, restricted-source handling",
-    acmeExample: "Legal memo restricted, not summarized",
+    examples: {
+      finance: "Legal memo restricted, not summarized",
+      legal: "Privileged strategy memo unavailable, not summarized.",
+      health: "Restricted patient record unavailable, not summarized.",
+    },
   },
   {
     primitive: <DocLink to="/developers/context-assembly">Context Bundle</DocLink>,
     whatItIs: "Packages permitted sources, claims, state, and versions for the agent.",
     configuredBy: "Meeting, docs, metadata, workflow state, source versions",
-    acmeExample: "Memo + CS plan + approvals + tracker",
+    examples: {
+      finance: "Memo + CS plan + approvals + tracker",
+      legal: "MSA + redline + playbook + approvals.",
+      health: "Protocol + consent form + reviewer status + patient-record metadata.",
+    },
   },
   {
     primitive: <DocLink to="/developers/gating">Policy Artifact</DocLink>,
     whatItIs: "Versioned policy-as-data that owns deterministic rule parameters.",
     configuredBy: "Rules, thresholds, owners, eval pack, runtime mode",
-    acmeExample: "finance_credit_v1 active policy artifact",
+    examples: {
+      finance: "finance_credit_v1 active policy artifact",
+      legal: (
+        <>
+          <code>legal_contract_v1</code> active policy artifact.
+        </>
+      ),
+      health: (
+        <>
+          <code>health_protocol_v1</code> active policy artifact.
+        </>
+      ),
+    },
   },
   {
     primitive: <DocLink to="/developers/gating">RulePack</DocLink>,
     whatItIs: "Encodes deterministic thresholds, calculations, and blocked-action rules.",
     configuredBy: "Thresholds, calculations, blocked actions",
-    acmeExample: "22% requires Credit Officer approval",
+    examples: {
+      finance: "22% requires Credit Officer approval",
+      legal: "3x liability cap exceeds 1.5x playbook limit.",
+      health: "14 PHI fields exceeds 6-field minimum-necessary limit.",
+    },
   },
   {
     primitive: <DocLink to="/developers/compliance-trace">ApprovalMatrix</DocLink>,
     whatItIs: "Maps rule outcomes and action classes to required approvers.",
     configuredBy: "Required approver by rule or action class",
-    acmeExample: "Credit Officer and Legal routes",
+    examples: {
+      finance: "Credit Officer and Legal routes",
+      legal: "General Counsel and Partner routes.",
+      health: "Attending physician and Privacy Officer routes.",
+    },
   },
   {
     primitive: <DocLink to="/developers/gating">PolicyGraph</DocLink>,
     whatItIs: "Orders dependencies so readiness can be computed deterministically.",
     configuredBy: "Dependency order and readiness criteria",
-    acmeExample: "Credit, Legal, tracker, CS-plan reconciliation",
+    examples: {
+      finance: "Credit, Legal, tracker, CS-plan reconciliation",
+      legal: "Privilege, playbook limit, citations, partner approval.",
+      health: "PHI minimization, attending review, consent, protocol freshness.",
+    },
   },
   {
     primitive: <DocLink to="/developers/decision-brief">Decision Readiness Row</DocLink>,
     whatItIs: "Represents one blocker with its status and possible remediation.",
     configuredBy: "Typed blocker and stageable remediation",
-    acmeExample: "Approval, missing evidence, conflict rows",
+    examples: {
+      finance: "Approval, missing evidence, conflict rows",
+      legal: "GC approval, unverified citation, stale redline rows.",
+      health: "PHI reduction, reviewer, consent-SOP rows.",
+    },
   },
   {
     primitive: <DocLink to="/developers/action-diff">ActionDiff</DocLink>,
     whatItIs: "Shows the exact proposed change before anything is committed.",
     configuredBy: "Validated change preview",
-    acmeExample: "CS plan 18% -> 22% diff",
+    examples: {
+      finance: "CS plan 18% -> 22% diff",
+      legal: "Liability cap clause 1.5x -> 3x diff.",
+      health: "External packet redacts 14 PHI fields -> 6 fields.",
+    },
   },
   {
     primitive: <DocLink to="/developers/action-packets">ToolCard</DocLink>,
     whatItIs: "Declares an action tool, its input contract, and side-effect class.",
     configuredBy: "Allowed tools, input schema, approver requirement, retry policy",
-    acmeExample: "route_approval and edit_document cards",
+    examples: {
+      finance: "route_approval and edit_document cards",
+      legal: "Route GC review and edit redline cards.",
+      health: "Redact packet and route clinical review cards.",
+    },
   },
   {
     primitive: <DocLink to="/developers/context-assembly">MissingEvidenceState</DocLink>,
     whatItIs: "Names an evidence gap and whether it blocks readiness or execution.",
     configuredBy: "Evidence requirements and blocking policy",
-    acmeExample: "missing_covenant_tracker blocks committee readiness",
+    examples: {
+      finance: "missing_covenant_tracker blocks committee readiness",
+      legal: (
+        <>
+          <code>unverified_clause_citation</code> blocks issue list.
+        </>
+      ),
+      health: (
+        <>
+          <code>missing_consent_sop_step</code> blocks packet readiness.
+        </>
+      ),
+    },
   },
   {
     primitive: <DocLink to="/developers/lifecycle-events">LifecycleEvent</DocLink>,
     whatItIs: "Records a state-changing event that can trigger recomputation.",
     configuredBy: "Event classes and recompute behavior",
-    acmeExample: "Approval returned; evidence uploaded",
+    examples: {
+      finance: "Approval returned; evidence uploaded",
+      legal: "GC approval returned; new redline uploaded.",
+      health: "Attending review returned; consent form updated.",
+    },
   },
   {
     primitive: <DocLink to="/developers/work-product-contract">WorkProductContract</DocLink>,
     whatItIs: "Defines the sealed record, its sources, dependencies, and integrity checks.",
     configuredBy: "Record schema, sources, seal, dependencies",
-    acmeExample: "Final governed Decision Brief",
+    examples: {
+      finance: "Final governed Decision Brief",
+      legal: "Final governed Contract Issue List.",
+      health: "Final governed Clinical Packet.",
+    },
   },
   {
     primitive: <DocLink to="/developers/revalidation">RevalidationRule</DocLink>,
     whatItIs: "Declares which source changes make record sections stale.",
     configuredBy: "Freshness triggers and affected sections",
-    acmeExample: "Source change marks section stale",
+    examples: {
+      finance: "Source change marks section stale",
+      legal: "New redline version marks issue stale.",
+      health: "Protocol update marks recommendations stale.",
+    },
   },
   {
     primitive: <DocLink to="/developers/eval-trace">EvalTrace</DocLink>,
     whatItIs: "Captures content-free quality and safety measurements for replay.",
     configuredBy: "Quality, safety, and platform metrics",
-    acmeExample: "Citation, permission, action, stale-record KPIs",
+    examples: {
+      finance: "Citation, permission, action, stale-record KPIs",
+      legal: "Privilege, citation, approval, stale-redline KPIs.",
+      health: "PHI, reviewer, version, stale-protocol KPIs.",
+    },
   },
 ];
 
@@ -690,6 +783,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
 
 export function DeveloperDocPage({ pageId }: { pageId: DeveloperDocPageId }) {
   const page = pages[pageId];
+  const Content = page.content;
 
   return (
     <DocsPageShell
@@ -698,7 +792,7 @@ export function DeveloperDocPage({ pageId }: { pageId: DeveloperDocPageId }) {
       description={page.description}
       related={page.related}
     >
-      {page.content()}
+      <Content />
     </DocsPageShell>
   );
 }
@@ -798,6 +892,12 @@ function MetricsPage() {
 }
 
 function PrimitivesPage() {
+  const [vertical, setVertical] = useState<PrimitiveVertical>("finance");
+  const rows = primitiveRows.map(({ examples, ...row }) => ({
+    ...row,
+    example: examples[vertical],
+  }));
+
   return (
     <>
       <DocsSection label="map" title="Primitive map">
@@ -807,19 +907,40 @@ function PrimitivesPage() {
           path.
         </p>
         <p>
-          The table shows what each primitive is configured to own and how it appears in the Acme
-          renewal credit decision.
+          The table keeps the primitive and owner columns fixed. Switch verticals to see how the
+          same primitive appears in finance, legal, and health without changing the runtime
+          substrate.
         </p>
       </DocsSection>
+
+      <div
+        className="inline-flex max-w-full flex-wrap items-center rounded-lg border border-zinc-800 bg-zinc-900/50 p-1"
+        data-docs-corpus-skip="true"
+      >
+        {PRIMITIVE_VERTICALS.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setVertical(item)}
+            className={[
+              "h-7 rounded-md px-3 text-[12px] font-medium transition-colors",
+              vertical === item ? "bg-zinc-100 text-zinc-900" : "text-zinc-400 hover:text-zinc-200",
+            ].join(" ")}
+          >
+            {PRIMITIVE_VERTICAL_LABELS[item]}
+          </button>
+        ))}
+        <span className="ml-2 mr-2 text-[10.5px] text-zinc-500">swaps every example</span>
+      </div>
 
       <DataTable
         columns={[
           { key: "primitive", label: "Primitive" },
           { key: "whatItIs", label: "What it is" },
           { key: "configuredBy", label: "Configured by admin / platform owner" },
-          { key: "acmeExample", label: "Acme example" },
+          { key: "example", label: PRIMITIVE_VERTICAL_LABELS[vertical] },
         ]}
-        rows={primitiveRows}
+        rows={rows}
       />
 
       <DocsSection label="composition" title="How the primitives compose">

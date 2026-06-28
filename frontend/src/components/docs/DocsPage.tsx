@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Check, Copy } from "lucide-react";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useId, useMemo, useState, type ReactNode } from "react";
 
 import { DeveloperDocsHeader } from "@/components/docs/DeveloperDocsHeader";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
@@ -12,13 +12,21 @@ export type RelatedLink = { label: string; to: LiveDocsRoute; description: strin
 export type TableColumn = { key: string; label: string; align?: "left" | "right" };
 export type TableRow = Record<string, ReactNode>;
 
-type DocsHeadingIdFactory = (heading: string) => string;
+type DocsHeadingIdFactory = (heading: string, instanceId: string) => string;
 
 const DocsHeadingContext = createContext<DocsHeadingIdFactory | null>(null);
 
 export function DocsHeadingScope({ children }: { children: ReactNode }) {
   const seen = new Set<string>();
-  const anchorForHeading = (heading: string) => slugify(heading, seen);
+  const assigned = new Map<string, string>();
+  const anchorForHeading = (heading: string, instanceId: string) => {
+    const existing = assigned.get(instanceId);
+    if (existing) return existing;
+
+    const id = slugify(heading, seen);
+    assigned.set(instanceId, id);
+    return id;
+  };
 
   return (
     <DocsHeadingContext.Provider value={anchorForHeading}>{children}</DocsHeadingContext.Provider>
@@ -43,8 +51,11 @@ export function DocsHeading({
   anchorText?: string;
 }) {
   const anchorForHeading = useContext(DocsHeadingContext);
+  const instanceId = useId();
   const heading = anchorText ?? textFromNode(children);
-  const id = anchorForHeading ? anchorForHeading(heading) : slugify(heading, new Set<string>());
+  const id = anchorForHeading
+    ? anchorForHeading(heading, instanceId)
+    : slugify(heading, new Set<string>());
 
   if (level === 1) {
     return (
