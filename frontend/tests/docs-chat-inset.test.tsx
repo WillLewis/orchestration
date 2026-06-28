@@ -95,9 +95,34 @@ describe("DocsChatInset", () => {
     expect(html).not.toContain("Phase-0 mocks");
   });
 
+  it("renders the revised private channel copy", () => {
+    const html = renderEmptyInset("chat");
+
+    expect(html).toContain("# docs-rag-questions");
+    expect(html).toContain("@Agent answers only to you until shared.");
+    expect(html).not.toContain("# docs-rag-fidelity");
+    expect(html).not.toContain("Ask docs questions in-channel.");
+  });
+
+  it("removes source prefaces from visible answer prose", () => {
+    const original = docsChatMocks.tier1Open.response;
+    docsChatMocks.tier1Open.response =
+      "According to the Engineering FAQ, the backend logic shown in the video is real.";
+
+    try {
+      const html = renderInset("chat", "tier1Open");
+
+      expect(html).toContain("The backend logic shown in the video is real.");
+      expect(html).not.toContain("According to the Engineering FAQ");
+    } finally {
+      docsChatMocks.tier1Open.response = original;
+    }
+  });
+
   it("renders concise phrasing states from response metadata", () => {
     expect(renderInset("chat", "tier3Locked")).toContain("Deterministic");
-    expect(renderInset("chat", "tier1Open")).toContain("LLM prose");
+    expect(renderInset("chat", "tier1Open")).toContain("LLM");
+    expect(renderInset("chat", "tier1Open")).not.toContain("LLM prose");
     expect(renderInset("chat", "tier1Open")).not.toContain("docs-phrasing-mock");
     expect(renderInset("chat", "tier1Open")).not.toContain("Accepted: LLM prose");
     expect(renderInset("chat", "tier2Open")).toContain("Fallback: deterministic");
@@ -110,7 +135,7 @@ describe("DocsChatInset", () => {
     const html = renderInset("chat", "tier1Open");
 
     expect(html).not.toContain("Grounded answer");
-    expect(html).toContain("LLM prose");
+    expect(html).toContain("LLM");
   });
 
   it("keeps LLM selected when backend metadata reports an LLM fallback", () => {

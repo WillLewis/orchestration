@@ -236,7 +236,7 @@ function phrasingStatusLabel(mode: DocsPhrasingMode, response?: DocsChatResponse
 
   if ((phrasing?.effective_mode ?? mode) === "llm") {
     return {
-      label: "LLM prose",
+      label: "LLM",
       title: "Live LLM phrasing is active for response prose.",
       tone: "info" as const,
     };
@@ -288,6 +288,15 @@ function historyFromTurns(turns: DocsTurn[]): DocsChatMessage[] {
     { role: "user", content: turn.prompt },
     { role: "agent", content: turn.response.response },
   ]);
+}
+
+function responseDisplayText(response: string) {
+  const stripped = response.replace(
+    /^(?:according to|based on|per)\s+(?:the\s+)?[^,]{1,80},\s+/i,
+    "",
+  );
+  if (stripped === response) return response;
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 
 function citationAnchor(citation: DocsCitation): string | null {
@@ -516,7 +525,7 @@ function AppModeControl({
       <button
         type="button"
         onClick={() => onSelectMode("llm")}
-        title="Request live LLM prose from the backend."
+        title="Request live LLM phrasing from the backend."
         aria-label="Use live LLM docs-chat prose"
         aria-pressed={mode === "llm"}
         className={[
@@ -541,10 +550,10 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4 text-primary" />
-              <h2 className="truncate text-[15px] font-semibold"># docs-rag-fidelity</h2>
+              <h2 className="truncate text-[15px] font-semibold"># docs-rag-questions</h2>
             </div>
             <p className="mt-0.5 text-[11.5px] text-[var(--secondary-text)]">
-              Ask docs questions in-channel. ConnectAgent answers only to you until shared.
+              @Agent answers only to you until shared.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1132,7 +1141,7 @@ function ResponseCard({
           compact ? "text-[12.5px]" : "text-[13.5px]",
         ].join(" ")}
       >
-        {response.response}
+        {responseDisplayText(response.response)}
       </p>
 
       {response.status === "answered" && (
@@ -1303,57 +1312,57 @@ function StructuredSlots({
   const confidence = CONFIDENCE_META[response.confidence];
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <div className="rounded-md border border-border bg-[var(--canvas)] px-3 py-2">
-        <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-          Confidence
+    <div className="rounded-md border border-border bg-[var(--canvas)] px-2.5 py-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div className="inline-flex min-w-0 items-center gap-1.5">
+          <span className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
+            Confidence
+          </span>
+          <span
+            className={`inline-flex rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold leading-none ${confidence.className}`}
+          >
+            {decisionStub ? <ReservedSlotValue /> : confidence.label}
+          </span>
         </div>
-        <div
-          className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${confidence.className}`}
-        >
-          {decisionStub ? <ReservedSlotValue /> : confidence.label}
-        </div>
-      </div>
-      <div className="rounded-md border border-border bg-[var(--canvas)] px-3 py-2">
-        <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-          Missing
-        </div>
-        {decisionStub ? (
-          <ReservedSlotBlock />
-        ) : response.missing.length > 0 ? (
-          <ul className="mt-1 space-y-1 text-[11.5px] text-[var(--secondary-text)]">
-            {response.missing.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        ) : (
-          <div className="mt-1 text-[11.5px] text-[var(--muted-fg)]">
-            No missing coverage reported.
-          </div>
-        )}
-      </div>
-      <div className="rounded-md border border-border bg-[var(--canvas)] px-3 py-2 sm:col-span-2">
-        <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-          Anchors
-        </div>
-        <div
-          className={[
-            "mt-1 flex flex-wrap gap-1.5 text-[11.5px]",
-            compact ? "leading-tight" : "leading-snug",
-          ].join(" ")}
-        >
-          {response.citations.length > 0 ? (
-            response.citations.map((citation) => (
-              <span
-                key={`${citation.doc_id}-anchor`}
-                className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10.5px] text-[var(--secondary-text)]"
-              >
-                {citationHref(citation) ?? citation.anchor ?? "no-route"}
-              </span>
-            ))
+
+        <div className="inline-flex min-w-0 items-center gap-1.5">
+          <span className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
+            Missing
+          </span>
+          {decisionStub ? (
+            <ReservedSlotBlock />
+          ) : response.missing.length > 0 ? (
+            <span className="max-w-[260px] truncate text-[10.5px] text-[var(--secondary-text)]">
+              {response.missing.join("; ")}
+            </span>
           ) : (
-            <span className="text-[var(--muted-fg)]">No anchored citations.</span>
+            <span className="text-[10.5px] text-[var(--muted-fg)]">None</span>
           )}
+        </div>
+
+        <div className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+          <span className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
+            Anchors
+          </span>
+          <div
+            className={[
+              "flex min-w-0 flex-wrap gap-1 text-[10.5px]",
+              compact ? "leading-tight" : "leading-snug",
+            ].join(" ")}
+          >
+            {response.citations.length > 0 ? (
+              response.citations.map((citation) => (
+                <span
+                  key={`${citation.doc_id}-anchor`}
+                  className="max-w-[220px] truncate rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-[var(--secondary-text)]"
+                >
+                  {citationHref(citation) ?? citation.anchor ?? "no-route"}
+                </span>
+              ))
+            ) : (
+              <span className="text-[var(--muted-fg)]">None</span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1782,7 +1791,9 @@ function DecisionDraft({
               <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--muted-fg)]">
                 Summary
               </div>
-              <p className="text-[14px] leading-relaxed text-foreground">{response.response}</p>
+              <p className="text-[14px] leading-relaxed text-foreground">
+                {responseDisplayText(response.response)}
+              </p>
               {response.citations.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {response.citations.map((citation) => (
