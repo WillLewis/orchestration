@@ -149,7 +149,6 @@ function DocsFooter() {
           <div className="space-y-3">
             <div className="text-[13px] font-semibold tracking-tight text-zinc-100">Developers</div>
             <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-              <li>Platform API v2</li>
               <li>Policy artifacts</li>
               <li>Deterministic gating</li>
             </ul>
@@ -370,8 +369,8 @@ export function DataTable({
   dense?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-800">
-      <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
+    <div className="overflow-hidden rounded-lg border border-zinc-800">
+      <table className="w-full table-fixed border-collapse text-[12.5px]">
         <thead>
           <tr className="bg-zinc-900/70 text-left text-zinc-400">
             {columns.map((column) => (
@@ -379,7 +378,7 @@ export function DataTable({
                 key={column.key}
                 className={[
                   dense ? "px-3 py-2" : "px-3 py-2.5",
-                  "font-semibold",
+                  "align-top font-semibold whitespace-normal break-words [overflow-wrap:anywhere]",
                   column.align === "right" ? "text-right" : "text-left",
                 ].join(" ")}
               >
@@ -397,7 +396,7 @@ export function DataTable({
                   className={[
                     dense ? "px-3 py-2" : "px-3 py-2.5",
                     column.align === "right" ? "text-right" : "text-left",
-                    "text-zinc-300",
+                    "align-top text-zinc-300 whitespace-normal break-words [overflow-wrap:anywhere]",
                   ].join(" ")}
                 >
                   {row[column.key]}

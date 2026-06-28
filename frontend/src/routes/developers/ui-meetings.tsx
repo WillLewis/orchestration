@@ -6,7 +6,7 @@ import { DocsChatInset } from "@/components/docs/DocsChatInset";
 export const Route = createFileRoute("/developers/ui-meetings")({
   head: () => ({
     meta: [
-      { title: "Meetings Interface - ConnectWork Platform API" },
+      { title: "Meetings Interface" },
       {
         name: "description",
         content: "Meeting rail shell for permission-aware ConnectAgent documentation retrieval.",

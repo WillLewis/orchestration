@@ -7,7 +7,7 @@ import { DocsSidebar } from "@/components/docs/DocsSidebar";
 export const Route = createFileRoute("/developers/prioritization")({
   head: () => ({
     meta: [
-      { title: "Prioritization - ConnectWork Platform API" },
+      { title: "Prioritization" },
       {
         name: "description",
         content:
@@ -177,16 +177,28 @@ function PrioritizationDocsPage() {
                 Weighted points per axis (rating x weight). Sorted by total; the top two are Tier 1.
               </p>
 
-              <div className="mt-1 overflow-x-auto rounded-lg border border-zinc-800">
-                <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
+              <div className="mt-1 overflow-hidden rounded-lg border border-zinc-800">
+                <table className="w-full table-fixed border-collapse text-[12.5px]">
                   <thead>
                     <tr className="bg-zinc-900/70 text-left text-zinc-400">
-                      <th className="px-3 py-2.5 font-semibold">Theme</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Value · 30</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Leverage · 25</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Diff · 25</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Trust · 20</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Total</th>
+                      <th className="px-3 py-2.5 align-top font-semibold whitespace-normal break-words">
+                        Theme
+                      </th>
+                      <th className="px-3 py-2.5 text-right align-top font-semibold whitespace-normal break-words">
+                        Value · 30
+                      </th>
+                      <th className="px-3 py-2.5 text-right align-top font-semibold whitespace-normal break-words">
+                        Leverage · 25
+                      </th>
+                      <th className="px-3 py-2.5 text-right align-top font-semibold whitespace-normal break-words">
+                        Diff · 25
+                      </th>
+                      <th className="px-3 py-2.5 text-right align-top font-semibold whitespace-normal break-words">
+                        Trust · 20
+                      </th>
+                      <th className="px-3 py-2.5 text-right align-top font-semibold whitespace-normal break-words">
+                        Total
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -200,19 +212,27 @@ function PrioritizationDocsPage() {
                       >
                         <td
                           className={[
-                            "px-3 py-2.5",
+                            "px-3 py-2.5 align-top whitespace-normal break-words",
                             row.tier1 ? "font-semibold text-zinc-100" : "text-zinc-200",
                           ].join(" ")}
                         >
                           {row.theme}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-zinc-500">{row.value}</td>
-                        <td className="px-3 py-2.5 text-right text-zinc-500">{row.leverage}</td>
-                        <td className="px-3 py-2.5 text-right text-zinc-500">{row.diff}</td>
-                        <td className="px-3 py-2.5 text-right text-zinc-500">{row.trust}</td>
+                        <td className="px-3 py-2.5 text-right align-top text-zinc-500">
+                          {row.value}
+                        </td>
+                        <td className="px-3 py-2.5 text-right align-top text-zinc-500">
+                          {row.leverage}
+                        </td>
+                        <td className="px-3 py-2.5 text-right align-top text-zinc-500">
+                          {row.diff}
+                        </td>
+                        <td className="px-3 py-2.5 text-right align-top text-zinc-500">
+                          {row.trust}
+                        </td>
                         <td
                           className={[
-                            "px-3 py-2.5 text-right font-semibold",
+                            "px-3 py-2.5 text-right align-top font-semibold",
                             row.tier1 ? "text-emerald-300" : "text-zinc-100",
                           ].join(" ")}
                         >
@@ -288,7 +308,6 @@ function PrioritizationDocsPage() {
                 Developers
               </div>
               <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-                <li>Platform API v2</li>
                 <li>Policy artifacts</li>
                 <li>Deterministic gating</li>
               </ul>

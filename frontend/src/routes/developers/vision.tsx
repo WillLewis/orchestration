@@ -8,7 +8,7 @@ import { DocsSidebar } from "@/components/docs/DocsSidebar";
 export const Route = createFileRoute("/developers/vision")({
   head: () => ({
     meta: [
-      { title: "Agent Vision - ConnectWork Platform API" },
+      { title: "Agent Vision" },
       {
         name: "description",
         content:
@@ -190,7 +190,6 @@ function VisionDocsPage() {
                 Developers
               </div>
               <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-                <li>Platform API v2</li>
                 <li>Policy artifacts</li>
                 <li>Deterministic gating</li>
               </ul>

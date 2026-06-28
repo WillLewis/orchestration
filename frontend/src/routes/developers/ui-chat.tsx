@@ -6,7 +6,7 @@ import { DocsChatInset } from "@/components/docs/DocsChatInset";
 export const Route = createFileRoute("/developers/ui-chat")({
   head: () => ({
     meta: [
-      { title: "Chat Interface - ConnectWork Platform API" },
+      { title: "Chat Interface" },
       {
         name: "description",
         content: "Slack-like ConnectAgent chat shell for permission-aware documentation retrieval.",

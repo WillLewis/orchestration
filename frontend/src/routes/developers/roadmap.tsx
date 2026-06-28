@@ -8,7 +8,7 @@ import { DocsSidebar } from "@/components/docs/DocsSidebar";
 export const Route = createFileRoute("/developers/roadmap")({
   head: () => ({
     meta: [
-      { title: "Roadmap - ConnectWork Platform API" },
+      { title: "Roadmap" },
       {
         name: "description",
         content:
@@ -315,7 +315,6 @@ function RoadmapDocsPage() {
                 Developers
               </div>
               <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-                <li>Platform API v2</li>
                 <li>Policy artifacts</li>
                 <li>Deterministic gating</li>
               </ul>

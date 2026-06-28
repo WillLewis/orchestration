@@ -29,7 +29,7 @@ const expectedHeadingsByRoute: Record<LiveDocsRoute, string[]> = {
   ],
   "/developers/ui-chat": ["Chat"],
   "/developers/ui-meetings": ["Meetings"],
-  "/developers/ui-decision-brief": ["Decision Brief UI"],
+  "/developers/ui-decision-brief": ["Decision Brief UI", "Coming soon"],
   "/developers/rag": ["RAG", "RAG reads the ContextBundle, not the whole workspace"],
   "/developers/decision-brief": ["Decision Brief", "The brief is a typed work product"],
   "/developers/insight-cards": [
@@ -63,6 +63,8 @@ const forbiddenChrome = [
   "swaps every example",
 ];
 
+const shortRoutes = new Set<LiveDocsRoute>(["/developers/ui-decision-brief"]);
+
 describe("docs corpus extractor", () => {
   it("extracts non-empty sections with expected headings for every live route", async () => {
     const pages = await extractAllDocsPages();
@@ -75,8 +77,9 @@ describe("docs corpus extractor", () => {
         0,
       );
       const headings = page.sections.map((section) => section.heading);
+      const minimumTextLength = shortRoutes.has(page.route) ? 80 : 300;
 
-      expect(totalTextLength).toBeGreaterThan(300);
+      expect(totalTextLength).toBeGreaterThan(minimumTextLength);
       expect(page.sections.every((section) => section.text.length > 0)).toBe(true);
 
       for (const heading of expectedHeadingsByRoute[page.route]) {
@@ -90,6 +93,24 @@ describe("docs corpus extractor", () => {
       for (const chrome of forbiddenChrome) {
         expect(pageText).not.toContain(chrome);
       }
+    }
+  });
+
+  it("does not render removed developer header or footer version chrome", async () => {
+    for (const route of docsRoutesToIndex) {
+      const html = await renderRouteHtml(route);
+
+      expect(html).not.toContain("ConnectWork Platform API</span>");
+      expect(html).not.toContain("Platform API v2");
+    }
+  });
+
+  it("renders docs tables without horizontal-scroll minimum widths", async () => {
+    for (const route of docsRoutesToIndex) {
+      const html = await renderRouteHtml(route);
+
+      expect(html).not.toContain("overflow-x-auto");
+      expect(html).not.toContain("min-w-[560px]");
     }
   });
 

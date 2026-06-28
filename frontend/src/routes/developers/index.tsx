@@ -4,7 +4,7 @@ import { OverviewDocsPage } from "./overview";
 export const Route = createFileRoute("/developers/")({
   head: () => ({
     meta: [
-      { title: "Overview - ConnectWork Platform API" },
+      { title: "Overview" },
       {
         name: "description",
         content:

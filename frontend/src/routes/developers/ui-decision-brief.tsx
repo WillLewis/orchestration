@@ -1,17 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Clock3 } from "lucide-react";
 
-import { DocsPageShell } from "@/components/docs/DocsPage";
-import { DocsChatInset } from "@/components/docs/DocsChatInset";
-import { ProductFrame } from "@/components/docs/ProductFrame";
+import { DocsHeading, DocsPageShell } from "@/components/docs/DocsPage";
 
 export const Route = createFileRoute("/developers/ui-decision-brief")({
   head: () => ({
     meta: [
-      { title: "Decision Brief Interface - ConnectWork Platform API" },
+      { title: "Decision Brief UI - Coming Soon" },
       {
         name: "description",
-        content:
-          "Decision Brief generation shell for permission-aware ConnectAgent documentation retrieval.",
+        content: "Decision Brief UI documentation is coming soon.",
       },
     ],
   }),
@@ -24,39 +22,49 @@ function UiDecisionBriefDocsPage() {
       eyebrow="Interfaces"
       title="Decision Brief UI"
       description={
-        <p>
-          A generate-action surface for turning docs-grounded retrieval into a governed decision
-          brief draft.
-        </p>
+        <p>Coming soon.</p>
       }
-      related={[{ label: "RAG", to: "/developers/rag", description: "How retrieval is gated." }]}
+      related={[
+        {
+          label: "Decision Brief",
+          to: "/developers/decision-brief",
+          description: "The underlying governed work product.",
+        },
+      ]}
     >
-      <ProductFrame
-        surface="Decision brief generation"
-        title="Docs evidence into a governed draft"
-        subtitle="A command asks ConnectAgent to generate a brief while the same retrieval gates decide which source content can shape the draft."
-        variant="fullBleed"
-      >
-        <DocsChatInset surface="decision_brief" />
-      </ProductFrame>
-
-      <section className="space-y-3 border-t border-zinc-900 pt-7">
-        <div className="max-w-[72ch] space-y-3 text-[13.5px] leading-relaxed text-zinc-400">
-          <p>
-            The decision brief surface treats the message as a generate command, not a casual
-            Q&amp;A turn. The draft can cite open and sealed derivatives, but locked source content
-            remains outside the generation path.
-          </p>
-          <p>
-            See{" "}
-            <Link
-              to="/developers/rag"
-              className="text-emerald-300 underline-offset-2 hover:underline"
+      <section className="rounded-lg border border-zinc-800 bg-zinc-950/70 p-6">
+        <div className="flex max-w-[56ch] flex-col gap-4">
+          <div
+            className={[
+              "grid h-10 w-10 place-items-center rounded-md border border-emerald-400/25",
+              "bg-emerald-400/10 text-emerald-300",
+            ].join(" ")}
+          >
+            <Clock3 className="h-5 w-5" />
+          </div>
+          <div className="space-y-2">
+            <DocsHeading
+              level={2}
+              className="text-[20px] font-semibold tracking-tight text-zinc-50"
             >
-              how RAG works
-            </Link>{" "}
-            for the full pipeline.
-          </p>
+              Coming soon
+            </DocsHeading>
+            <p className="text-[13.5px] leading-relaxed text-zinc-400">
+              This interface page is intentionally minimal while the Decision Brief UI docs are
+              finalized.
+            </p>
+          </div>
+          <Link
+            to="/developers/decision-brief"
+            className={[
+              "inline-flex w-fit items-center rounded-md border border-zinc-800",
+              "bg-zinc-900/70 px-3 py-2 text-[12px] font-semibold text-zinc-200",
+              "transition-colors hover:border-emerald-400/30 hover:bg-emerald-400/10",
+              "hover:text-emerald-200",
+            ].join(" ")}
+          >
+            Read the Decision Brief docs
+          </Link>
         </div>
       </section>
     </DocsPageShell>

@@ -10,7 +10,7 @@ import { slugify } from "@/lib/docs-slug";
 export const Route = createFileRoute("/developers/whats-live")({
   head: () => ({
     meta: [
-      { title: "What's Live - ConnectWork Platform API" },
+      { title: "What's Live" },
       {
         name: "description",
         content:
@@ -530,7 +530,6 @@ function DocsFooter() {
           <div className="space-y-3">
             <div className="text-[13px] font-semibold tracking-tight text-zinc-100">Developers</div>
             <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-              <li>Platform API v2</li>
               <li>Policy artifacts</li>
               <li>Deterministic gating</li>
             </ul>

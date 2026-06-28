@@ -48,10 +48,6 @@ export function DeveloperDocsHeader() {
             <ArrowLeft className="h-3 w-3" />
             Back to {returnTarget.label}
           </a>
-          <span className="hidden sm:inline">ConnectWork Platform API</span>
-          <span className="inline-flex h-5 items-center rounded border border-zinc-700 bg-zinc-900 px-1.5 font-mono text-[10.5px] text-zinc-300">
-            v2
-          </span>
         </div>
       </div>
     </header>

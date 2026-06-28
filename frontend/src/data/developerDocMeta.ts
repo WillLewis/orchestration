@@ -108,7 +108,7 @@ export function getDeveloperDocHead(pageId: DeveloperDocPageId) {
   const page = developerDocMeta[pageId];
   return {
     meta: [
-      { title: `${page.title} - ConnectWork Platform API` },
+      { title: page.title },
       { name: "description", content: page.description },
     ],
   };

@@ -10,11 +10,12 @@ import { gatingExamples, type GatingExample, type GatingVertical } from "@/data/
 export const Route = createFileRoute("/developers/gating")({
   head: () => ({
     meta: [
-      { title: "Deterministic Gating - ConnectWork Platform API" },
+      { title: "Deterministic Gating" },
       {
         name: "description",
         content:
-          "Policy Artifact, Evaluate, and Replay - three deterministic gating objects extending the ConnectWork Platform API before agent actions commit.",
+          "Policy Artifact, Evaluate, and Replay - three deterministic gating objects before " +
+          "agent actions commit.",
       },
     ],
   }),
@@ -643,7 +644,6 @@ function GatingDocsPage() {
                 Developers
               </div>
               <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-                <li>Platform API v2</li>
                 <li>Policy artifacts</li>
                 <li>Deterministic gating</li>
               </ul>

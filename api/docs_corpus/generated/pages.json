@@ -395,7 +395,12 @@
       {
         "heading": "Decision Brief UI",
         "anchor": "decision-brief-ui",
-        "text": "A generate-action surface for turning docs-grounded retrieval into a governed decision brief draft. The decision brief surface treats the message as a generate command, not a casual Q&A turn. The draft can cite open and sealed derivatives, but locked source content remains outside the generation path. See how RAG works for the full pipeline."
+        "text": "Coming soon."
+      },
+      {
+        "heading": "Coming soon",
+        "anchor": "coming-soon",
+        "text": "This interface page is intentionally minimal while the Decision Brief UI docs are finalized. Read the Decision Brief docs"
       }
     ]
   },

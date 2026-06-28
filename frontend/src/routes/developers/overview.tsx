@@ -8,7 +8,7 @@ import { DocsSidebar } from "@/components/docs/DocsSidebar";
 export const Route = createFileRoute("/developers/overview")({
   head: () => ({
     meta: [
-      { title: "Overview - ConnectWork Platform API" },
+      { title: "Overview" },
       {
         name: "description",
         content:
@@ -202,7 +202,6 @@ export function OverviewDocsPage() {
                 Developers
               </div>
               <ul className="space-y-1.5 text-[12.5px] text-zinc-500">
-                <li>Platform API v2</li>
                 <li>Policy artifacts</li>
                 <li>Deterministic gating</li>
               </ul>
