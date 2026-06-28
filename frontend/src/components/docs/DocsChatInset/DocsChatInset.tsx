@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   AtSign,
@@ -542,6 +542,23 @@ function AppModeControl({
 
 function ChatSurface({ controller }: { controller: SurfaceController }) {
   const { turns, pending, loadingStep, submitDocs, openCitation, reset, retry } = controller;
+  const threadScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (turns.length === 0 && !pending) return undefined;
+
+    const scroller = threadScrollRef.current;
+    if (!scroller) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      scroller.scrollTo({
+        top: scroller.scrollHeight,
+        behavior: "smooth",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pending, turns.length]);
 
   return (
     <section className="flex h-[780px] min-h-[700px] bg-background text-foreground">
@@ -572,7 +589,11 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--canvas)] px-5 py-5">
+        <div
+          ref={threadScrollRef}
+          data-docs-chat-scroll-area="true"
+          className="min-h-0 flex-1 overflow-y-auto bg-[var(--canvas)] px-5 py-5"
+        >
           <div className="mx-auto max-w-3xl space-y-4">
             <ChannelMessage
               author="Nia"

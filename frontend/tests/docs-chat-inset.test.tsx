@@ -104,6 +104,12 @@ describe("DocsChatInset", () => {
     expect(html).not.toContain("Ask docs questions in-channel.");
   });
 
+  it("marks the chat thread as the auto-scroll region", () => {
+    const html = renderEmptyInset("chat");
+
+    expect(html).toContain('data-docs-chat-scroll-area="true"');
+  });
+
   it("removes source prefaces from visible answer prose", () => {
     const original = docsChatMocks.tier1Open.response;
     docsChatMocks.tier1Open.response =
