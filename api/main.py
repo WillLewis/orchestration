@@ -196,7 +196,27 @@ def post_actions_staged_remediation_execute(
             user_id=req.user_id,
             intent=req.intent,
             object_id=action.diff.target_object_id if action.diff else None,
-            detail={"row_id": remediation.row_id, "tool": action.tool},
+            detail={
+                "row_id": remediation.row_id,
+                "tool": action.tool,
+                "approver": "credit_officer",
+            },
+        )
+    elif _executed_legal_route(audit_events):
+        state = record_lifecycle_event(
+            "approval_routed",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id=action.diff.target_object_id if action.diff else None,
+            detail={"row_id": remediation.row_id, "tool": action.tool, "approver": "legal"},
+        )
+    elif _executed_covenant_request(audit_events):
+        state = record_lifecycle_event(
+            "evidence_requested",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id="doc_covenant_tracker",
+            detail={"row_id": remediation.row_id, "tool": action.tool, "task_id": "task_new_1"},
         )
     elif _executed_cs_plan_reconciliation(audit_events):
         state = record_lifecycle_event(
@@ -226,7 +246,23 @@ def post_actions_execute(req: ExecuteRequest) -> list[AuditEvent]:
             user_id=req.user_id,
             intent=req.intent,
             object_id="doc_pricing_exception",
-            detail={"tool": "route_approval"},
+            detail={"tool": "route_approval", "approver": "credit_officer"},
+        )
+    if _executed_legal_route(events):
+        record_lifecycle_event(
+            "approval_routed",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id="wf_approval",
+            detail={"tool": "route_approval", "approver": "legal"},
+        )
+    if _executed_covenant_request(events):
+        record_lifecycle_event(
+            "evidence_requested",
+            user_id=req.user_id,
+            intent=req.intent,
+            object_id="doc_covenant_tracker",
+            detail={"tool": "create_task", "task_id": "task_new_1"},
         )
     return events
 
@@ -245,6 +281,24 @@ def _executed_cs_plan_reconciliation(events: list[AuditEvent]) -> bool:
         event.action == "executed"
         and event.detail.get("tool") == "edit_document"
         and event.detail.get("target") == "doc_cs_plan"
+        for event in events
+    )
+
+
+def _executed_legal_route(events: list[AuditEvent]) -> bool:
+    return any(
+        event.action == "executed"
+        and event.detail.get("tool") == "route_approval"
+        and event.detail.get("target") == "wf_approval"
+        for event in events
+    )
+
+
+def _executed_covenant_request(events: list[AuditEvent]) -> bool:
+    return any(
+        event.action == "executed"
+        and event.detail.get("tool") == "create_task"
+        and event.detail.get("target") == "task_new_1"
         for event in events
     )
 

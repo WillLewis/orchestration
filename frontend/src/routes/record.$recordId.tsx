@@ -126,6 +126,7 @@ function RecordPage() {
 
   const b = cert.decision_brief;
   const gov = cert.governance;
+  const approvalReady = Boolean(gov.approval_ready);
   const depMap = (gov.section_dependencies ?? {}) as Record<string, readonly string[]>;
   const isStale = v?.freshness === "stale";
   const integrityValid = v ? v.integrity_valid : true;
@@ -209,30 +210,52 @@ function RecordPage() {
               label={isStale ? "Stale" : "Current"}
               tone={isStale ? "yellow" : "neutral"}
             />
-            <StatusPill axis="Approval" label={gov.approval_stamp} tone="red" />
+            <StatusPill
+              axis="Approval"
+              label={gov.approval_stamp}
+              tone={approvalReady ? "green" : "red"}
+            />
           </div>
 
           {/* Approval reason + path-to-ready */}
-          <div className="mt-5 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-bg)] p-4">
+          <div
+            className={[
+              "mt-5 rounded-xl border p-4",
+              approvalReady
+                ? "border-[var(--success)]/25 bg-[var(--success-bg)]"
+                : "border-[var(--danger)]/25 bg-[var(--danger-bg)]",
+            ].join(" ")}
+          >
             <div className="flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-[var(--danger)]" />
-              <div className="text-[13.5px] font-semibold text-[var(--danger)]">
+              {approvalReady ? (
+                <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+              ) : (
+                <XCircle className="h-4 w-4 text-[var(--danger)]" />
+              )}
+              <div
+                className={[
+                  "text-[13.5px] font-semibold",
+                  approvalReady ? "text-[var(--success)]" : "text-[var(--danger)]",
+                ].join(" ")}
+              >
                 {gov.approval_reason}
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
-                Path to ready
+            {!approvalReady && gov.path_to_ready.length > 0 ? (
+              <div className="mt-3">
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
+                  Path to ready
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {gov.path_to_ready.map((step) => (
+                    <li key={step} className="flex items-start gap-2 text-[13px] text-foreground">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--muted-fg)]" />
+                      {step}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="mt-1.5 space-y-1">
-                {gov.path_to_ready.map((step) => (
-                  <li key={step} className="flex items-start gap-2 text-[13px] text-foreground">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--muted-fg)]" />
-                    {step}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ) : null}
           </div>
         </header>
 

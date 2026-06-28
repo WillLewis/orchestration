@@ -57,8 +57,12 @@ import {
 } from "@/lib/actions-store";
 import {
   acceptCascadeEdit,
+  requestCovenantTracker,
   routeToCreditOfficer,
+  routeToLegal,
+  simulateCovenantUpload,
   simulateCreditOfficerResponse,
+  simulateLegalResponse,
   useGovernedBrief,
   useRevalidation,
 } from "@/lib/revalidation-store";
@@ -72,6 +76,7 @@ import {
   useStagedRemediationActions,
   useVerification,
   useVerifyWorkProductMutation,
+  type LifecycleEventData,
   type ServerAuditEvent,
 } from "@/hooks/queries";
 import { deriveDrawerActions, type OriginatedAction } from "@/lib/staged-remediation";
@@ -187,19 +192,94 @@ function isCreditOfficerRoute(action: Action) {
   );
 }
 
+function isLegalRoute(action: Action) {
+  return (
+    action.tool === "route_approval" &&
+    action.required_approver === "legal" &&
+    action.diff.target_object_id === "wf_approval"
+  );
+}
+
+function isCovenantTrackerRequest(action: Action) {
+  return action.tool === "create_task" && action.diff.target_object_id === "task_new_1";
+}
+
 function includesCreditOfficerRoute(rows: ExecRow[]) {
   return rows.some(
     (row) => row.tool === "route_approval" && row.target === "doc_pricing_exception",
   );
 }
 
-const CREDIT_OFFICER_RESPONSE_DELAY_MS = 3000;
+function includesLegalRoute(rows: ExecRow[]) {
+  return rows.some((row) => row.tool === "route_approval" && row.target === "wf_approval");
+}
+
+function includesCovenantTrackerRequest(rows: ExecRow[]) {
+  return rows.some((row) => row.tool === "create_task" && row.target === "task_new_1");
+}
+
+type PendingResponseKind = "credit" | "legal" | "covenant";
+
+const SIMULATED_RESPONSE_DELAY_MS = 1500;
 
 function wait(ms: number) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
 }
+
+const pendingResponseConfig: Record<
+  PendingResponseKind,
+  {
+    loadingTitle: string;
+    loadingDescription: string;
+    successTitle: string;
+    successDescription: string;
+    errorTitle: string;
+    event: LifecycleEventData;
+    mockTransition: () => boolean;
+  }
+> = {
+  credit: {
+    loadingTitle: "Waiting on Credit Officer response",
+    loadingDescription: "Simulated counterparty is reviewing the routed 22% pricing exception.",
+    successTitle: "Credit Officer response received",
+    successDescription: "Revalidated packet; Legal and covenant tracker still block.",
+    errorTitle: "Couldn't simulate the Credit Officer response",
+    event: {
+      type: "approval_returned",
+      object_id: "doc_pricing_exception",
+      detail: { source: "simulated_credit_officer", approver: "credit_officer" },
+    },
+    mockTransition: simulateCreditOfficerResponse,
+  },
+  legal: {
+    loadingTitle: "Waiting on Legal response",
+    loadingDescription: "Simulated Legal is reviewing the covenant modification.",
+    successTitle: "Legal response received",
+    successDescription: "Legal sign-off recorded; remaining gates were recomputed.",
+    errorTitle: "Couldn't simulate the Legal response",
+    event: {
+      type: "approval_returned",
+      object_id: "wf_approval",
+      detail: { source: "simulated_legal", approver: "legal" },
+    },
+    mockTransition: simulateLegalResponse,
+  },
+  covenant: {
+    loadingTitle: "Waiting on covenant tracker upload",
+    loadingDescription: "Simulated analyst is uploading the final covenant tracker.",
+    successTitle: "Covenant tracker uploaded",
+    successDescription: "Final covenant evidence is now attached to the packet.",
+    errorTitle: "Couldn't simulate the covenant tracker upload",
+    event: {
+      type: "evidence_uploaded",
+      object_id: "doc_covenant_tracker",
+      detail: { source: "simulated_analyst_upload", actor: "Priya N. (Analyst)" },
+    },
+    mockTransition: simulateCovenantUpload,
+  },
+};
 
 function execResultFromServer(events: ServerAuditEvent[]): ExecResult {
   const executed: ExecRow[] = [];
@@ -267,12 +347,20 @@ export function ActionDiffDrawer() {
         validationActions: planActions,
         creditRouted: reval.routed,
         creditSigned: reval.creditSigned,
+        legalRouted: reval.legalRouted,
+        legalSigned: reval.legalSigned,
+        covenantRequested: reval.covenantRequested,
+        covenantUploaded: reval.covenantUploaded,
       }),
     [
       drawer.mode,
       planActions,
       reval.routed,
       reval.creditSigned,
+      reval.legalRouted,
+      reval.legalSigned,
+      reval.covenantRequested,
+      reval.covenantUploaded,
       stagedReferences,
       stagedValidation.actions,
       stagedValidation.errorByRowId,
@@ -284,7 +372,7 @@ export function ActionDiffDrawer() {
   const executeStaged = useExecuteStagedRemediationMutation();
   const lifecycleEvent = useLifecycleEventMutation();
   const [execResult, setExecResult] = useState<ExecResult | null>(null);
-  const [isSimulatingCreditOfficer, setIsSimulatingCreditOfficer] = useState(false);
+  const [simulatingResponse, setSimulatingResponse] = useState<PendingResponseKind | null>(null);
   const liveVerification =
     verifyData?.record_id === recordId
       ? verifyData
@@ -302,6 +390,34 @@ export function ActionDiffDrawer() {
     () => getAgentActionNotificationCounts(store, reval),
     [store, reval],
   );
+  const pendingResponses = [
+    reval.routed && !reval.creditSigned
+      ? {
+          kind: "credit" as const,
+          title: "Credit Officer pending.",
+          description:
+            "Route is executed; approval return is waiting on the simulated counterparty.",
+          button: "Simulate Credit Officer response",
+        }
+      : null,
+    reval.legalRouted && !reval.legalSigned
+      ? {
+          kind: "legal" as const,
+          title: "Legal pending.",
+          description:
+            "Route is executed; Legal sign-off is waiting on the simulated counterparty.",
+          button: "Simulate Legal response",
+        }
+      : null,
+    reval.covenantRequested && !reval.covenantUploaded
+      ? {
+          kind: "covenant" as const,
+          title: "Covenant tracker pending.",
+          description: "Request is sent; final tracker upload is waiting on the simulated analyst.",
+          button: "Simulate Priya upload",
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
 
   // Open directly to the useful tab for each scenario.
   useEffect(() => {
@@ -556,56 +672,67 @@ export function ActionDiffDrawer() {
       ) {
         routeToCreditOfficer();
       }
+      if (
+        includesLegalRoute(r.executed.map((e) => ({ tool: e.tool, target: e.target_object_id })))
+      ) {
+        routeToLegal();
+      }
+      if (
+        includesCovenantTrackerRequest(
+          r.executed.map((e) => ({ tool: e.tool, target: e.target_object_id })),
+        )
+      ) {
+        requestCovenantTracker();
+      }
       setTab("audit");
       toast.success(`Executed ${r.executed.length} · refused ${r.refused.length} (gate held)`);
       return;
     }
     const routesCreditOfficer = nextPending.some(isCreditOfficerRoute);
+    const routesLegal = nextPending.some(isLegalRoute);
+    const requestsCovenantTracker = nextPending.some(isCovenantTrackerRequest);
     const n = executeApproved("Dana R.", nextPending);
     if (n > 0) {
       if (routesCreditOfficer) routeToCreditOfficer();
+      if (routesLegal) routeToLegal();
+      if (requestsCovenantTracker) requestCovenantTracker();
       toast.success(`${n} action${n === 1 ? "" : "s"} sent · audit recorded`);
       setTab("audit");
     }
   }
 
-  async function completeSimulatedCreditOfficerResponse() {
-    if (isSimulatingCreditOfficer || lifecycleEvent.isPending) return;
+  async function completeSimulatedResponse(kind: PendingResponseKind) {
+    if (simulatingResponse || lifecycleEvent.isPending) return;
 
-    setIsSimulatingCreditOfficer(true);
-    const toastId = toast.loading("Waiting on Credit Officer response", {
-      description: "Simulated counterparty is reviewing the routed 22% pricing exception.",
-    });
+    const config = pendingResponseConfig[kind];
+    setSimulatingResponse(kind);
+    const toastId = toast.loading(config.loadingTitle, { description: config.loadingDescription });
 
     try {
-      await wait(CREDIT_OFFICER_RESPONSE_DELAY_MS);
+      await wait(SIMULATED_RESPONSE_DELAY_MS);
 
       if (LIVE) {
-        await lifecycleEvent.mutateAsync({
-          type: "approval_returned",
-          object_id: "doc_pricing_exception",
-          detail: { source: "simulated_credit_officer" },
-        });
-      } else if (!simulateCreditOfficerResponse()) {
+        await lifecycleEvent.mutateAsync(config.event);
+      } else if (!config.mockTransition()) {
         return;
       }
 
-      recordReturnedChangeNotification();
-      toast.success("Credit Officer response received", {
-        description: "Revalidated packet; Legal and covenant tracker still block.",
-      });
-      openDrawer({
-        mode: "revalidation_edit",
-        source: "Credit Officer response — approval returned",
-        change_kind: "approval_returned",
-      });
+      if (kind === "credit") {
+        recordReturnedChangeNotification();
+        openDrawer({
+          mode: "revalidation_edit",
+          source: "Credit Officer response — approval returned",
+          change_kind: "approval_returned",
+        });
+      }
+      toast.success(config.successTitle, { description: config.successDescription });
     } catch {
-      toast.error("Couldn't simulate the Credit Officer response", {
+      toast.error(config.errorTitle, {
         description: "The lifecycle gateway didn't respond.",
       });
     } finally {
       toast.dismiss(toastId);
-      setIsSimulatingCreditOfficer(false);
+      setSimulatingResponse(null);
     }
   }
 
@@ -659,23 +786,29 @@ export function ActionDiffDrawer() {
             </button>
           </div>
 
-          {reval.routed && !reval.creditSigned && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-3 py-2">
-              <div className="min-w-0 text-[12px] leading-snug text-foreground">
-                <span className="font-semibold">Credit Officer pending.</span> Route is executed;
-                approval return is waiting on the simulated counterparty.
-              </div>
-              <button
-                type="button"
-                onClick={() => void completeSimulatedCreditOfficerResponse()}
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                disabled={isSimulatingCreditOfficer || lifecycleEvent.isPending}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {isSimulatingCreditOfficer || lifecycleEvent.isPending
-                  ? "Waiting…"
-                  : "Simulate Credit Officer response"}
-              </button>
+          {pendingResponses.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {pendingResponses.map((pending) => (
+                <div
+                  key={pending.kind}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning-bg)] px-3 py-2"
+                >
+                  <div className="min-w-0 text-[12px] leading-snug text-foreground">
+                    <span className="font-semibold">{pending.title}</span> {pending.description}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void completeSimulatedResponse(pending.kind)}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    disabled={Boolean(simulatingResponse) || lifecycleEvent.isPending}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {simulatingResponse === pending.kind || lifecycleEvent.isPending
+                      ? "Waiting…"
+                      : pending.button}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 

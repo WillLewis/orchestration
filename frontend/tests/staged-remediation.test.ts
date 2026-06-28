@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { action_plan, type Action } from "../src/data/actions";
 import {
+  approval_role_labels,
   decision_brief,
   decision_readiness,
   rulepack_id,
@@ -19,6 +20,7 @@ import {
   withBatchOrigin,
 } from "../src/lib/staged-remediation";
 import { buildGovernedBrief } from "../src/lib/revalidation-store";
+import type { RevalidationState } from "../src/lib/revalidation-store";
 import {
   stagedRemediationExecuteRequestBody,
   stagedRemediationRequestBody,
@@ -37,6 +39,29 @@ function requireReference(row = requireCreditOfficerRow()) {
   const reference = buildStagedRemediationReference(row);
   if (!reference) throw new Error("row should have a remediation");
   return reference;
+}
+
+const baseBrief = {
+  decision_brief,
+  decision_readiness,
+  sources,
+  source_count,
+  approval_role_labels,
+  rulepack_id,
+  rulepack_version,
+};
+
+function revalidationState(overrides: Partial<RevalidationState>): RevalidationState {
+  return {
+    routed: false,
+    creditSigned: false,
+    legalRouted: false,
+    legalSigned: false,
+    covenantRequested: false,
+    covenantUploaded: false,
+    csReconciled: false,
+    ...overrides,
+  };
 }
 
 describe("staged readiness remediation provenance", () => {
@@ -166,6 +191,27 @@ describe("staged readiness remediation provenance", () => {
     ).toBe(true);
   });
 
+  it("removes batch Legal and covenant actions once they are already waiting", () => {
+    const actions = deriveDrawerActions({
+      mode: "plan",
+      staged_remediations: [],
+      validationActions: action_plan.actions,
+      creditRouted: false,
+      creditSigned: true,
+      legalRouted: true,
+      legalSigned: false,
+      covenantRequested: true,
+      covenantUploaded: false,
+    });
+
+    expect(
+      actions.some(
+        (action) => action.tool === "route_approval" && action.required_approver === "legal",
+      ),
+    ).toBe(false);
+    expect(actions.some((action) => action.tool === "create_task")).toBe(false);
+  });
+
   it("renders multiple staged row references as independent drawer cards", () => {
     const credit = requireReference();
     const legalRow = decision_readiness.rows.find((row) => row.id === "legal_approval");
@@ -207,15 +253,8 @@ describe("staged readiness remediation provenance", () => {
 
   it("builds the live staged-remediation request for the post-CO CS-plan conflict", () => {
     const governed = buildGovernedBrief(
-      {
-        decision_brief,
-        decision_readiness,
-        sources,
-        source_count,
-        rulepack_id,
-        rulepack_version,
-      },
-      { routed: true, creditSigned: true, csReconciled: false },
+      baseBrief,
+      revalidationState({ routed: true, creditSigned: true }),
     );
     const row = governed.decision_readiness.rows.find(
       (item) => item.id === "customer_success_plan_conflict",

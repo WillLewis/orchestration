@@ -65,15 +65,43 @@ def build_display_brief(
     if "doc_legal_memo" in bundle.permission_boundary.excluded_object_ids:
         permission_limitations = ["Legal memo is restricted — its contents were not used."]
 
-    show_conflict = bool(
-        lifecycle_state and lifecycle_state.credit_signed and not lifecycle_state.cs_reconciled
+    credit_signed = bool(lifecycle_state and lifecycle_state.credit_signed)
+    legal_signed = bool(lifecycle_state and lifecycle_state.legal_signed)
+    covenant_uploaded = bool(lifecycle_state and lifecycle_state.covenant_uploaded)
+    cs_reconciled = bool(lifecycle_state and lifecycle_state.cs_reconciled)
+    approval_ready = credit_signed and legal_signed and covenant_uploaded and cs_reconciled
+    show_conflict = bool(credit_signed and not cs_reconciled)
+    executive_summary = (
+        "Acme's 22% pricing exception, covenant modification, Legal sign-off, final covenant "
+        "tracker, and downstream source revalidation are complete. The packet is "
+        "approval-ready for committee decision."
+        if approval_ready
+        else (
+            "Acme requests a pricing exception (22% discount) and a covenant modification on "
+            "its renewal facility. The updated model lowers the revenue forecast, and required "
+            "approvals are incomplete, so the packet is not approval-ready."
+        )
     )
+    what_changed = ["Revenue forecast revised from $42M to $38M in the updated model."]
+    what_changed.append(
+        "Legal approved the covenant modification."
+        if legal_signed
+        else "Legal approval is still pending."
+    )
+    if covenant_uploaded:
+        what_changed.append("Final covenant tracker was uploaded and attached.")
+    else:
+        what_changed.append("Final covenant tracker has not been uploaded.")
+    if cs_reconciled:
+        what_changed.append("Customer success plan now reflects the approved 22% discount.")
+    else:
+        what_changed.append("Project plan still references the prior approval date.")
     policy_gates = brief.policy_gates
     required_approvals = brief.required_approvals
-    if lifecycle_state and lifecycle_state.credit_signed:
+    if lifecycle_state and (credit_signed or legal_signed or approval_ready):
         policy_gates = brief.policy_gates.model_copy(
             update={
-                "approval_ready": False,
+                "approval_ready": approval_ready,
                 "firings": [
                     firing.model_copy(
                         update={
@@ -95,7 +123,10 @@ def build_display_brief(
             update={
                 "requirements": [
                     req.model_copy(update={"present": True})
-                    if req.role == "credit_officer"
+                    if (
+                        (req.role == "credit_officer" and credit_signed)
+                        or (req.role == "legal" and legal_signed)
+                    )
                     else req
                     for req in brief.required_approvals.requirements
                 ]
@@ -107,16 +138,8 @@ def build_display_brief(
             "decision_needed": (
                 "Approve or reject the pricing exception and covenant modification for Acme Corp."
             ),
-            "executive_summary": (
-                "Acme requests a pricing exception (22% discount) and a covenant modification on "
-                "its renewal facility. The updated model lowers the revenue forecast, and required "
-                "approvals are incomplete, so the packet is not approval-ready."
-            ),
-            "what_changed": [
-                "Revenue forecast revised from $42M to $38M in the updated model.",
-                "Legal approval is still pending.",
-                "Project plan still references the prior approval date.",
-            ],
+            "executive_summary": executive_summary,
+            "what_changed": what_changed,
             "key_facts": [
                 f"Requested discount: {requested_pct}% (standard threshold {delegated_pct}%).",
                 f"Debt service coverage ratio: {dscr:.2f}x.",
@@ -138,7 +161,9 @@ def build_display_brief(
             ]
             if show_conflict
             else [],
-            "open_questions": [
+            "open_questions": []
+            if approval_ready
+            else [
                 "Will the covenant modification hold if revenue lands below $38M?",
                 "Does the 22% discount require committee sign-off beyond Credit?",
             ],
@@ -165,16 +190,35 @@ def build_decision_readiness(
 
     credit_signed = bool(lifecycle_state and lifecycle_state.credit_signed)
     credit_routed = bool(lifecycle_state and lifecycle_state.routed)
+    legal_signed = bool(lifecycle_state and lifecycle_state.legal_signed)
+    legal_routed = bool(lifecycle_state and lifecycle_state.legal_routed)
+    covenant_requested = bool(lifecycle_state and lifecycle_state.covenant_requested)
+    covenant_uploaded = bool(lifecycle_state and lifecycle_state.covenant_uploaded)
     cs_reconciled = bool(lifecycle_state and lifecycle_state.cs_reconciled)
+    approval_ready = credit_signed and legal_signed and covenant_uploaded and cs_reconciled
 
     rows = [
         DecisionReadinessRow(
             id="covenant_tracker",
             gate="Covenant tracker",
-            status="blocking" if covenant_blocking else "passed",
-            details="Final tracker is required before the committee can decide.",
+            status=(
+                "passed"
+                if covenant_uploaded or not covenant_blocking
+                else "pending"
+                if covenant_requested
+                else "blocking"
+            ),
+            details=(
+                "Final covenant tracker uploaded and attached to the committee packet."
+                if covenant_uploaded
+                else "Requested — pending Priya's final covenant tracker upload."
+                if covenant_requested
+                else "Final tracker is required before the committee can decide."
+            ),
             source_ids=["doc_covenant_tracker"],
-            action=DecisionReadinessActionSelector(
+            action=None
+            if covenant_requested or covenant_uploaded or not covenant_blocking
+            else DecisionReadinessActionSelector(
                 label="Request from analyst",
                 tool="create_task",
                 target_object_id="task_new_1",
@@ -232,14 +276,28 @@ def build_decision_readiness(
         DecisionReadinessRow(
             id="legal_approval",
             gate="Legal approval",
-            status="pending" if legal_pending else "approved",
-            details="Legal review has not completed.",
+            status="approved" if legal_signed or not legal_pending else "pending",
+            details=(
+                "Legal signed off on the covenant modification."
+                if legal_signed or not legal_pending
+                else "Routed — pending Legal sign-off on the covenant modification."
+                if legal_routed
+                else "Legal review has not completed."
+            ),
             source_ids=["wf_approval"],
-            action=DecisionReadinessActionSelector(
-                label="View in workflow",
+            action=None
+            if legal_routed or legal_signed or not legal_pending
+            else DecisionReadinessActionSelector(
+                label="Route to Legal",
                 tool="route_approval",
                 target_object_id="wf_approval",
                 required_approver="legal",
+                parameters={
+                    "business_label": "Covenant modification legal review",
+                    "route_note": (
+                        "Route the covenant modification to Legal before committee decision."
+                    ),
+                },
             ),
         ),
         DecisionReadinessRow(
@@ -285,11 +343,22 @@ def build_decision_readiness(
 
     return DecisionReadiness(
         summary=(
-            "Credit Officer signed off on the 22% exception. Two blockers remain: the final "
-            "covenant tracker and Legal sign-off on the covenant modification."
-            if credit_signed
-            else "Committee packet is not ready. Two blockers remain: Credit Officer approval and "
-            "final covenant tracker."
+            "All prerequisites are satisfied. The packet is approval-ready for committee decision."
+            if approval_ready
+            else (
+                "Credit Officer signed off on the 22% exception. Reconcile the customer success "
+                "plan; Legal sign-off and the final covenant tracker still block decision."
+            )
+            if credit_signed and not cs_reconciled
+            else (
+                "Credit Officer signed off on the 22% exception. Two blockers remain: the final "
+                "covenant tracker and Legal sign-off on the covenant modification."
+            )
+            if credit_signed and not (legal_signed and covenant_uploaded)
+            else (
+                "Committee packet is not ready. Two blockers remain: Credit Officer approval and "
+                "final covenant tracker."
+            )
         ),
         rows=rows,
     )

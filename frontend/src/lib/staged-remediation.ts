@@ -98,6 +98,10 @@ export function deriveDrawerActions({
   validationActions,
   creditRouted,
   creditSigned,
+  legalRouted = false,
+  legalSigned = false,
+  covenantRequested = false,
+  covenantUploaded = false,
 }: {
   mode: DrawerActionMode;
   staged_remediations: StagedRemediationReference[];
@@ -106,6 +110,10 @@ export function deriveDrawerActions({
   validationActions: Action[];
   creditRouted: boolean;
   creditSigned: boolean;
+  legalRouted?: boolean;
+  legalSigned?: boolean;
+  covenantRequested?: boolean;
+  covenantUploaded?: boolean;
 }): OriginatedAction[] {
   if (mode === "staged_remediation") {
     const validatedByRow = new Map(
@@ -124,13 +132,30 @@ export function deriveDrawerActions({
   }
 
   const batchActions = withBatchOrigin(validationActions);
-  const creditRouteNoLongerActionable = creditRouted || creditSigned;
-  const visible = creditRouteNoLongerActionable
-    ? batchActions.filter(
-        (action) =>
-          !(action.tool === "route_approval" && action.required_approver === "credit_officer"),
-      )
-    : batchActions;
+  const visible = batchActions.filter((action) => {
+    if (
+      (creditRouted || creditSigned) &&
+      action.tool === "route_approval" &&
+      action.required_approver === "credit_officer"
+    ) {
+      return false;
+    }
+    if (
+      (legalRouted || legalSigned) &&
+      action.tool === "route_approval" &&
+      action.required_approver === "legal"
+    ) {
+      return false;
+    }
+    if (
+      (covenantRequested || covenantUploaded) &&
+      action.tool === "create_task" &&
+      action.diff.target_object_id === "task_new_1"
+    ) {
+      return false;
+    }
+    return true;
+  });
   return visible.filter(hasRenderableOrigin);
 }
 

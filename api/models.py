@@ -275,10 +275,18 @@ LifecycleEventType = Literal[
     "decision_request_submitted",
     "approval_routed",
     "approval_returned",
+    "evidence_requested",
+    "evidence_uploaded",
     "source_changed",
     "revalidation_applied",
 ]
-LifecycleStage = Literal["initial", "credit_routed", "cascade_pending", "followups_ready"]
+LifecycleStage = Literal[
+    "initial",
+    "credit_routed",
+    "cascade_pending",
+    "followups_pending",
+    "approval_ready",
+]
 
 
 class LifecycleEvent(BaseModel):
@@ -300,6 +308,10 @@ class LifecycleState(BaseModel):
     intent: str = "prepare_decision_brief"
     routed: bool = False
     credit_signed: bool = False
+    legal_routed: bool = False
+    legal_signed: bool = False
+    covenant_requested: bool = False
+    covenant_uploaded: bool = False
     cs_reconciled: bool = False
     stage: LifecycleStage = "initial"
     cascade_available: bool = False

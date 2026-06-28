@@ -147,6 +147,63 @@ def test_staged_execute_applies_cs_plan_revalidation_event():
     }
 
 
+def test_staged_execute_routes_legal_and_waits_for_return():
+    response = client.post(
+        "/actions/staged-remediation/execute",
+        json={**_staged_body("legal_approval"), "approved": True},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["action"]["tool"] == "route_approval"
+    assert payload["action"]["required_approver"] == "legal"
+    assert payload["lifecycle_state"]["legal_routed"] is True
+    assert payload["lifecycle_state"]["legal_signed"] is False
+    routed_row = _row("legal_approval")
+    assert routed_row["status"] == "pending"
+    assert routed_row.get("action") is None
+
+    client.post(
+        "/api/lifecycle/events",
+        json={
+            **ACME,
+            "type": "approval_returned",
+            "object_id": "wf_approval",
+            "detail": {"approver": "legal"},
+        },
+    )
+
+    signed_row = _row("legal_approval")
+    assert signed_row["status"] == "approved"
+    assert signed_row.get("action") is None
+
+
+def test_staged_execute_requests_covenant_tracker_and_waits_for_upload():
+    response = client.post(
+        "/actions/staged-remediation/execute",
+        json={**_staged_body("covenant_tracker"), "approved": True},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["action"]["tool"] == "create_task"
+    assert payload["action"]["diff"]["target_object_id"] == "task_new_1"
+    assert payload["lifecycle_state"]["covenant_requested"] is True
+    assert payload["lifecycle_state"]["covenant_uploaded"] is False
+    requested_row = _row("covenant_tracker")
+    assert requested_row["status"] == "pending"
+    assert requested_row.get("action") is None
+
+    client.post(
+        "/api/lifecycle/events",
+        json={**ACME, "type": "evidence_uploaded", "object_id": "doc_covenant_tracker"},
+    )
+
+    uploaded_row = _row("covenant_tracker")
+    assert uploaded_row["status"] == "passed"
+    assert uploaded_row.get("action") is None
+
+
 def test_staged_execute_without_approval_is_skipped_not_executed():
     response = client.post(
         "/actions/staged-remediation/execute",
@@ -231,3 +288,33 @@ def test_brief_hides_cs_conflict_until_credit_officer_approval_return():
     assert "customer_success_plan_conflict" not in {
         row["id"] for row in reconciled["decision_readiness"]["rows"]
     }
+
+
+def test_brief_becomes_approval_ready_after_all_demo_dependencies_clear():
+    events = [
+        ("approval_routed", "doc_pricing_exception", {"approver": "credit_officer"}),
+        ("approval_returned", "doc_pricing_exception", {"approver": "credit_officer"}),
+        ("revalidation_applied", "doc_cs_plan", {}),
+        ("approval_routed", "wf_approval", {"approver": "legal"}),
+        ("approval_returned", "wf_approval", {"approver": "legal"}),
+        ("evidence_requested", "doc_covenant_tracker", {}),
+        ("evidence_uploaded", "doc_covenant_tracker", {}),
+    ]
+    for event_type, object_id, detail in events:
+        client.post(
+            "/api/lifecycle/events",
+            json={**ACME, "type": event_type, "object_id": object_id, "detail": detail},
+        )
+
+    ready = _api_brief()
+    rows = {row["id"]: row for row in ready["decision_readiness"]["rows"]}
+
+    assert ready["decision_brief"]["policy_gates"]["approval_ready"] is True
+    assert ready["lifecycle_state"]["stage"] == "approval_ready"
+    assert rows["credit_officer_approval"]["status"] == "approved"
+    assert rows["legal_approval"]["status"] == "approved"
+    assert rows["covenant_tracker"]["status"] == "passed"
+    assert ready["decision_brief"]["conflicts"] == []
+    assert "approval-ready" in ready["decision_brief"]["executive_summary"]
+    assert "Legal approval is still pending." not in ready["decision_brief"]["what_changed"]
+    assert "Legal approved the covenant modification." in ready["decision_brief"]["what_changed"]

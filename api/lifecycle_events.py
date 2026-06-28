@@ -51,22 +51,54 @@ def lifecycle_state(
 ) -> LifecycleState:
     """Derive current demo state from the event log."""
     scoped = [e for e in _events if e.user_id == user_id and e.intent == intent]
-    routed = _has_event(scoped, "approval_routed") and not _has_event(scoped, "approval_returned")
-    credit_signed = _has_event(scoped, "approval_returned")
-    cs_reconciled = _has_event(scoped, "revalidation_applied")
-    if cs_reconciled:
-        stage = "followups_ready"
+    credit_signed = _has_event(
+        scoped,
+        "approval_returned",
+        object_id="doc_pricing_exception",
+    )
+    credit_routed = (
+        _has_event(
+            scoped,
+            "approval_routed",
+            object_id="doc_pricing_exception",
+        )
+        and not credit_signed
+    )
+    legal_signed = _has_event(
+        scoped,
+        "approval_returned",
+        object_id="wf_approval",
+    )
+    legal_routed = (
+        _has_event(scoped, "approval_routed", object_id="wf_approval")
+        and not legal_signed
+    )
+    covenant_uploaded = _has_event(scoped, "evidence_uploaded", object_id="doc_covenant_tracker")
+    covenant_requested = (
+        _has_event(scoped, "evidence_requested", object_id="doc_covenant_tracker")
+        and not covenant_uploaded
+    )
+    cs_reconciled = _has_event(scoped, "revalidation_applied", object_id="doc_cs_plan")
+    approval_ready = credit_signed and legal_signed and covenant_uploaded and cs_reconciled
+    if approval_ready:
+        stage = "approval_ready"
+    elif legal_routed or covenant_requested or (credit_signed and cs_reconciled):
+        stage = "followups_pending"
     elif credit_signed:
         stage = "cascade_pending"
-    elif routed:
+    elif credit_routed:
         stage = "credit_routed"
     else:
         stage = "initial"
     return LifecycleState(
         user_id=user_id,
         intent=intent,
-        routed=routed,
+        routed=credit_routed,
         credit_signed=credit_signed,
+        legal_routed=legal_routed,
+        legal_signed=legal_signed,
+        covenant_requested=covenant_requested,
+        covenant_uploaded=covenant_uploaded,
         cs_reconciled=cs_reconciled,
         stage=stage,
         cascade_available=credit_signed and not cs_reconciled,
@@ -76,5 +108,20 @@ def lifecycle_state(
     )
 
 
-def _has_event(events: list[LifecycleEvent], event_type: LifecycleEventType) -> bool:
-    return any(event.type == event_type for event in events)
+def _has_event(
+    events: list[LifecycleEvent],
+    event_type: LifecycleEventType,
+    *,
+    object_id: str | None = None,
+    approver: str | None = None,
+) -> bool:
+    return any(
+        event.type == event_type
+        and (object_id is None or event.object_id == object_id)
+        and (
+            approver is None
+            or event.detail.get("approver") == approver
+            or event.detail.get("required_approver") == approver
+        )
+        for event in events
+    )

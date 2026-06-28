@@ -6,8 +6,8 @@
 // `useGovernedBrief()` — a deep overlay on `useBriefQuery().data` so EVERY surface (meeting rail,
 // packet, shared memo) shows ONE consistent recompute. Outcomes are pinned, never model-derived.
 //
-// Stage flow: initial → credit_routed → (visible CO response) credit_signed/cascade_pending →
-//             (Dana accepts) cascade_accepted/followups_ready.
+// Stage flow: initial → credit_routed → (visible CO response) cascade_pending →
+//             CS reconciliation + Legal/covenant follow-ups → approval_ready.
 import { useSyncExternalStore } from "react";
 
 import {
@@ -28,21 +28,36 @@ import type {
 export type RevalStage =
   | "initial"
   | "credit_routed"
-  | "credit_signed"
   | "cascade_pending"
-  | "cascade_accepted"
-  | "followups_ready";
+  | "followups_pending"
+  | "approval_ready";
 
 export type RevalidationState = {
   // Route clicked, CO not yet signed (pending approval chip).
   routed: boolean;
   // Credit Officer signed off on the 22% exception (authority + CO-approval gates clear).
   creditSigned: boolean;
+  // Legal route clicked, sign-off not yet returned.
+  legalRouted: boolean;
+  // Legal signed off on the covenant modification.
+  legalSigned: boolean;
+  // Covenant tracker upload task/request was sent to Priya.
+  covenantRequested: boolean;
+  // Priya uploaded the final covenant tracker.
+  covenantUploaded: boolean;
   // Dana accepted the cascade edit (CS plan reconciled to 22%; the 22-vs-18 conflict clears).
   csReconciled: boolean;
 };
 
-const initial: RevalidationState = { routed: false, creditSigned: false, csReconciled: false };
+const initial: RevalidationState = {
+  routed: false,
+  creditSigned: false,
+  legalRouted: false,
+  legalSigned: false,
+  covenantRequested: false,
+  covenantUploaded: false,
+  csReconciled: false,
+};
 
 let state: RevalidationState = initial;
 const listeners = new Set<() => void>();
@@ -71,6 +86,10 @@ export function useRevalidation(): RevalidationState & {
     return {
       routed: live.routed,
       creditSigned: live.credit_signed,
+      legalRouted: live.legal_routed,
+      legalSigned: live.legal_signed,
+      covenantRequested: live.covenant_requested,
+      covenantUploaded: live.covenant_uploaded,
       csReconciled: live.cs_reconciled,
       stage: stageOfLifecycle(live),
       cascadeAvailable: live.cascade_available,
@@ -80,17 +99,23 @@ export function useRevalidation(): RevalidationState & {
 }
 
 export function stageOf(s: RevalidationState = state): RevalStage {
-  if (s.csReconciled) return "followups_ready";
+  if (isApprovalReady(s)) return "approval_ready";
+  if (s.legalRouted || s.covenantRequested || s.csReconciled) return "followups_pending";
   if (s.creditSigned) return "cascade_pending";
   if (s.routed) return "credit_routed";
   return "initial";
 }
 
 function stageOfLifecycle(s: LifecycleStateData): RevalStage {
-  if (s.cs_reconciled) return "followups_ready";
+  if (s.stage === "approval_ready") return "approval_ready";
+  if (s.stage === "followups_pending") return "followups_pending";
   if (s.credit_signed) return "cascade_pending";
   if (s.routed) return "credit_routed";
   return "initial";
+}
+
+function isApprovalReady(s: RevalidationState): boolean {
+  return s.creditSigned && s.legalSigned && s.covenantUploaded && s.csReconciled;
 }
 
 /* -------- transitions -------- */
@@ -111,6 +136,32 @@ export function routeToCreditOfficer() {
 export function simulateCreditOfficerResponse(): boolean {
   if (!state.routed || state.creditSigned) return false;
   state = { ...state, routed: false, creditSigned: true };
+  emit();
+  return true;
+}
+
+export function routeToLegal() {
+  if (state.legalSigned || state.legalRouted) return;
+  state = { ...state, legalRouted: true };
+  emit();
+}
+
+export function simulateLegalResponse(): boolean {
+  if (!state.legalRouted || state.legalSigned) return false;
+  state = { ...state, legalRouted: false, legalSigned: true };
+  emit();
+  return true;
+}
+
+export function requestCovenantTracker() {
+  if (state.covenantUploaded || state.covenantRequested) return;
+  state = { ...state, covenantRequested: true };
+  emit();
+}
+
+export function simulateCovenantUpload(): boolean {
+  if (!state.covenantRequested || state.covenantUploaded) return false;
+  state = { ...state, covenantRequested: false, covenantUploaded: true };
   emit();
   return true;
 }
@@ -176,6 +227,7 @@ function markDiscountSources(sources: BriefData["sources"], status: SourceStatus
 // auto-clear from `present`, so we EXPLICITLY rewrite readiness rows, firings, approvals, conflicts,
 // and source statuses. approval_ready stays false the whole arc (covenant tracker + Legal remain).
 export function buildGovernedBrief(base: BriefData, s: RevalidationState): GovernedBrief {
+  const approvalReady = isApprovalReady(s);
   let brief = {
     ...base.decision_brief,
     conflicts: base.decision_brief.conflicts.filter((conflict) => !isCsPlanConflict(conflict)),
@@ -188,6 +240,27 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     RECONCILED_IDS.has(src.object_id) ? { ...src, status: "used" as SourceStatus } : src,
   );
 
+  if (s.legalSigned || s.covenantUploaded || s.csReconciled || approvalReady) {
+    brief = {
+      ...brief,
+      executive_summary: approvalReady
+        ? "Acme's 22% pricing exception, covenant modification, Legal sign-off, final covenant tracker, and downstream source revalidation are complete. The packet is approval-ready for committee decision."
+        : brief.executive_summary,
+      what_changed: [
+        "Revenue forecast revised from $42M to $38M in the updated model.",
+        s.legalSigned
+          ? "Legal approved the covenant modification."
+          : "Legal approval is still pending.",
+        s.covenantUploaded
+          ? "Final covenant tracker was uploaded and attached."
+          : "Final covenant tracker has not been uploaded.",
+        s.csReconciled
+          ? "Customer success plan now reflects the approved 22% discount."
+          : "Project plan still references the prior approval date.",
+      ],
+    };
+  }
+
   if (!s.creditSigned) {
     brief = { ...brief, conflicts: [] };
     sources = markDiscountSources(sources, "used");
@@ -195,11 +268,12 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     sources = markDiscountSources(sources, "conflicting");
   }
 
-  if (s.creditSigned) {
+  if (s.creditSigned || s.legalSigned) {
     brief = {
       ...brief,
       policy_gates: {
         ...brief.policy_gates,
+        approval_ready: approvalReady,
         firings: brief.policy_gates.firings.map((f) => {
           if (f.rule_id === "missing_approver") {
             return {
@@ -223,9 +297,20 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
       },
       required_approvals: {
         requirements: brief.required_approvals.requirements.map((r) =>
-          r.role === "credit_officer" ? { ...r, present: true, status: "approved" as const } : r,
+          r.role === "credit_officer" && s.creditSigned
+            ? { ...r, present: true, status: "approved" as const }
+            : r.role === "legal" && s.legalSigned
+              ? { ...r, present: true, status: "approved" as const }
+              : r,
         ),
       },
+    };
+  }
+  if (approvalReady) {
+    brief = {
+      ...brief,
+      policy_gates: { ...brief.policy_gates, approval_ready: true },
+      open_questions: [],
     };
   }
 
@@ -238,9 +323,6 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
   if (creditStatus) {
     readiness = {
       ...readiness,
-      summary: s.creditSigned
-        ? "Credit Officer signed off on the 22% exception. Two blockers remain: the final covenant tracker and Legal sign-off on the covenant modification."
-        : readiness.summary,
       rows: readiness.rows.map((row) =>
         row.id === "credit_officer_approval"
           ? {
@@ -256,6 +338,63 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     };
   }
 
+  readiness = {
+    ...readiness,
+    rows: readiness.rows.map((row) => {
+      if (row.id === "legal_approval") {
+        if (s.legalSigned) {
+          return {
+            ...row,
+            status: "approved" as ReadinessStatus,
+            details: "Legal signed off on the covenant modification.",
+            action: null,
+          };
+        }
+        if (s.legalRouted) {
+          return {
+            ...row,
+            status: "pending" as ReadinessStatus,
+            details: "Routed — pending Legal sign-off on the covenant modification.",
+            action: null,
+          };
+        }
+        return {
+          ...row,
+          action: row.action
+            ? {
+                ...row.action,
+                label: "Route to Legal",
+                parameters: {
+                  ...row.action.parameters,
+                  business_label: "Covenant modification legal review",
+                  route_note: "Route the covenant modification to Legal before committee decision.",
+                },
+              }
+            : row.action,
+        };
+      }
+      if (row.id === "covenant_tracker") {
+        if (s.covenantUploaded) {
+          return {
+            ...row,
+            status: "passed" as ReadinessStatus,
+            details: "Final covenant tracker uploaded and attached to the committee packet.",
+            action: null,
+          };
+        }
+        if (s.covenantRequested) {
+          return {
+            ...row,
+            status: "pending" as ReadinessStatus,
+            details: "Requested — pending Priya's final covenant tracker upload.",
+            action: null,
+          };
+        }
+      }
+      return row;
+    }),
+  };
+
   if (s.creditSigned && !s.csReconciled) {
     brief = { ...brief, conflicts: [...brief.conflicts, CS_PLAN_CONFLICT] };
     readiness = { ...readiness, rows: [...readiness.rows, CS_PLAN_CONFLICT_ROW] };
@@ -268,6 +407,22 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     brief = { ...brief, conflicts: [] };
     sources = markDiscountSources(sources, "used");
   }
+  if (s.covenantUploaded) {
+    sources = sources.map((src) =>
+      src.object_id === "doc_covenant_tracker" ? { ...src, status: "used" as SourceStatus } : src,
+    );
+  }
+
+  readiness = {
+    ...readiness,
+    summary: approvalReady
+      ? "All prerequisites are satisfied. The packet is approval-ready for committee decision."
+      : s.creditSigned && !s.csReconciled
+        ? "Credit Officer signed off on the 22% exception. Reconcile the customer success plan; Legal sign-off and the final covenant tracker still block decision."
+        : s.creditSigned
+          ? "Credit Officer signed off on the 22% exception. Two blockers remain: the final covenant tracker and Legal sign-off on the covenant modification."
+          : readiness.summary,
+  };
 
   return {
     ...base,
@@ -276,16 +431,22 @@ export function buildGovernedBrief(base: BriefData, s: RevalidationState): Gover
     sources,
     stage: stageOf(s),
     cascadeAvailable: s.creditSigned && !s.csReconciled,
-    workflow_status: s.creditSigned ? "Approved · discount exception" : null,
-    banner_subtitle: s.creditSigned
-      ? "Final covenant tracker missing · Legal sign-off on the covenant modification pending."
-      : s.routed
-        ? "Credit Officer route pending · final covenant tracker still missing."
-        : "Credit Officer approval missing · discount exceeds delegated authority.",
+    workflow_status: approvalReady
+      ? "Approval-ready"
+      : s.creditSigned
+        ? "Approved · discount exception"
+        : null,
+    banner_subtitle: approvalReady
+      ? "All prerequisites are satisfied for committee decision."
+      : s.creditSigned
+        ? "Final covenant tracker missing · Legal sign-off on the covenant modification pending."
+        : s.routed
+          ? "Credit Officer route pending · final covenant tracker still missing."
+          : "Credit Officer approval missing · discount exceeds delegated authority.",
     path_to_ready: [
       { label: "Route to Credit Officer", done: s.routed || s.creditSigned },
-      { label: "Complete Legal approval", done: false },
-      { label: "Upload final covenant tracker", done: false },
+      { label: "Complete Legal approval", done: s.legalSigned },
+      { label: "Upload final covenant tracker", done: s.covenantUploaded },
     ],
   };
 }
@@ -294,6 +455,10 @@ export function buildLiveGovernedBrief(base: BriefData, live: LifecycleStateData
   const state = {
     routed: live.routed,
     creditSigned: live.credit_signed,
+    legalRouted: live.legal_routed,
+    legalSigned: live.legal_signed,
+    covenantRequested: live.covenant_requested,
+    covenantUploaded: live.covenant_uploaded,
     csReconciled: live.cs_reconciled,
   };
   const governed = buildGovernedBrief(base, state);
@@ -301,17 +466,6 @@ export function buildLiveGovernedBrief(base: BriefData, live: LifecycleStateData
     ...governed,
     stage: stageOfLifecycle(live),
     cascadeAvailable: live.cascade_available,
-    workflow_status: state.creditSigned ? "Approved · discount exception" : null,
-    banner_subtitle: state.creditSigned
-      ? "Final covenant tracker missing · Legal sign-off on the covenant modification pending."
-      : state.routed
-        ? "Credit Officer route pending · final covenant tracker still missing."
-        : "Credit Officer approval missing · discount exceeds delegated authority.",
-    path_to_ready: [
-      { label: "Route to Credit Officer", done: state.routed || state.creditSigned },
-      { label: "Complete Legal approval", done: false },
-      { label: "Upload final covenant tracker", done: false },
-    ],
   };
 }
 

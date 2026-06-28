@@ -86,10 +86,17 @@ export type LifecycleEventType =
   | "decision_request_submitted"
   | "approval_routed"
   | "approval_returned"
+  | "evidence_requested"
+  | "evidence_uploaded"
   | "source_changed"
   | "revalidation_applied";
 
-export type LifecycleStage = "initial" | "credit_routed" | "cascade_pending" | "followups_ready";
+export type LifecycleStage =
+  | "initial"
+  | "credit_routed"
+  | "cascade_pending"
+  | "followups_pending"
+  | "approval_ready";
 
 export interface LifecycleEventData {
   id?: string;
@@ -106,6 +113,10 @@ export interface LifecycleStateData {
   intent: string;
   routed: boolean;
   credit_signed: boolean;
+  legal_routed: boolean;
+  legal_signed: boolean;
+  covenant_requested: boolean;
+  covenant_uploaded: boolean;
   cs_reconciled: boolean;
   stage: LifecycleStage;
   cascade_available: boolean;
@@ -119,6 +130,10 @@ const initialLifecycleState: LifecycleStateData = {
   intent: "prepare_decision_brief",
   routed: false,
   credit_signed: false,
+  legal_routed: false,
+  legal_signed: false,
+  covenant_requested: false,
+  covenant_uploaded: false,
   cs_reconciled: false,
   stage: "initial",
   cascade_available: false,
@@ -654,6 +669,24 @@ function executedCreditOfficerRoute(events: ServerAuditEvent[]): boolean {
   );
 }
 
+function executedLegalRoute(events: ServerAuditEvent[]): boolean {
+  return events.some(
+    (event) =>
+      event.action === "executed" &&
+      event.detail.tool === "route_approval" &&
+      event.detail.target === "wf_approval",
+  );
+}
+
+function executedCovenantRequest(events: ServerAuditEvent[]): boolean {
+  return events.some(
+    (event) =>
+      event.action === "executed" &&
+      event.detail.tool === "create_task" &&
+      event.detail.target === "task_new_1",
+  );
+}
+
 // POST approved indices to the gateway; it recomposes + executes the gated plan and returns the
 // audit. Live-only (the drawer keeps its client-side simulation for offline/mock). Used to prove
 // the anti-bypass guarantee: approve every index, the blocked ones still come back `skipped`.
@@ -674,17 +707,22 @@ export function useExecuteActionsMutation() {
       return (await res.json()) as ServerAuditEvent[];
     },
     onSuccess: (events) => {
-      if (executedCreditOfficerRoute(events)) {
+      const creditRouted = executedCreditOfficerRoute(events);
+      const legalRouted = executedLegalRoute(events);
+      const covenantRequested = executedCovenantRequest(events);
+      if (creditRouted || legalRouted || covenantRequested) {
         qc.setQueryData<LifecycleStateData>(
           ["lifecycle", "u_rm", "prepare_decision_brief"],
           (previous = initialLifecycleState) => {
-            if (previous.credit_signed) return previous;
             return {
               ...previous,
-              routed: true,
-              credit_signed: false,
-              cs_reconciled: false,
-              stage: "credit_routed",
+              routed: creditRouted && !previous.credit_signed ? true : previous.routed,
+              legal_routed: legalRouted && !previous.legal_signed ? true : previous.legal_routed,
+              covenant_requested:
+                covenantRequested && !previous.covenant_uploaded
+                  ? true
+                  : previous.covenant_requested,
+              stage: creditRouted ? "credit_routed" : "followups_pending",
               cascade_available: false,
               changes_count: 0,
               event_count: previous.event_count + 1,

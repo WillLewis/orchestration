@@ -1623,6 +1623,8 @@
               "decision_request_submitted",
               "approval_routed",
               "approval_returned",
+              "evidence_requested",
+              "evidence_uploaded",
               "source_changed",
               "revalidation_applied"
             ],
@@ -1654,6 +1656,16 @@
             "title": "Changes Count",
             "type": "integer"
           },
+          "covenant_requested": {
+            "default": false,
+            "title": "Covenant Requested",
+            "type": "boolean"
+          },
+          "covenant_uploaded": {
+            "default": false,
+            "title": "Covenant Uploaded",
+            "type": "boolean"
+          },
           "credit_signed": {
             "default": false,
             "title": "Credit Signed",
@@ -1681,6 +1693,16 @@
             "title": "Intent",
             "type": "string"
           },
+          "legal_routed": {
+            "default": false,
+            "title": "Legal Routed",
+            "type": "boolean"
+          },
+          "legal_signed": {
+            "default": false,
+            "title": "Legal Signed",
+            "type": "boolean"
+          },
           "routed": {
             "default": false,
             "title": "Routed",
@@ -1692,7 +1714,8 @@
               "initial",
               "credit_routed",
               "cascade_pending",
-              "followups_ready"
+              "followups_pending",
+              "approval_ready"
             ],
             "title": "Stage",
             "type": "string"

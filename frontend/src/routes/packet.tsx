@@ -592,6 +592,8 @@ function PacketWorkspace() {
             decision_brief,
             sources,
             creditSigned: revalidation.creditSigned,
+            legalSigned: revalidation.legalSigned,
+            covenantUploaded: revalidation.covenantUploaded,
             csReconciled: revalidation.csReconciled,
           });
           mint.mutate(

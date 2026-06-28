@@ -141,16 +141,20 @@ export function buildGovernanceCertificate(input: {
   decision_brief: DecisionBriefSnapshot;
   sources: SourceSnapshot;
   creditSigned: boolean;
+  legalSigned: boolean;
+  covenantUploaded: boolean;
   csReconciled: boolean;
 }): GovernanceCertificate {
+  const approvalReady =
+    input.creditSigned && input.legalSigned && input.covenantUploaded && input.csReconciled;
   const sourceVersions = governance_certificate.governance.source_versions.map((source) => {
     if (source.object_id === "wf_approval") {
       return {
         ...source,
-        version: input.creditSigned ? 2 : source.version,
+        version: input.creditSigned || input.legalSigned ? 2 : source.version,
         metadata: {
           ...source.metadata,
-          legal_status: "pending",
+          legal_status: input.legalSigned ? "approved" : "pending",
           credit_officer_approval: input.creditSigned,
         },
       };
@@ -164,6 +168,25 @@ export function buildGovernanceCertificate(input: {
     }
     return source;
   });
+  const finalSourceVersions = input.covenantUploaded
+    ? [
+        ...sourceVersions,
+        {
+          object_id: "doc_covenant_tracker",
+          title: "Final covenant tracker",
+          type: "document",
+          version: 1,
+          metadata: { uploaded: true },
+        },
+      ]
+    : sourceVersions;
+  const pathToReady = approvalReady
+    ? []
+    : [
+        ...(input.creditSigned ? [] : ["Route the pricing exception to the Credit Officer."]),
+        ...(input.legalSigned ? [] : ["Complete Legal approval."]),
+        ...(input.covenantUploaded ? [] : ["Upload the final covenant tracker."]),
+      ];
 
   return {
     ...governance_certificate,
@@ -173,18 +196,22 @@ export function buildGovernanceCertificate(input: {
     sources: input.sources,
     governance: {
       ...governance_certificate.governance,
-      approval_reason: input.creditSigned
-        ? "Final covenant tracker missing; Legal sign-off on the covenant modification pending."
-        : governance_certificate.governance.approval_reason,
-      path_to_ready: input.creditSigned
-        ? ["Complete Legal approval.", "Upload the final covenant tracker."]
-        : [...governance_certificate.governance.path_to_ready],
-      source_versions: sourceVersions,
-      loop_summary: input.csReconciled
-        ? "Discount exception approved at 22%; customer success plan reconciled. Legal approval and the final covenant tracker remain open."
+      approval_ready: approvalReady,
+      approval_stamp: approvalReady ? "APPROVAL-READY" : "NOT APPROVAL-READY",
+      approval_reason: approvalReady
+        ? "Credit Officer, Legal, covenant evidence, and source revalidation are complete."
         : input.creditSigned
-          ? "Discount exception approved at 22%; downstream customer success plan reconciliation was pending at seal time."
-          : governance_certificate.governance.loop_summary,
+          ? "Remaining prerequisites must clear before committee decision."
+          : governance_certificate.governance.approval_reason,
+      path_to_ready: pathToReady,
+      source_versions: finalSourceVersions,
+      loop_summary: approvalReady
+        ? "Discount exception approved at 22%; Legal approved the covenant modification; final covenant tracker uploaded; customer success plan reconciled."
+        : input.csReconciled
+          ? "Discount exception approved at 22%; customer success plan reconciled. Legal approval and the final covenant tracker remain open."
+          : input.creditSigned
+            ? "Discount exception approved at 22%; downstream customer success plan reconciliation was pending at seal time."
+            : governance_certificate.governance.loop_summary,
     },
   } as unknown as GovernanceCertificate;
 }

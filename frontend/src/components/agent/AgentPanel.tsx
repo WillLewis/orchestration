@@ -42,7 +42,7 @@ const STARTER_LABELS: Record<string, string> = {
   monitor: "Monitor this decision",
 };
 
-const CREDIT_OFFICER_RESPONSE_DELAY_MS = 3000;
+const CREDIT_OFFICER_RESPONSE_DELAY_MS = 1500;
 
 function wait(ms: number) {
   return new Promise((resolve) => {
