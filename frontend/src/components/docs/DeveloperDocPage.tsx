@@ -158,30 +158,22 @@ const primitiveRows: PrimitiveRow[] = [
   },
   {
     primitive: <DocLink to="/developers/gating">Policy Artifact</DocLink>,
-    whatItIs: "Versioned policy-as-data that owns deterministic rule parameters.",
-    configuredBy: "Rules, thresholds, owners, eval pack, runtime mode",
+    whatItIs:
+      "Versioned policy-as-data that owns deterministic rule parameters, thresholds, calculations, and blocked-action rules.",
+    configuredBy:
+      "Rules, thresholds, calculations, blocked actions, owners, eval pack, runtime mode",
     examples: {
-      finance: "finance_credit_v1 active policy artifact",
+      finance: "finance_credit_v1 blocks 22% without Credit Officer approval",
       legal: (
         <>
-          <code>legal_contract_v1</code> active policy artifact.
+          <code>legal_contract_v1</code> blocks playbook exceptions without Legal approval.
         </>
       ),
       health: (
         <>
-          <code>health_protocol_v1</code> active policy artifact.
+          <code>health_protocol_v1</code> blocks PHI sharing outside minimum-necessary policy.
         </>
       ),
-    },
-  },
-  {
-    primitive: <DocLink to="/developers/gating">RulePack</DocLink>,
-    whatItIs: "Encodes deterministic thresholds, calculations, and blocked-action rules.",
-    configuredBy: "Thresholds, calculations, blocked actions",
-    examples: {
-      finance: "22% requires Credit Officer approval",
-      legal: "3x liability cap exceeds 1.5x playbook limit.",
-      health: "14 PHI fields exceeds 6-field minimum-necessary limit.",
     },
   },
   {
@@ -368,7 +360,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
       {
         label: "Deterministic Gating",
         to: "/developers/gating",
-        description: "How RulePacks, ApprovalMatrix, and PolicyGraph become a gate.",
+        description: "How Policy Artifacts, ApprovalMatrix, and PolicyGraph become a gate.",
       },
     ],
     content: PrimitivesPage,
@@ -911,6 +903,10 @@ function PrimitivesPage() {
           same primitive appears in finance, legal, and health without changing the runtime
           substrate.
         </p>
+        <p>
+          Product terminology uses <code>Policy Artifact</code>. The internal <code>RulePack</code>{" "}
+          schema is the verifier's compiled rule subset, not a second platform primitive.
+        </p>
       </DocsSection>
 
       <div
@@ -951,8 +947,8 @@ function PrimitivesPage() {
           metadata, workflow state, and source versions into the read and verification steps.
         </p>
         <p>
-          <code>RulePack</code>, <code>ApprovalMatrix</code>, and <code>PolicyGraph</code> determine
-          whether the decision is ready and which blocker comes next.{" "}
+          <code>Policy Artifact</code>, <code>ApprovalMatrix</code>, and <code>PolicyGraph</code>{" "}
+          determine whether the decision is ready and which blocker comes next.{" "}
           <code>Decision Readiness Row</code> turns those blockers into stageable remediations.{" "}
           <code>ActionDiff</code>, <code>LifecycleEvent</code>, <code>WorkProductContract</code>,{" "}
           <code>RevalidationRule</code>, and <code>EvalTrace</code> keep every write previewed,

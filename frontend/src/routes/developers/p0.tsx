@@ -40,7 +40,7 @@ const loopProofRows: TableRow[] = [
   {
     cells: [
       "Agent does not mutate a source document directly",
-      "Permission boundary / policy gate",
+      "Permission boundary / Policy Artifact gate",
     ],
   },
   {
@@ -78,7 +78,11 @@ const primitiveCorrectnessRows: TableRow[] = [
     ],
   },
   {
-    cells: ["Policy Artifact", "Did 22% block and 15% allow?", "Correct allow/block decision"],
+    cells: [
+      "Policy Artifact",
+      "Did the active policy artifact block 22% and allow 15%?",
+      "Correct allow/block decision from the deterministic verifier",
+    ],
   },
   {
     cells: [
@@ -301,6 +305,12 @@ function P0DocsPage() {
           Ship one closed Acme route before broadening the product surface. The wedge is narrow on
           purpose: it demonstrates safety, workflow movement, and recomputation in one auditable
           path instead of trying to prove every agent capability at once.
+        </p>
+        <p>
+          Terminology is deliberate: <strong>Policy Artifact</strong> is the product primitive. The
+          internal <code>RulePack</code> is the locked verifier schema / compiled rule subset that a
+          Policy Artifact feeds. P0 measures the public Policy Artifact behavior, not a second
+          RulePack primitive.
         </p>
         <p>
           Measure it in two layers: primitive correctness for deterministic substrate behavior, and
