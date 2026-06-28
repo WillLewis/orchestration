@@ -534,6 +534,7 @@ function PacketWorkspace() {
   } = useGovernedBrief();
   const mint = useMintWorkProductMutation();
   const b = decision_brief;
+  const approvalReady = b.policy_gates.approval_ready;
 
   // "Ask about this packet" reuses the governed /chat answerer (permission refusal, gate-hold,
   // missing-evidence honesty, validated citations) — same Acme scope as the meeting panel.
@@ -659,22 +660,50 @@ function PacketWorkspace() {
           </div>
 
           {/* Status banner */}
-          <div className="mt-5 overflow-hidden rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-bg)]">
+          <div
+            className={[
+              "mt-5 overflow-hidden rounded-xl border",
+              approvalReady
+                ? "border-[var(--success)]/30 bg-[var(--success-bg)]"
+                : "border-[var(--danger)]/30 bg-[var(--danger-bg)]",
+            ].join(" ")}
+          >
             <div className="grid gap-5 px-5 py-4 md:grid-cols-[1fr_minmax(280px,360px)]">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--danger)]/15 text-[var(--danger)]">
-                    <XCircle className="h-4 w-4" />
+                  <span
+                    className={[
+                      "grid h-6 w-6 place-items-center rounded-full",
+                      approvalReady
+                        ? "bg-[var(--success)]/15 text-[var(--success)]"
+                        : "bg-[var(--danger)]/15 text-[var(--danger)]",
+                    ].join(" ")}
+                  >
+                    {approvalReady ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
                   </span>
-                  <div className="text-[18px] font-semibold tracking-tight text-[var(--danger)]">
-                    Approval-ready: No
+                  <div
+                    className={[
+                      "text-[18px] font-semibold tracking-tight",
+                      approvalReady ? "text-[var(--success)]" : "text-[var(--danger)]",
+                    ].join(" ")}
+                  >
+                    Approval-ready: {approvalReady ? "Yes" : "No"}
                   </div>
                 </div>
                 <p className="mt-1.5 pl-8 text-[13px] leading-snug text-foreground">
                   {banner_subtitle}
                 </p>
               </div>
-              <div className="rounded-lg border border-[var(--danger)]/20 bg-background/70 p-3">
+              <div
+                className={[
+                  "rounded-lg border bg-background/70 p-3",
+                  approvalReady ? "border-[var(--success)]/20" : "border-[var(--danger)]/20",
+                ].join(" ")}
+              >
                 <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-fg)]">
                   Path to ready
                 </div>
