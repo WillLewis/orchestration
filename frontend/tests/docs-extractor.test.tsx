@@ -18,7 +18,7 @@ const expectedHeadingsByRoute: Record<LiveDocsRoute, string[]> = {
   "/developers/roadmap": ["Roadmap", "Substrate"],
   "/developers/primitives": ["Primitives", "Primitive map"],
   "/developers/whats-live": ["What's Live", "Substrate - real vs simulated"],
-  "/developers/metrics": ["Success Metrics", "Measure value and trust separately"],
+  "/developers/metrics": ["Success Metrics", "Success metrics by area"],
   "/developers/risks": ["Risks & Mitigations", "The risky transition is read to write"],
   "/developers/context-assembly": ["Context Assembly", "From workspace objects to a usable bundle"],
   "/developers/gating": ["Deterministic Gating", "Policy Artifact - policy-as-data"],

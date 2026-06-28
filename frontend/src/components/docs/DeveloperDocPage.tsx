@@ -24,7 +24,6 @@ import {
 import { gatingExamples } from "@/data/gating";
 import { deriveOpenStatus, loop_state } from "@/data/loop";
 import {
-  METRIC_LABELS,
   TAXONOMY_LABELS,
   eval_rows,
   failure_taxonomy,
@@ -49,17 +48,66 @@ type PageDefinition = {
 };
 
 const financeReplay = gatingExamples.finance.replayResponse;
-const approvalBurden = financeReplay.approval_burden as {
-  escalations: number;
-  est_per_week: number;
-  by_approver: Record<string, number>;
-};
-const topFailureModes = financeReplay.top_failure_modes as Array<{ mode: string; count: number }>;
 const regressionStats = financeReplay.regression as { passed: number; total: number };
 const dscr = decision_brief.policy_gates.calculations[0];
 const routeApprovalAction = action_plan.actions.find((action) => action.tool === "route_approval");
 const blockedAction = action_plan.actions.find((action) => action.blocked_reason);
 const loopOpenStatus = deriveOpenStatus(loop_state, action_plan.actions);
+const successMetricRows = [
+  {
+    area: "User value",
+    kpi: "Decision-to-ready cycle time; workflow completion rate",
+  },
+  {
+    area: "Trust",
+    kpi: "Percent of agent answers with valid citations; missing-evidence honesty rate",
+  },
+  {
+    area: "Permissions",
+    kpi: "Permission-denial correctness; restricted-source leakage rate",
+  },
+  {
+    area: "Action safety",
+    kpi: "Approval, edit, and reject rates; invalid-action block rate",
+  },
+  {
+    area: "Record lifecycle",
+    kpi: "Stale-record detection time; targeted reapproval accuracy",
+  },
+  {
+    area: "Platform health",
+    kpi: "p50/p95 latency; tool success rate; cost per completed workflow; eval regression pass rate",
+  },
+];
+const evalKpiRows = [
+  {
+    area: "User value",
+    signal: "Workflow telemetry measures decision-to-ready time and completion rate.",
+  },
+  {
+    area: "Trust",
+    signal: "EvalTrace scores citation correctness and missing-evidence honesty.",
+  },
+  {
+    area: "Permissions",
+    signal:
+      "Permission-denial cases and leakage checks must pass with no restricted-source exposure.",
+  },
+  {
+    area: "Action safety",
+    signal:
+      "Replay scores approval routing, accepted edits, rejected proposals, and invalid-action blocks.",
+  },
+  {
+    area: "Record lifecycle",
+    signal:
+      "Regression cases cover stale-record detection, version checks, and targeted reapproval routes.",
+  },
+  {
+    area: "Platform health",
+    signal: "Replay aggregates latency, cost, tool outcomes, and regression pass rate.",
+  },
+];
 const primitiveRows = [
   {
     primitive: "AgentRecipe",
@@ -176,21 +224,6 @@ function Pill({
   );
 }
 
-function pct(value: unknown) {
-  return typeof value === "number" ? `${Math.round(value * 100)}%` : String(value);
-}
-
-function labelMetric(key: string) {
-  return METRIC_LABELS[key] ?? key.replace(/_/g, " ");
-}
-
-function metricRows(metrics: Record<string, number>) {
-  return Object.entries(metrics).map(([metric, value]) => ({
-    metric: labelMetric(metric),
-    value: pct(value),
-  }));
-}
-
 function statusTone(status: string): "green" | "red" | "amber" | "zinc" {
   if (["used", "approved", "passed", "ready", "current"].includes(status)) return "green";
   if (["missing", "blocking", "blocked", "restricted", "stale"].includes(status)) return "red";
@@ -204,9 +237,10 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     title: "Success Metrics",
     description: (
       <p>
-        The north star is decision-to-closed-work-product cycle time for regulated review. Every
-        other metric is a driver or guardrail: permission safety, deterministic rule pass rate,
-        citation support, approval burden, freshness, latency, and cost.
+        The north star is decision-to-ready cycle time, paired with workflow completion rate for
+        regulated review. Every other metric is a driver or guardrail: citation validity,
+        missing-evidence honesty, permission safety, action outcomes, freshness, latency, tool
+        success, cost, and eval regression health.
       </p>
     ),
     related: [
@@ -670,17 +704,15 @@ export function DeveloperDocPage({ pageId }: { pageId: DeveloperDocPageId }) {
 }
 
 function MetricsPage() {
-  const financeScore = vertical_scores.finance;
-
   return (
     <>
       <StatGrid
         stats={[
           {
             label: "North star",
-            value: "decision -> closed",
+            value: "decision -> ready",
             detail:
-              "Cycle time from discussed decision to sealed, governed work product with open follow-ups routed.",
+              "Cycle time from discussed decision to approval-ready work product; completion rate tracks routed work through close.",
           },
           {
             label: "Replay sample",
@@ -690,82 +722,75 @@ function MetricsPage() {
           {
             label: "Regression",
             value: `${regressionStats.passed} / ${regressionStats.total}`,
-            detail: "Regression checks passing for the finance policy replay.",
+            detail: "Eval regression checks passing before a policy artifact is activated.",
           },
           {
             label: "Guardrail leaks",
             value: String(financeReplay.permission_leaks),
             detail:
-              "Permission leaks, unsupported approval claims, and stale-source misses stay at zero.",
+              "Restricted-source leakage, unsupported approval claims, and stale-source misses stay at zero.",
           },
         ]}
       />
 
       <DocsSection
         label="drivers"
-        title="Measure value and trust separately"
+        title="Success metrics by area"
         aside={
           <DataTable
             columns={[
-              { key: "metric", label: "Metric" },
-              { key: "value", label: "Value", align: "right" },
+              { key: "area", label: "Area" },
+              { key: "kpi", label: "KPI" },
             ]}
-            rows={[
-              { metric: "Projected block rate", value: pct(financeReplay.projected_block_rate) },
-              {
-                metric: "Policy violations caught",
-                value: String(financeReplay.policy_violations_caught),
-              },
-              { metric: "Approval escalations", value: approvalBurden.escalations },
-              { metric: "Estimated p95 latency", value: `${financeReplay.est_latency_p95_ms} ms` },
-              { metric: "Estimated replay cost", value: `$${financeReplay.est_cost_usd}` },
-            ]}
+            rows={successMetricRows}
           />
         }
       >
         <p>
-          The product goal is not "more agent output." It is fewer manual handoffs between a
-          decision and a finished record. The guardrails make that value safe: zero permission
-          leaks, zero unsupported approval claims, zero stale-source misses, and no raw content in
-          telemetry.
+          The product goal is not "more agent output." It is faster, safer movement from a discussed
+          decision to an approval-ready record, then through the workflow to completion. The KPI
+          table keeps that user value tied to trust, permission safety, action safety, record
+          freshness, and platform health.
         </p>
         <p>
-          The finance replay makes those guardrails visible before deployment. It estimates approval
-          burden, caught violations, latency, and cost so admins can see operational impact before a
-          Policy Artifact becomes active.
+          Replay values remain inputs, not the whole scorecard. They estimate block rate, approval
+          burden, caught violations, latency, and cost before a Policy Artifact becomes active; the
+          KPI areas define how those numbers roll up into product success.
         </p>
       </DocsSection>
 
       <DocsSection
         label="evals"
-        title="The three-vertical proof is part of the score"
+        title="Eval coverage for the KPI scorecard"
         aside={
           <DataTable
             dense
             columns={[
-              { key: "metric", label: "Finance metric" },
-              { key: "value", label: "Score", align: "right" },
+              { key: "area", label: "Area" },
+              { key: "signal", label: "Measurement source" },
             ]}
-            rows={metricRows(financeScore.metrics)}
+            rows={evalKpiRows}
           />
         }
       >
         <p>
-          Success also means the same substrate works outside finance. The Agent Ops scorecard
-          tracks finance, legal, and health recipes over deterministic rule pass, citation
-          correctness, permission denial, missing evidence honesty, and vertical-specific gates.
+          Eval packs and regression suites are the proof layer for the trust, permissions,
+          action-safety, record-lifecycle, and platform-health guardrails. Workflow telemetry
+          supplies the user-value measures that evals cannot infer from a single replay case.
         </p>
         <p>
-          Lower-level metrics stay content-free. Rows expose intent classes, expected signals, and
-          observed signals; they do not expose prompts, documents, transcripts, or response text.
+          Lower-level metrics stay content-free. Rows expose intent classes, expected signals,
+          observed signals, latency buckets, cost buckets, and tool outcomes; they do not expose
+          prompts, documents, transcripts, or response text.
         </p>
       </DocsSection>
 
       <Callout title="Operating readout">
         <p>
           The operational readout combines cycle time, approval burden, replay pass rate, privacy
-          telemetry, and freshness. A faster agent that leaks content, bypasses a gate, or silently
-          goes stale does not count as successful.
+          telemetry, freshness, action outcomes, and platform health. A faster agent that leaks
+          content, bypasses a gate, proposes invalid writes, or silently goes stale does not count
+          as successful.
         </p>
       </Callout>
     </>

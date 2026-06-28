@@ -28,7 +28,7 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
   metrics: {
     title: "Success Metrics",
     description:
-      "Success metrics for the governed ConnectWork agent: cycle time, trust guardrails, eval scores, replay metrics, approval burden, and cost.",
+      "Success metrics for the governed ConnectWork agent: decision-to-ready cycle time, workflow completion, trust, permissions, action safety, record lifecycle, and platform health.",
   },
   primitives: {
     title: "Primitives",
