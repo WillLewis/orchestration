@@ -7,6 +7,7 @@ export type LiveDocsRoute =
   | "/developers/vision"
   | "/developers/prioritization"
   | "/developers/roadmap"
+  | "/developers/whats-live"
   | "/developers/metrics"
   | "/developers/risks"
   | "/developers/context-assembly"
@@ -53,6 +54,7 @@ export const docsNav: DocsNavSection[] = [
       { label: "Agent Vision", to: "/developers/vision", live: true },
       { label: "Prioritization", to: "/developers/prioritization", live: true },
       { label: "Roadmap", to: "/developers/roadmap", live: true },
+      { label: "What's Live", to: "/developers/whats-live", live: true },
       { label: "Success Metrics", to: "/developers/metrics", live: true },
       { label: "Risks & Mitigations", to: "/developers/risks", live: true },
     ],

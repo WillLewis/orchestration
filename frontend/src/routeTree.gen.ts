@@ -15,6 +15,7 @@ import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DevelopersIndexRouteImport } from './routes/developers/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
+import { Route as DevelopersWhatsLiveRouteImport } from './routes/developers/whats-live'
 import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
 import { Route as DevelopersVerticalsRouteImport } from './routes/developers/verticals'
 import { Route as DevelopersUiMeetingsRouteImport } from './routes/developers/ui-meetings'
@@ -68,6 +69,11 @@ const DevelopersIndexRoute = DevelopersIndexRouteImport.update({
 const RecordRecordIdRoute = RecordRecordIdRouteImport.update({
   id: '/record/$recordId',
   path: '/record/$recordId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersWhatsLiveRoute = DevelopersWhatsLiveRouteImport.update({
+  id: '/developers/whats-live',
+  path: '/developers/whats-live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevelopersVisionRoute = DevelopersVisionRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
+  '/developers/whats-live': typeof DevelopersWhatsLiveRoute
   '/record/$recordId': typeof RecordRecordIdRoute
   '/developers/': typeof DevelopersIndexRoute
 }
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
+  '/developers/whats-live': typeof DevelopersWhatsLiveRoute
   '/record/$recordId': typeof RecordRecordIdRoute
   '/developers': typeof DevelopersIndexRoute
 }
@@ -289,6 +297,7 @@ export interface FileRoutesById {
   '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
+  '/developers/whats-live': typeof DevelopersWhatsLiveRoute
   '/record/$recordId': typeof RecordRecordIdRoute
   '/developers/': typeof DevelopersIndexRoute
 }
@@ -323,6 +332,7 @@ export interface FileRouteTypes {
     | '/developers/ui-meetings'
     | '/developers/verticals'
     | '/developers/vision'
+    | '/developers/whats-live'
     | '/record/$recordId'
     | '/developers/'
   fileRoutesByTo: FileRoutesByTo
@@ -355,6 +365,7 @@ export interface FileRouteTypes {
     | '/developers/ui-meetings'
     | '/developers/verticals'
     | '/developers/vision'
+    | '/developers/whats-live'
     | '/record/$recordId'
     | '/developers'
   id:
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/developers/ui-meetings'
     | '/developers/verticals'
     | '/developers/vision'
+    | '/developers/whats-live'
     | '/record/$recordId'
     | '/developers/'
   fileRoutesById: FileRoutesById
@@ -420,6 +432,7 @@ export interface RootRouteChildren {
   DevelopersUiMeetingsRoute: typeof DevelopersUiMeetingsRoute
   DevelopersVerticalsRoute: typeof DevelopersVerticalsRoute
   DevelopersVisionRoute: typeof DevelopersVisionRoute
+  DevelopersWhatsLiveRoute: typeof DevelopersWhatsLiveRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
   DevelopersIndexRoute: typeof DevelopersIndexRoute
 }
@@ -466,6 +479,13 @@ declare module '@tanstack/react-router' {
       path: '/record/$recordId'
       fullPath: '/record/$recordId'
       preLoaderRoute: typeof RecordRecordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/whats-live': {
+      id: '/developers/whats-live'
+      path: '/developers/whats-live'
+      fullPath: '/developers/whats-live'
+      preLoaderRoute: typeof DevelopersWhatsLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/developers/vision': {
@@ -668,6 +688,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersUiMeetingsRoute: DevelopersUiMeetingsRoute,
   DevelopersVerticalsRoute: DevelopersVerticalsRoute,
   DevelopersVisionRoute: DevelopersVisionRoute,
+  DevelopersWhatsLiveRoute: DevelopersWhatsLiveRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
   DevelopersIndexRoute: DevelopersIndexRoute,
 }

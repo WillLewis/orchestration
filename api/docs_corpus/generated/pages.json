@@ -113,6 +113,88 @@
     ]
   },
   {
+    "id": "whats-live",
+    "route": "/developers/whats-live",
+    "title": "What's Live",
+    "sections": [
+      {
+        "heading": "What's Live",
+        "anchor": "whats-live",
+        "text": "The logic is real. The backend runs the verification, the approval routing, the conflict check, and the seal. What's simulated is the other people - when I click \"Simulate Credit Officer response,\" I'm standing in for a person who isn't in the room. I did that so the demo doesn't depend on live email or a second human. But every state change you saw is computed by the system, not written into the screen ahead of time. How to read the demo Green rows are wired to live-capable backend or gateway paths. Amber rows are deterministic demo playback or client-side simulation. Red rows are implemented backend paths that are not on the primary UI journey for the walkthrough. wired - live-capable simulated - deterministic demo backlog - backend exists default mocks; live = VITE_USE_MOCKS=false + make api"
+      },
+      {
+        "heading": "Meeting side panel",
+        "anchor": "meeting-side-panel",
+        "text": "/ Chat input + @Agent routing /chat - scripted in mock Memo + brief recompute /api/brief + /api/lifecycle Decision readiness rows /api/brief Suggested-action arc /api/lifecycle/events Generate brief thinking animation Participant rail mock"
+      },
+      {
+        "heading": "Decision packet",
+        "anchor": "decision-packet",
+        "text": "/packet Brief - readiness - gates - calcs /api/brief Approval-ready banner policy_gates.approval_ready Readiness row -> stage /actions/staged-remediation Ask about packet /chat Seal as governed record /workproducts/mint Source rail - pin client UI"
+      },
+      {
+        "heading": "Action diff drawer",
+        "anchor": "action-diff-drawer",
+        "text": "global Action plan + diffs /api/actions Staged remediation cards /actions/staged-remediation Execute staged row /staged-remediation/execute Run all on gateway /actions/execute Changes count /api/lifecycle Approve / edit staging client store"
+      },
+      {
+        "heading": "Agent Ops",
+        "anchor": "agent-ops",
+        "text": "/ops 3-vertical scorecard /ops/evals Eval rows + failed-row trace /ops/evals Telemetry mix + taxonomy /ops/evals Run evals refetch + animation Tenant-local toggle stub (no-op)"
+      },
+      {
+        "heading": "Work loop",
+        "anchor": "work-loop",
+        "text": "/loop Loop dossier data GET /api/loop Approve + run batch /actions/execute - re-gates Approval matrix /api/loop Distribute -> close playback status - animation CS / Legal replies simulated - delay Run loop server-side POST /actions/loop"
+      },
+      {
+        "heading": "Governed record",
+        "anchor": "governed-record",
+        "text": "/record/:id Mint + fetch record /workproducts/* Verify - HMAC + freshness /verify Dependency map section_dependencies Event picker - legal/financials /verify Print / save PDF real Share - download cert stub"
+      },
+      {
+        "heading": "Developer docs",
+        "anchor": "developer-docs",
+        "text": "/developers/* Docs chat inset /docs/chat - LLM/det mode Docs-chat observability /ops/docs-chat ~25 doc pages static content API ref - gating - traces canned JSON - data/*"
+      },
+      {
+        "heading": "Still built and tested, but no primary UI calls it",
+        "anchor": "still-built-and-tested-but-no-primary-ui-calls-it",
+        "text": "POST /actions/loop loop animates GET + runs /actions/execute POST /revalidate UI uses lifecycle + record verify POST /actions/compose superseded by staged-remediation path GET /api/ops/scorecard superseded by /ops/evals POST /brief - /context - /verify canonical/debug - UI uses GET /api/* shims Newly wired: /api/lifecycle + events - /actions/staged-remediation + execute - /docs/chat - /ops/docs-chat"
+      },
+      {
+        "heading": "Substrate - real vs simulated",
+        "anchor": "substrate-real-vs-simulated",
+        "text": "Permission filtering / context bundle real Deterministic gate / approval threshold real /chat refusal + permission behavior real Action diffs / blocked execution real - server re-gate Staged remediation - row -> drawer card real - composer-validated Lifecycle / event-driven recompute real event log - deterministic actors Record revalidation / stale state real WS-F - simulated trigger Eval scorecard real harness - synthetic packs Docs chat ACL + sealed derivatives real - LLM optional Batch loop / owner replies real engine - simulated CS+Legal Synthetic Acme workspace / personas simulated corpus"
+      },
+      {
+        "heading": "What is real",
+        "anchor": "what-is-real",
+        "text": "Verification, approval thresholds, action diffs, blocked execution, lifecycle recompute, governed-record minting, record verification, docs chat access control, and eval scoring all run through actual backend or deterministic substrate logic. Mock mode keeps the demo stable, but it does not hardcode the decision states into the screen."
+      },
+      {
+        "heading": "What is simulated",
+        "anchor": "what-is-simulated",
+        "text": "The simulated pieces are mostly human latency and demo furniture: Credit Officer, Legal, and Customer Success replies; thinking animations; participant rails; and a few tenant-local toggles. Those states exist so the walkthrough can be run alone, without live email, a second operator, or waiting for external people to respond."
+      },
+      {
+        "heading": "Proof boundary",
+        "anchor": "proof-boundary",
+        "text": "The approval-ready result is computed from the policy gate, missing approvals, and threshold checks. A 22% request against 15% delegated authority is a backend decision, not a decorative badge."
+      },
+      {
+        "heading": "Demo boundary",
+        "anchor": "demo-boundary",
+        "text": "Simulated counterparties move the workflow forward, but they do not rewrite the rules. Once their response lands, the same lifecycle, action, and verification paths recompute the state."
+      },
+      {
+        "heading": "Live-mode boundary",
+        "anchor": "live-mode-boundary",
+        "text": "The same UI can point at live gateway paths with VITE_USE_MOCKS=false and the API running. The visible walkthrough defaults to mocks for repeatability."
+      }
+    ]
+  },
+  {
     "id": "metrics",
     "route": "/developers/metrics",
     "title": "Success Metrics",
