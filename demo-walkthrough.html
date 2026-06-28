@@ -346,9 +346,12 @@
             <div class="mock-h"><div class="mock-logo">A</div><div><div class="mock-title">Agent Actions - Next actions and Changes</div><div class="mock-sub">Stage, validate, execute, wait, revalidate</div></div></div>
             <div class="mock-b">
               <div class="route"><b>1. Brief row:</b> <code>Stage: route 22% to Credit Officer</code></div>
-              <div class="route" style="margin-top:7px"><b>2. Drawer card:</b> Route to Credit Officer - 22% pricing exception - validated from row provenance.</div>
-              <div class="route" style="margin-top:7px"><b>3. Visible response:</b> Simulate Credit Officer response.</div>
-              <div class="route" style="margin-top:7px"><b>4. Recompute:</b> Credit clears. Legal and tracker remain open. CS plan appears as 18% vs 22% conflict.</div>
+              <div class="route" style="margin-top:7px"><b>2. Drawer card:</b> Route to Credit Officer - 22% pricing exception - validated from row provenance. <code>origin: decision_readiness / credit_officer_approval</code></div>
+              <div class="route" style="margin-top:7px"><b>3. Pending route:</b> Pending · Credit Officer.</div>
+              <div class="route" style="margin-top:7px"><b>4. Visible response:</b> Simulate Credit Officer response.</div>
+              <div class="route" style="margin-top:7px"><b>5. Recompute:</b> Credit clears. Still not approval-ready. The final covenant tracker is still missing and Legal is still pending.</div>
+              <div class="route" style="margin-top:7px"><b>6. Changes:</b> Changes · customer success plan needs reconciliation; customer success plan still assumes 18%.</div>
+              <div class="route" style="margin-top:7px"><b>7. Accepted edit:</b> Accepted. The customer success plan now reflects the approved 22%, and the conflict clears.</div>
             </div>
           </div>
         </div>
