@@ -26,7 +26,8 @@ The remaining gap is a general `EventTrigger` dispatcher and persistent event lo
 | Rollback | Present on `WorkspaceExecutor.rollback()` in `actions/engine.py`. It is not the main capability of `actions/loop.py`. |
 | Brief and drawer share one source | Live staged rows are verified server-side against the current readiness row before composition; `/api/actions` derives row actions from `DecisionReadiness.rows[*].action` plus explicitly labeled batch fixtures. |
 | Event log / dispatcher | API-local in-memory lifecycle events exist for the Acme demo. `EventTrigger` is still only a type; no general backend dispatcher fans events into one recompute loop yet. |
-| Demo revalidation | Live mode derives routed/signed/reconciled state from API lifecycle events. Mock mode keeps the deterministic frontend store for offline demo parity. |
+| Active meeting revalidation | Live mode derives routed/signed/reconciled state from API lifecycle events, then recomputes `/api/brief`. Mock mode keeps the deterministic frontend store for offline demo parity. |
+| Pinned work-product revalidation | `/revalidate` and `/workproducts/{record_id}/verify` exist for sealed/pinned work-product freshness checks. They are not the primary active meeting walkthrough loop. |
 
 The strongest lifecycle claims below are therefore **design invariants to enforce**, not statements
 that the current repo already satisfies end to end.
@@ -104,6 +105,9 @@ facts and gates.
 For the Acme arc, it must stay `false` after Credit Officer approval because Legal sign-off and the
 final covenant tracker remain unresolved.
 
+It should turn true only after all live blockers clear: Credit Officer approval, Legal approval,
+final covenant tracker evidence, and the customer success plan reconciliation.
+
 ### 5. Visible simulation beats hidden timers.
 
 Counterparty responses in the demo should use a visible simulated counterparty affordance, not a
@@ -119,27 +123,46 @@ For example:
 
 This preserves determinism without making the panel wonder whether the system pre-knew the answer.
 
+## Two revalidation paths
+
+Do not conflate the active meeting loop with the lower-level `/revalidate` endpoint.
+
+| Path | What it is for | Current wiring |
+|---|---|---|
+| Active meeting / Decision Brief loop | The presenter flow: route approvals, simulate returned responses, reconcile source conflicts, update readiness rows, and eventually seal the brief. | `POST /actions/staged-remediation/execute` and `POST /api/lifecycle/events` append API-local lifecycle events. `GET /api/lifecycle` derives state. `GET /api/brief` recomputes the stage-aware Decision Brief from that state. |
+| Pinned work-product revalidation | Sealed record freshness: a source object changes after minting, so only dependent sections are marked stale and targeted reapproval routes are emitted. | `POST /revalidate` exposes the WS-F revalidation engine directly. `/workproducts/{record_id}/verify` uses the sealed dependency map and verification path. |
+
+The active Acme walkthrough is therefore event-derived revalidation, not a call to `/revalidate`.
+`/revalidate` is still real, tested, and important, but it is the pinned-record/source-change seam.
+
 ## Target loop
 
 This is the target architecture. Parts of it are not wired yet.
 
 ```text
-EventTrigger
-  -> revalidate(WorkProductContract)
-  -> Decision Brief read model
-       readiness rows
-       status
-       next_steps / remediations
-       Stage affordances
-  -> human stages a row
-  -> staged remediation reference
-  -> composer validates remediation into one drawer card
-  -> Agent Actions / Next actions
-  -> human executes
-  -> AuditEvent
-  -> side effect / approval route
-  -> EventTrigger
-  -> Agent Actions / Changes
+Current Acme meeting loop:
+  human request or drawer execution
+    -> API-local LifecycleEvent append
+    -> GET /api/lifecycle derived state
+    -> GET /api/brief read model
+         readiness rows
+         status
+         remediations
+         Stage affordances
+    -> human stages a row
+    -> staged remediation reference
+    -> composer validates remediation into one drawer card
+    -> Agent Actions / Next actions
+    -> human executes
+    -> AuditEvent + LifecycleEvent
+    -> Agent Actions / Changes
+
+Target product loop:
+  EventTrigger
+    -> lifecycle dispatcher
+    -> recompute affected read models
+    -> for pinned records, revalidate(WorkProductContract)
+    -> Decision Brief / Agent Actions / governed record projections
 ```
 
 The loop closes because execution, source changes, and approval returns are all new events.
@@ -155,8 +178,12 @@ A Decision Brief should eventually respond to any event that affects a source de
 | Event class | Example | Drawer implication |
 |---|---|---|
 | `decision_request` | Dana frames the Acme renewal decision or asks for 22%. | Generates or refreshes the brief. No drawer action until a row is staged. |
+| `approval_routed` | Credit Officer route was sent. | Moves the row to pending and creates an audit/change fact. |
 | `source_changed` | Customer success plan remains at 18% after a 22% approval. | Creates a Changes notification or a stageable reconciliation remediation. |
 | `approval_returned` | Credit Officer signs the 22% exception. | Creates a Changes notification and revalidates readiness. |
+| `evidence_requested` | Priya is asked to upload the final covenant tracker. | Moves the missing-evidence row to pending/requested. |
+| `evidence_uploaded` | Priya uploads the final covenant tracker. | Clears the missing-evidence row and recomputes readiness. |
+| `revalidation_applied` | Dana accepts the CS-plan reconciliation edit. | Clears the conflict and records the source correction. |
 
 Important: a brief is not chat-only. Approval returns and source changes can update the brief even
 when nobody typed `@Agent`.
@@ -225,13 +252,13 @@ Examples:
   class. They can be present in the brief from generation.
 - The home memo should not show all of those as system analysis before the brief is opened.
 - For this walkthrough, the customer success plan conflict appears only after Credit Officer
-  approval returns. The causal beat is `approval_returned` -> revalidate dependent sources ->
+  approval returns. The causal beat is `approval_returned` -> recompute from lifecycle state ->
   detect approved 22% vs customer success plan 18%. Do not surface that conflict immediately
   after the 22% request.
 
 ## Recompute target
 
-On any qualifying event, the target backend recompute should:
+On any qualifying active-meeting event, the backend read model should:
 
 1. Re-assemble context under the permission boundary.
 2. Re-run deterministic gates: rule firings, calculations, approval matrix, and missing evidence.
@@ -243,6 +270,9 @@ On any qualifying event, the target backend recompute should:
 
 The no-drift invariant is only true if steps 5 and 7 use the same remediation identity. A separate
 hardcoded drawer plan violates the invariant even if the UI looks correct.
+
+For sealed governed records, the analogous recompute path is WS-F revalidation: source change ->
+dependency graph -> stale sections -> targeted reapproval routes.
 
 ## Corrected Acme walkthrough
 
@@ -320,25 +350,87 @@ The `StubPersonaClient` / persona path returns a deterministic sign-off.
 This emits an `approval_returned` event in the target architecture. In the current demo it can be a
 frontend/API transition, but it should be visible and intentional.
 
-### Step 6 - revalidate
+### Step 6 - revalidate from the approval return
 
 The brief updates:
 
 - Credit Officer row transitions to passed/approved.
 - `approval_threshold` and missing-CO gates clear.
-- `approval_ready` remains false because Legal and covenant tracker remain unresolved.
+- `approval_ready` remains false because Legal, covenant tracker, and source reconciliation remain
+  unresolved.
 - Only now does the customer success plan 18% vs approved 22% conflict appear, as a revalidation
   change or stageable reconciliation.
 
 The top-nav badge should now point to `Changes 1`, not another generic action count.
 
-### Step 7 - reconcile cascade and continue
+### Step 7 - reconcile the customer success plan
 
 Opening `Changes` shows the approved change and/or a reconciliation diff for the customer success
 plan.
 
-Accepting the reconciliation clears the conflict. Legal and covenant remain open until their own
-remediations are staged and executed.
+Accepting the reconciliation emits `revalidation_applied` and clears the conflict. Legal and
+covenant remain open until their own remediations are staged and executed.
+
+### Step 8 - route Legal approval
+
+The Legal row has the same surface boundary as Credit Officer:
+
+```text
+Stage: route covenant modification to Legal
+```
+
+Staging creates one validated drawer card. Executing it emits `approval_routed` for the approval
+workflow and moves Legal to pending.
+
+### Step 9 - simulate Legal response
+
+The presenter clicks a visible affordance such as:
+
+```text
+Simulate Legal response
+```
+
+The deterministic persona signs off. The brief recomputes and clears the Legal row, but
+`approval_ready` remains false if the final covenant tracker is still missing.
+
+### Step 10 - request final covenant tracker
+
+The covenant tracker row is a missing-evidence row, not an approval row. The action is a task or
+artifact request:
+
+```text
+Stage: request final covenant tracker
+```
+
+Executing the drawer card emits `evidence_requested` and moves the evidence row to pending.
+
+### Step 11 - simulate Priya upload
+
+The presenter clicks a visible affordance such as:
+
+```text
+Simulate Priya upload
+```
+
+The API appends `evidence_uploaded`, the brief recomputes, and the missing-evidence row clears.
+
+At this point the Acme brief may become approval-ready only if Credit Officer, Legal, covenant
+evidence, and CS-plan reconciliation are all clear.
+
+### Step 12 - seal the governed record
+
+Once approval-ready is true, `Seal as governed record` mints the durable work product. The sealed
+record should contain the final stage-aware brief, source statuses, dependency map, and integrity
+seal.
+
+### Step 13 - optional pinned-record freshness check
+
+After sealing, the record page can simulate a later source change and verify freshness. This is the
+place where the pinned-record revalidation story belongs:
+
+```text
+source change -> dependency map -> stale sections / reapproval routes
+```
 
 The same loop repeats:
 
@@ -373,7 +465,8 @@ One-line answer:
    success plan conflict is not shown before Credit Officer approval returns.
 2. Add row taxonomy styling in the brief for approval, missing evidence, and conflict rows.
 3. Replace hidden CO auto-sign timer with a visible simulated counterparty control.
-4. Keep `approval_ready=false` until Legal and covenant tracker clear.
+4. Keep `approval_ready=false` until Credit Officer, Legal, covenant tracker, and CS-plan
+   reconciliation are all clear.
 5. Add stage provenance for readiness-row actions.
 6. Make the drawer render staged cards from composer validation of the row remediation.
 7. Add tests proving no orphan drawer actions are rendered for staged rows.
@@ -390,7 +483,8 @@ Acceptance tests for Phase 1:
 - CO response requires a visible simulated action, not a hidden timer.
 - The initial brief does not show the customer success plan conflict.
 - The customer success plan conflict appears only after the visible Credit Officer response.
-- `approval_ready` never flips true after CO sign-off while Legal/tracker remain unresolved.
+- `approval_ready` never flips true after CO sign-off while Legal, tracker, or CS reconciliation
+  remain unresolved.
 
 ### Phase 2 - backend anti-drift seam
 
@@ -404,14 +498,23 @@ Acceptance tests for Phase 1:
    Acme batch fixtures.**
 6. Add API tests that prove row remediations and drawer actions cannot drift. **Done.**
 
-### Phase 3 - event dispatch and live parity
+### Phase 3 - event-derived live parity
+
+1. Append API-local lifecycle events for staged execution, simulated counterparty response,
+   evidence upload, and accepted reconciliation. **Done for the Acme loop.**
+2. Recompute `/api/brief` from the derived lifecycle state. **Done for the Acme loop.**
+3. Emit `Changes` notifications from source-change and approval-return events. **Done for the main
+   Acme route/CS-plan path; keep extending as new rows are added.**
+4. Keep mock mode deterministic with a mirrored frontend store. **Done by design.**
+
+### Phase 4 - general lifecycle architecture
 
 1. Wire a general `EventTrigger` dispatcher.
 2. Replace the API-local in-memory Acme event store with the eventual lifecycle store.
-3. Revalidate work products from `WorkProductContract.source_dependencies`.
-4. Emit `Changes` notifications from source-change and approval-return events.
-5. Move the remaining mock-mode cascade presentation from special-cased frontend data to
-   lifecycle/action primitives.
+3. Connect the active meeting read model to policy-configured lifecycle events rather than
+   Acme-specific event reducers.
+4. Keep `/revalidate` as the pinned-record/source-change seam and connect it to the general
+   dispatcher when sealed records need automatic stale-section updates.
 
 ## Known current gaps to avoid overclaiming
 
@@ -420,8 +523,9 @@ Acceptance tests for Phase 1:
 | General event dispatcher for `EventTrigger` is not wired. | Lifecycle/API gap. |
 | Persistent lifecycle event storage is not wired. | `api/lifecycle_events.py` is intentionally in-memory for the prototype. |
 | Mock mode still uses the deterministic frontend revalidation store. | `frontend/src/lib/revalidation-store.ts`. |
-| Changes counter is not fully first-class. | `frontend/src/lib/actions-store.ts` and drawer wiring. |
-| Cascade presentation still has a mock fixture. | `frontend/src/data/actions.ts`; live readiness row carries the edit descriptor. |
+| General `EventTrigger` dispatch into all read models is not wired. | Active demo uses explicit API endpoints and derived state. |
+| `/revalidate` is not the active meeting loop. | It remains the WS-F pinned work-product/source-change path. |
+| Counterparties are simulated, not external integrations. | Credit, Legal, and Priya responses are deterministic demo affordances. |
 
 ## Demo-safety rules
 
@@ -432,5 +536,5 @@ Acceptance tests for Phase 1:
 - Do not use hidden timers for counterparty approvals.
 - Do not let the drawer run actions that are not traceable to a staged row or explicit batch
   proposal.
-- Do not let `approval_ready` flicker true during the Acme arc until Credit, Legal, and covenant
-  tracker are all clear.
+- Do not let `approval_ready` flicker true during the Acme arc until Credit, Legal, covenant
+  tracker, and CS-plan reconciliation are all clear.

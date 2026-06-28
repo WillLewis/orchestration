@@ -17,6 +17,19 @@ flags the affected pinned section stale and emits a reapproval route; tests gree
 - `revalidate_changed_source(contracts, graphs, changed_object_id, source_objects=None)`
   finds every pinned work product whose graph depends on the changed object and revalidates each.
 
+## Where this fits
+
+WS-F is the deterministic pinned work-product revalidation engine. It answers: "A governed record
+was sealed against these source dependencies; this source changed; which sections are stale and
+which reapproval routes are needed?"
+
+The active Acme meeting walkthrough uses a different live projection path: API-local lifecycle
+events are appended, `/api/lifecycle` derives the current state, and `/api/brief` recomputes the
+Decision Brief. That active meeting loop does not call `/revalidate`.
+
+Use `/revalidate` for sealed/pinned record freshness and source-change checks. Use the lifecycle
+event path for the live meeting/readiness walkthrough.
+
 ## Deterministic rules
 
 - `approval_source_changed`: workflow/approval source changes mark dependent approval sections
@@ -32,7 +45,7 @@ flags the affected pinned section stale and emits a reapproval route; tests gree
 1. A brief is pinned as a `WorkProductContract`.
 2. WS-F builds and stores a `SourceDependencyGraph` for that contract.
 3. WS-A emits a deterministic event such as `legal_needs_review` or `financials_v2`.
-4. Integration calls `/revalidate` with the changed object id.
+4. Integration calls `/revalidate` with the changed object id for pinned governed records.
 5. WS-F returns stale sections, reapproval routes, and affected work-product ids.
 
 For the Acme stale-alert demo, `wf_approval` moving Legal to `Needs Review` marks

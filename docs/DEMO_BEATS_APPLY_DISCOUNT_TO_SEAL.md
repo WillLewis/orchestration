@@ -12,6 +12,13 @@ governed record. This is presenter copy and product choreography, not a new back
 - The customer success plan conflict appears only after Credit Officer approval returns.
 - The governed record is sealed after all demo dependencies clear.
 
+API note:
+
+- In the active meeting run, revalidation is event-derived: lifecycle events are recorded, then
+  `/api/brief` recomputes readiness from the current lifecycle state.
+- `/revalidate` remains the pinned-record/source-change endpoint for sealed governed records. It is
+  not the endpoint driving the live meeting walkthrough.
+
 ## Preconditions
 
 - Start from a clean demo state.
@@ -155,7 +162,7 @@ Screen result:
 Presenter line:
 
 > This is the lifecycle beat. An approval returned, so the work product revalidates its dependencies
-> and finds a downstream source that now disagrees.
+> by recomputing the brief from lifecycle state, and finds a downstream source that now disagrees.
 
 Proof to point at:
 
@@ -335,7 +342,7 @@ Screen result:
 Presenter line:
 
 > The sealed record is not just a PDF. It knows what sources it depended on, so later source changes
-> can mark only the affected sections stale.
+> can mark only the affected sections stale through the pinned-record revalidation path.
 
 Proof to point at:
 

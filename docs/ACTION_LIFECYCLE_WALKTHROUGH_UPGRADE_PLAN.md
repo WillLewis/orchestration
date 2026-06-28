@@ -28,6 +28,14 @@ The no-drift rule is non-negotiable: a staged drawer card must be produced from 
 remediation through the composer / validation path. Do not create a parallel hand-authored drawer
 action for a staged row.
 
+API note:
+
+- In the active meeting walkthrough, "revalidation" means lifecycle-event-derived recompute:
+  `/actions/staged-remediation/execute` and `/api/lifecycle/events` append facts, then `/api/brief`
+  rebuilds the Decision Brief from current lifecycle state.
+- `/revalidate` remains the WS-F endpoint for pinned governed records and source-change freshness
+  checks. Do not describe it as the endpoint powering the active meeting loop.
+
 ## Canonical walkthrough
 
 ### Step 0 - Meeting home
@@ -132,17 +140,68 @@ Now the brief and drawer update:
 
 - Credit Officer row passes.
 - `approval_threshold` and missing-Credit-Officer gates clear.
-- `approval_ready` remains false because Legal and covenant tracker remain unresolved.
+- `approval_ready` remains false because Legal, covenant tracker, and source reconciliation remain
+  unresolved.
 - Only now does the customer success plan 18% vs approved 22% conflict appear.
 - Agent Actions points to `Changes 1` or a reconciliation review.
 
-### Step 7 - Review the cascade
+### Step 7 - Reconcile the customer success plan
 
 Opening `Changes` shows the approved change and/or a reconciliation diff for the customer success
 plan.
 
 Accepting the reconciliation clears the conflict. Legal and the covenant tracker remain open until
 their own remediations are staged and executed.
+
+### Step 8 - Route Legal approval
+
+Stage the Legal approval row, open `Agent Actions -> Next actions`, and send the route.
+
+The Legal row moves to pending and the drawer shows a visible simulated response affordance:
+
+```text
+Simulate Legal response
+```
+
+### Step 9 - Simulate Legal response
+
+The presenter clicks `Simulate Legal response`.
+
+Legal turns approved and the brief recomputes. Approval-ready remains false if the final covenant
+tracker has not been uploaded.
+
+### Step 10 - Request the final covenant tracker
+
+Stage the final covenant tracker row and execute the drawer card to request the artifact from
+Priya.
+
+This is a missing-evidence remediation, not an approval. The row should move to requested/pending
+and the drawer should show:
+
+```text
+Simulate Priya upload
+```
+
+### Step 11 - Simulate Priya upload
+
+The presenter clicks `Simulate Priya upload`.
+
+The final covenant tracker becomes attached/used. If Credit Officer, Legal, covenant evidence, and
+CS-plan reconciliation are all clear, the Decision Brief becomes approval-ready.
+
+### Step 12 - Seal the governed record
+
+Click `Seal as governed record`.
+
+The app mints the final governed record with the current stage-aware brief, source statuses,
+dependency map, and integrity seal. It must not preserve stale copy from the initial brief.
+
+### Step 13 - Optional freshness proof
+
+On the sealed record page, simulate a later source change and verify the record.
+
+This is where the `/revalidate` story belongs: source changes affect pinned work-product
+dependencies and can mark targeted sections stale.
 
 ## Phase plan
 
@@ -184,29 +243,35 @@ Acceptance:
 - Changing row remediation changes the drawer card.
 - If validation blocks the remediation, the drawer shows the blocked result.
 
-### Phase 3 - Simulated counterparty and revalidation
+### Phase 3 - Simulated counterparties and event-derived revalidation
 
 - Remove hidden Credit Officer auto-sign timer.
-- Add visible simulated response control.
-- Update revalidation state after that response.
-- Keep `approval_ready=false`.
+- Add visible simulated response controls for Credit Officer, Legal, and Priya upload.
+- Update lifecycle state after each response.
+- Keep `approval_ready=false` until Credit Officer, Legal, covenant tracker, and CS-plan
+  reconciliation all clear.
 
 Acceptance:
 
 - CO approval cannot appear without a visible presenter action.
-- CO approval does not make the packet approval-ready.
+- Legal approval cannot appear without a visible presenter action.
+- Covenant evidence cannot appear without a visible presenter action.
+- CO approval alone does not make the packet approval-ready.
 
-### Phase 4 - Changes and cascade review
+### Phase 4 - Changes, cascade review, and close-the-loop readiness
 
 - Route returned approvals and dependent-source changes to `Changes`.
 - Surface the CS-plan conflict only after CO response.
 - Show reconciliation as reviewable diff/action.
+- Clear the conflict after accepted reconciliation.
+- Turn approval-ready true only after all dependencies clear.
 
 Acceptance:
 
 - Route begins as `Next actions`.
 - CO response returns as `Changes`.
 - CS-plan reconciliation is not visible before CO response.
+- Final ready state shows all path-to-ready items completed.
 
 ### Phase 5 - Walkthrough parity pass
 
@@ -232,11 +297,18 @@ Acceptance:
 - Visible simulated CO response transitions the CO row to approved.
 - Only after CO response does the CS-plan 18% vs 22% conflict appear.
 - `Changes 1` appears for the post-CO revalidation/cascade beat.
-- `approval_ready` remains false until Legal and covenant tracker clear.
+- Accepted CS-plan reconciliation clears the conflict.
+- Visible simulated Legal response transitions Legal to approved.
+- Visible simulated Priya upload clears the covenant tracker.
+- `approval_ready` remains false until Credit Officer, Legal, covenant tracker, and CS-plan
+  reconciliation all clear.
+- `approval_ready` turns true after all four are clear.
 
 ## Non-goals
 
 - Do not change `core/schemas.py` or `core/pipeline.py`.
 - Do not build the full event-log dispatcher before the walkthrough is coherent.
+- Do not route the active meeting walkthrough through `/revalidate` just to satisfy naming; the
+  active loop is lifecycle events plus `/api/brief` recompute.
 - Do not make the home memo carry the full Decision Brief analysis.
 - Do not hide the Credit Officer response behind a timer.

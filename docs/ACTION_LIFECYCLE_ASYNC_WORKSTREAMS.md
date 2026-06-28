@@ -3,6 +3,10 @@
 Use this document to split the Action Lifecycle walkthrough upgrade into independent threads.
 Each workstream should stay inside its boundaries and hand off only the named artifacts.
 
+Status note: this is a historical workstream split. For the current canonical demo sequence, use
+`docs/ACTION_LIFECYCLE_WALKTHROUGH_UPGRADE_PLAN.md` and
+`docs/DEMO_BEATS_APPLY_DISCOUNT_TO_SEAL.md`.
+
 Shared target:
 
 - home memo is a credit memo draft, not the system brief
@@ -11,7 +15,8 @@ Shared target:
 - staged drawer cards derive from staged brief-row remediations
 - customer success plan conflict appears only after Credit Officer approval returns
 - Credit Officer response is visible, not timer-driven
-- `approval_ready` stays false until Credit, Legal, and covenant tracker all clear
+- `approval_ready` stays false until Credit, Legal, covenant tracker, and CS-plan reconciliation all
+  clear
 
 Primary references:
 
