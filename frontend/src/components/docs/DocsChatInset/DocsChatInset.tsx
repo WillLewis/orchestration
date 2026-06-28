@@ -206,13 +206,6 @@ function latestResponse(turns: DocsTurn[]): DocsChatResponse | undefined {
   return turns.length > 0 ? turns[turns.length - 1].response : undefined;
 }
 
-function fallbackReasonLabel(reason: DocsPhrasingFallbackReason | null | undefined): string {
-  if (reason === "not_configured") return "not configured";
-  if (reason === "client_error") return "client error";
-  if (reason === "grounding_guard") return "grounding guard";
-  return "Fallback";
-}
-
 function fallbackReasonDetail(reason: DocsPhrasingFallbackReason | null | undefined): string {
   if (reason === "not_configured") return "The backend reported LLM phrasing is unavailable.";
   if (reason === "client_error")
@@ -227,7 +220,6 @@ function phrasingStatusLabel(mode: DocsPhrasingMode, response?: DocsChatResponse
   if (response?.status === "error") {
     return {
       label: "Backend offline",
-      detail: "Backend unreachable",
       title: "The docs-chat backend did not respond. Retry the request or use static docs.",
       tone: "danger" as const,
     };
@@ -237,7 +229,6 @@ function phrasingStatusLabel(mode: DocsPhrasingMode, response?: DocsChatResponse
   if (phrasing && phrasing.effective_mode !== phrasing.requested_mode) {
     return {
       label: "Fallback: deterministic",
-      detail: fallbackReasonLabel(phrasing.fallback_reason),
       title: fallbackReasonDetail(phrasing.fallback_reason),
       tone: "warning" as const,
     };
@@ -245,18 +236,14 @@ function phrasingStatusLabel(mode: DocsPhrasingMode, response?: DocsChatResponse
 
   if ((phrasing?.effective_mode ?? mode) === "llm") {
     return {
-      label: phrasing ? "Accepted: LLM prose" : "Selected: LLM live",
-      detail: phrasing?.model ?? "requested",
-      title: phrasing?.model
-        ? `Backend-reported model: ${phrasing.model}`
-        : "LLM phrasing requested; model appears after the backend responds.",
+      label: "LLM prose",
+      title: "Live LLM phrasing is active for response prose.",
       tone: "info" as const,
     };
   }
 
   return {
-    label: "Selected: deterministic",
-    detail: "template prose",
+    label: "Deterministic",
     title: "Backend deterministic phrasing mode.",
     tone: "neutral" as const,
   };
@@ -499,75 +486,53 @@ export function DocsChatInset({
 
 function AppModeControl({
   mode,
-  response,
   onSelectMode,
 }: {
   mode: DocsPhrasingMode;
-  response?: DocsChatResponse;
   onSelectMode: (mode: DocsPhrasingMode) => void;
 }) {
-  const display = phrasingStatusLabel(mode, response);
-  const StatusIcon =
-    display.tone === "danger" ? AlertTriangle : mode === "llm" ? Sparkles : ShieldCheck;
-
   return (
-    <div className="flex max-w-full flex-wrap items-center gap-1.5">
-      <div
-        className="inline-flex min-h-8 items-center rounded-md border border-border bg-card p-0.5"
-        aria-label="Docs chat LLM mode"
-      >
-        <span className="px-1.5 text-[10.5px] font-semibold uppercase text-[var(--muted-fg)]">
-          LLM
-        </span>
-        <button
-          type="button"
-          onClick={() => onSelectMode("deterministic")}
-          title="Request deterministic prose from the backend."
-          aria-label="Use deterministic docs-chat prose"
-          aria-pressed={mode === "deterministic"}
-          className={[
-            "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            modeOptionClass(mode === "deterministic"),
-          ].join(" ")}
-        >
-          <ShieldCheck className="h-3 w-3" />
-          Off
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelectMode("llm")}
-          title="Request live LLM prose from the backend."
-          aria-label="Use live LLM docs-chat prose"
-          aria-pressed={mode === "llm"}
-          className={[
-            "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            modeOptionClass(mode === "llm"),
-          ].join(" ")}
-        >
-          <Sparkles className="h-3 w-3" />
-          Live
-        </button>
-      </div>
-      <span
-        title={display.title}
+    <div
+      className="inline-flex min-h-8 items-center rounded-md border border-border bg-card p-0.5"
+      aria-label="Docs chat LLM mode"
+    >
+      <span className="px-1.5 text-[10.5px] font-semibold uppercase text-[var(--muted-fg)]">
+        LLM
+      </span>
+      <button
+        type="button"
+        onClick={() => onSelectMode("deterministic")}
+        title="Request deterministic prose from the backend."
+        aria-label="Use deterministic docs-chat prose"
+        aria-pressed={mode === "deterministic"}
         className={[
-          "inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold",
-          phrasingStatusClass(display.tone),
+          "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          modeOptionClass(mode === "deterministic"),
         ].join(" ")}
       >
-        <StatusIcon className="h-3 w-3 shrink-0" />
-        <span className="truncate">{display.label}</span>
-        <span className="max-w-[130px] truncate text-[10.5px] font-medium opacity-80">
-          {display.detail}
-        </span>
-      </span>
+        <ShieldCheck className="h-3 w-3" />
+        Off
+      </button>
+      <button
+        type="button"
+        onClick={() => onSelectMode("llm")}
+        title="Request live LLM prose from the backend."
+        aria-label="Use live LLM docs-chat prose"
+        aria-pressed={mode === "llm"}
+        className={[
+          "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          modeOptionClass(mode === "llm"),
+        ].join(" ")}
+      >
+        <Sparkles className="h-3 w-3" />
+        Live
+      </button>
     </div>
   );
 }
 
 function ChatSurface({ controller }: { controller: SurfaceController }) {
   const { turns, pending, loadingStep, submitDocs, openCitation, reset, retry } = controller;
-  const response = latestResponse(turns);
 
   return (
     <section className="flex h-[780px] min-h-[700px] bg-background text-foreground">
@@ -585,7 +550,6 @@ function ChatSurface({ controller }: { controller: SurfaceController }) {
           <div className="flex items-center gap-2">
             <AppModeControl
               mode={controller.mode}
-              response={response}
               onSelectMode={controller.selectMode}
             />
             <button
@@ -669,7 +633,6 @@ function MeetingSurface({ controller }: { controller: SurfaceController }) {
             subtitle="Mention @Agent for a docs-grounded answer that stays private to you."
             icon={<MessageCircle className="h-4 w-4" />}
             mode={controller.mode}
-            response={latestResponse(controller.turns)}
             onSelectMode={controller.selectMode}
             onReset={controller.reset}
             showModeControl
@@ -837,7 +800,6 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
           <div className="flex items-center gap-2">
             <AppModeControl
               mode={controller.mode}
-              response={latestResponse(controller.turns)}
               onSelectMode={controller.selectMode}
             />
             <button
@@ -869,7 +831,6 @@ function DecisionBriefSurface({ controller }: { controller: SurfaceController })
           subtitle="Draft commands and docs questions"
           icon={<PenLine className="h-4 w-4" />}
           mode={controller.mode}
-          response={latestResponse(controller.turns)}
           onSelectMode={controller.selectMode}
           onReset={controller.reset}
         />
@@ -901,7 +862,6 @@ function RailHeader({
   subtitle,
   icon,
   mode,
-  response,
   onSelectMode,
   onReset,
   showModeControl = false,
@@ -910,7 +870,6 @@ function RailHeader({
   subtitle: string;
   icon: ReactNode;
   mode: DocsPhrasingMode;
-  response?: DocsChatResponse;
   onSelectMode: (mode: DocsPhrasingMode) => void;
   onReset: () => void;
   showModeControl?: boolean;
@@ -940,7 +899,7 @@ function RailHeader({
       </div>
       {showModeControl && (
         <div className="mt-3">
-          <AppModeControl mode={mode} response={response} onSelectMode={onSelectMode} />
+          <AppModeControl mode={mode} onSelectMode={onSelectMode} />
         </div>
       )}
     </header>
@@ -1085,6 +1044,7 @@ function ChatTurn({
               onCitationClick={onCitationClick}
               onRetry={onRetry}
               onAsk={onAsk}
+              showAnsweredStatus={false}
             />
           </div>
         </div>
@@ -1144,6 +1104,7 @@ function ResponseCard({
   onAsk,
   compact = false,
   decisionStub = false,
+  showAnsweredStatus = true,
 }: {
   response: DocsChatResponse;
   onCitationClick: (citation: DocsCitation) => void;
@@ -1151,13 +1112,19 @@ function ResponseCard({
   onAsk: (text: string, forcedKey?: DocsChatMockKey) => void;
   compact?: boolean;
   decisionStub?: boolean;
+  showAnsweredStatus?: boolean;
 }) {
   const locked = response.citations.some((citation) => citation.access === "locked");
   const sealed = response.citations.some((citation) => citation.access === "sealed");
 
   return (
     <div className="space-y-3">
-      <ResponseStatus status={response.status} locked={locked} sealed={sealed} />
+      <ResponseStatus
+        status={response.status}
+        locked={locked}
+        sealed={sealed}
+        showAnswered={showAnsweredStatus}
+      />
       <PhrasingStatusLine response={response} compact={compact} />
       <p
         className={[
@@ -1235,9 +1202,7 @@ function PhrasingStatusLine({
       ].join(" ")}
     >
       <Icon className="h-3 w-3 shrink-0" />
-      <span className="shrink-0 font-semibold">Prose</span>
       <span className="truncate">{display.label}</span>
-      <span className="max-w-[140px] truncate opacity-80">{display.detail}</span>
     </div>
   );
 }
@@ -1246,10 +1211,12 @@ function ResponseStatus({
   status,
   locked,
   sealed,
+  showAnswered,
 }: {
   status: DocsChatResponse["status"];
   locked: boolean;
   sealed: boolean;
+  showAnswered: boolean;
 }) {
   if (status === "no_results") {
     return (
@@ -1286,6 +1253,9 @@ function ResponseStatus({
         label="Sealed source - cleared derivative only"
       />
     );
+  }
+  if (!showAnswered) {
+    return null;
   }
   return (
     <StateBanner

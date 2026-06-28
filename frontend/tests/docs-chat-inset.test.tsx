@@ -90,19 +90,27 @@ describe("DocsChatInset", () => {
     expect(html).toContain("Docs chat LLM mode");
     expect(html).toContain("Off");
     expect(html).toContain("Live");
-    expect(html).toContain("Selected: LLM live");
-    expect(html).toContain("requested");
+    expect(html).not.toContain("Selected: LLM live");
+    expect(html).not.toContain("requested");
     expect(html).not.toContain("Phase-0 mocks");
   });
 
-  it("renders phrasing model, deterministic, and fallback states from response metadata", () => {
-    expect(renderInset("chat", "tier3Locked")).toContain("Selected: deterministic");
-    expect(renderInset("chat", "tier1Open")).toContain("docs-phrasing-mock");
-    expect(renderInset("chat", "tier1Open")).toContain("Accepted: LLM prose");
-    expect(renderInset("chat", "tier2Open")).toContain("not configured");
-    expect(renderInset("chat", "sealed")).toContain("grounding guard");
-    expect(renderInset("chat", "noResults")).toContain("client error");
+  it("renders concise phrasing states from response metadata", () => {
+    expect(renderInset("chat", "tier3Locked")).toContain("Deterministic");
+    expect(renderInset("chat", "tier1Open")).toContain("LLM prose");
+    expect(renderInset("chat", "tier1Open")).not.toContain("docs-phrasing-mock");
+    expect(renderInset("chat", "tier1Open")).not.toContain("Accepted: LLM prose");
+    expect(renderInset("chat", "tier2Open")).toContain("Fallback: deterministic");
+    expect(renderInset("chat", "sealed")).toContain("Fallback: deterministic");
+    expect(renderInset("chat", "noResults")).toContain("Fallback: deterministic");
     expect(renderInset("chat", "error")).toContain("Backend offline");
+  });
+
+  it("hides the normal grounded-answer banner on the chat surface", () => {
+    const html = renderInset("chat", "tier1Open");
+
+    expect(html).not.toContain("Grounded answer");
+    expect(html).toContain("LLM prose");
   });
 
   it("keeps LLM selected when backend metadata reports an LLM fallback", () => {
