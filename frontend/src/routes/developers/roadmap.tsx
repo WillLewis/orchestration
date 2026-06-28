@@ -105,7 +105,7 @@ const PHASES: Phase[] = [
     ),
     layers: [
       {
-        name: "Action packets",
+        name: "Actions",
         desc: "Proposed actions - create a task, route an approval, update a status - run through the gate: preview the change, approve, commit, with rollback available.",
       },
       {

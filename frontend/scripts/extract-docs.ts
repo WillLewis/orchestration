@@ -80,6 +80,8 @@ const routeModuleLoaders = {
   "/developers/context-assembly": () => import("../src/routes/developers/context-assembly"),
   "/developers/gating": () => import("../src/routes/developers/gating"),
   "/developers/action-diff": () => import("../src/routes/developers/action-diff"),
+  "/developers/work-product-contract": () =>
+    import("../src/routes/developers/work-product-contract"),
   "/developers/eval-trace": () => import("../src/routes/developers/eval-trace"),
   "/developers/compliance-trace": () => import("../src/routes/developers/compliance-trace"),
   "/developers/ui-chat": () => import("../src/routes/developers/ui-chat"),
@@ -92,6 +94,7 @@ const routeModuleLoaders = {
   "/developers/orchestration": () => import("../src/routes/developers/orchestration"),
   "/developers/audit-log": () => import("../src/routes/developers/audit-log"),
   "/developers/sealed-records": () => import("../src/routes/developers/sealed-records"),
+  "/developers/lifecycle-events": () => import("../src/routes/developers/lifecycle-events"),
   "/developers/revalidation": () => import("../src/routes/developers/revalidation"),
   "/developers/ai-studio": () => import("../src/routes/developers/ai-studio"),
   "/developers/verticals": () => import("../src/routes/developers/verticals"),

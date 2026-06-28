@@ -103,7 +103,7 @@
       {
         "heading": "Governed action - act, safely",
         "anchor": "governed-action-act-safely",
-        "text": "Now the agent can act - but only through the gate built in Phase 0. The model proposes, deterministic policy decides, and people approve specific, previewed changes. Action packets Proposed actions - create a task, route an approval, update a status - run through the gate: preview the change, approve, commit, with rollback available. Multi-owner orchestration One decision fans out into follow-ups routed to the right owners across the team, with replies collected and escalations handled automatically. Audit trail Every action and its approval is captured as an immutable, reviewable record."
+        "text": "Now the agent can act - but only through the gate built in Phase 0. The model proposes, deterministic policy decides, and people approve specific, previewed changes. Actions Proposed actions - create a task, route an approval, update a status - run through the gate: preview the change, approve, commit, with rollback available. Multi-owner orchestration One decision fans out into follow-ups routed to the right owners across the team, with replies collected and escalations handled automatically. Audit trail Every action and its approval is captured as an immutable, reviewable record."
       },
       {
         "heading": "Lifecycle & openness",
@@ -125,7 +125,7 @@
       {
         "heading": "Primitive map",
         "anchor": "primitive-map",
-        "text": "The platform will expose these as explicit primitives at various points in the roadmap. Admins configure the policy surface; the runtime composes it into a deterministic decision path. The table shows what each primitive is configured to own and how it appears in the Acme renewal credit decision. Primitive What it is Configured by admin / platform owner Acme example AgentRecipe Defines the governed use case an agent is allowed to run. Use case, source scopes, allowed actions, eval pack Acme renewal credit decision Permission Boundary Defines which sources and content the current user may use. User/document permissions, restricted-source handling Legal memo restricted, not summarized Context Bundle Packages permitted sources, claims, state, and versions for the agent. Meeting, docs, metadata, workflow state, source versions Memo + CS plan + approvals + tracker RulePack Encodes deterministic thresholds, calculations, and blocked-action rules. Thresholds, calculations, blocked actions 22% requires Credit Officer approval ApprovalMatrix Maps rule outcomes and action classes to required approvers. Required approver by rule or action class Credit Officer and Legal routes PolicyGraph Orders dependencies so readiness can be computed deterministically. Dependency order and readiness criteria Credit, Legal, tracker, CS-plan reconciliation Decision Readiness Row Represents one blocker with its status and possible remediation. Typed blocker and stageable remediation Approval, missing evidence, conflict rows ActionDiff Shows the exact proposed change before anything is committed. Validated change preview CS plan 18% -> 22% diff LifecycleEvent Records a state-changing event that can trigger recomputation. Event classes and recompute behavior Approval returned; evidence uploaded WorkProductContract Defines the sealed record, its sources, dependencies, and integrity checks. Record schema, sources, seal, dependencies Final governed Decision Brief RevalidationRule Declares which source changes make record sections stale. Freshness triggers and affected sections Source change marks section stale EvalTrace Captures content-free quality and safety measurements for replay. Quality, safety, and platform metrics Citation, permission, action, stale-record KPIs"
+        "text": "The platform will expose these as explicit primitives at various points in the roadmap. Admins configure the policy surface; the runtime composes it into a deterministic decision path. The table shows what each primitive is configured to own and how it appears in the Acme renewal credit decision. Primitive What it is Configured by admin / platform owner Acme example AgentRecipe Defines the governed use case an agent is allowed to run. Use case, source scopes, allowed actions, eval pack Acme renewal credit decision Permission Boundary Defines which sources and content the current user may use. User/document permissions, restricted-source handling Legal memo restricted, not summarized Context Bundle Packages permitted sources, claims, state, and versions for the agent. Meeting, docs, metadata, workflow state, source versions Memo + CS plan + approvals + tracker Policy Artifact Versioned policy-as-data that owns deterministic rule parameters. Rules, thresholds, owners, eval pack, runtime mode finance_credit_v1 active policy artifact RulePack Encodes deterministic thresholds, calculations, and blocked-action rules. Thresholds, calculations, blocked actions 22% requires Credit Officer approval ApprovalMatrix Maps rule outcomes and action classes to required approvers. Required approver by rule or action class Credit Officer and Legal routes PolicyGraph Orders dependencies so readiness can be computed deterministically. Dependency order and readiness criteria Credit, Legal, tracker, CS-plan reconciliation Decision Readiness Row Represents one blocker with its status and possible remediation. Typed blocker and stageable remediation Approval, missing evidence, conflict rows ActionDiff Shows the exact proposed change before anything is committed. Validated change preview CS plan 18% -> 22% diff ToolCard Declares an action tool, its input contract, and side-effect class. Allowed tools, input schema, approver requirement, retry policy route_approval and edit_document cards MissingEvidenceState Names an evidence gap and whether it blocks readiness or execution. Evidence requirements and blocking policy missing_covenant_tracker blocks committee readiness LifecycleEvent Records a state-changing event that can trigger recomputation. Event classes and recompute behavior Approval returned; evidence uploaded WorkProductContract Defines the sealed record, its sources, dependencies, and integrity checks. Record schema, sources, seal, dependencies Final governed Decision Brief RevalidationRule Declares which source changes make record sections stale. Freshness triggers and affected sections Source change marks section stale EvalTrace Captures content-free quality and safety measurements for replay. Quality, safety, and platform metrics Citation, permission, action, stale-record KPIs"
       },
       {
         "heading": "How the primitives compose",
@@ -251,7 +251,7 @@
       {
         "heading": "Risks & Mitigations",
         "anchor": "risks-and-mitigations",
-        "text": "The product gets more valuable exactly when it gets more exposed: it reads across the workspace and can propose changes. The mitigation is to make every risky boundary explicit, deterministic, and reviewable before anything commits. Risk Mitigation Primitive Permission leakage Permission filter runs before retrieval; denied ids stay in the boundary. Context Assembly Hallucinated fact or citation Unsupported claims become open questions; evals score citation support. RAG Approval or policy bypass WS-C owns pass/fail; WS-E recomputes blocked_reason server-side. Gating Stale work product Source dependency graph marks sections stale and emits reapproval routes. Revalidation Approval fatigue Replay estimates escalation volume before activation. Metrics Prompt injection Action engine strips hidden-instruction content and blocks action use. Action Packets Raw telemetry exposure TelemetryEvent forbids extra raw fields; aggregates use k-anonymity and DP. Eval Trace Vertical drift Each vertical ships as recipe + policy artifact + eval pack over shared primitives. Verticals"
+        "text": "The product gets more valuable exactly when it gets more exposed: it reads across the workspace and can propose changes. The mitigation is to make every risky boundary explicit, deterministic, and reviewable before anything commits. Risk Mitigation Primitive Permission leakage Permission filter runs before retrieval; denied ids stay in the boundary. Context Assembly Hallucinated fact or citation Unsupported claims become open questions; evals score citation support. RAG Approval or policy bypass WS-C owns pass/fail; WS-E recomputes blocked_reason server-side. Gating Stale work product Source dependency graph marks sections stale and emits reapproval routes. Revalidation Approval fatigue Replay estimates escalation volume before activation. Metrics Prompt injection Action engine strips hidden-instruction content and blocks action use. Actions Raw telemetry exposure TelemetryEvent forbids extra raw fields; aggregates use k-anonymity and DP. Eval Trace Vertical drift Each vertical ships as recipe + policy artifact + eval pack over shared primitives. Verticals"
       },
       {
         "heading": "The risky transition is read to write",
@@ -276,9 +276,24 @@
         "text": "The assembler implements the ContextAssembler protocol. Its output is the shared input to RAG, the verifier, the brief synthesizer, action validation, and revalidation. For Acme, the relationship manager can use the meeting, credit memo, financial model, and approval workflow. The restricted legal memo is excluded, and barrier material that would cross a public/private information wall is held out. 1 objects Load workspace Documents, meetings, workflows, tasks, chats, and ACL metadata. 2 permissions Filter first Restricted and barrier-crossing objects are excluded before content use. 3 claims Scrub citations Claims are supported only if at least one accessible citation remains. 4 bundle Emit ContextBundle Sources, SourceGraph, ClaimMap, missing evidence, conflicts, boundary."
       },
       {
+        "heading": "Permission Boundary",
+        "anchor": "permission-boundary",
+        "text": "Permission Boundary is the line between what the current actor may use and what the agent must leave out. The filter runs before retrieval, summarization, claim extraction, and action validation, so denied objects never become prompt text, citations, source graph nodes, brief prose, or sealed-record evidence. The boundary still records what was omitted. A restricted source can be acknowledged as unavailable, but its contents are never summarized. Barrier-tagged material can also be held out when combining otherwise readable sources would cross an information wall. PermissionBoundary { \"excluded_object_ids\" : [ \"doc_legal_memo\" , \"doc_private_side_sector_note\" ], \"reason\" : \"permission_restricted\" }"
+      },
+      {
+        "heading": "ContextBundle is the handoff object",
+        "anchor": "contextbundle-is-the-handoff-object",
+        "text": "ContextBundle is the typed handoff from context assembly into RAG, deterministic verification, brief synthesis, action validation, and revalidation. It is not just retrieved text; it carries the sources, dependency graph, claims, omissions, evidence gaps, and conflicts downstream stages must honor. ClaimMap normalizes proposed facts into claim rows with accessible citations. A claim is supported only when at least one permitted SourceRef remains after permission scrubbing. Conflicts are source-backed disagreements preserved as typed state so the brief can expose them and Actions can stage reconciliation instead of hiding the disagreement in prose. ContextBundle { \"user_id\" : \"u_rm\" , \"intent\" : \"prepare_decision_brief\" , \"sources\" : [ { \"object_id\" : \"doc_credit_memo\" }, { \"object_id\" : \"doc_financials\" } ], \"source_graph\" : { \"nodes\" : [ \"doc_credit_memo\" , \"doc_financials\" , \"wf_approval\" ], \"edges\" : [ { \"from_id\" : \"doc_credit_memo\" , \"to_id\" : \"doc_financials\" } ] }, \"claims\" : { \"claims\" : [ { \"id\" : \"claim_revenue_revised\" , \"supported\" : true , \"sources\" : [ { \"object_id\" : \"doc_financials\" } ] } ] }, \"permission_boundary\" : { \"excluded_object_ids\" : [ \"doc_legal_memo\" ] }, \"missing_evidence\" : [ { \"code\" : \"missing_covenant_tracker\" , \"blocking\" : true } ], \"conflicts\" : [ { \"description\" : \"Pricing exception and CS plan disagree.\" } ] }"
+      },
+      {
         "heading": "Debug the exact context used downstream",
         "anchor": "debug-the-exact-context-used-downstream",
-        "text": "/context is primarily a debugging endpoint. It lets developers inspect the precise bundle that downstream stages consume, including denied source ids and missing evidence codes. POST /context { \"user_id\" : \"u_rm\" , \"intent\" : \"prepare_decision_brief\" , \"sources\" : [ \"mtg_committee_0612\" , \"doc_credit_memo\" , \"doc_financials\" , \"wf_approval\" ], \"source_graph\" : { \"edges\" : [ { \"from_id\" : \"doc_credit_memo\" , \"to_id\" : \"doc_financials\" , \"relation\" : \"derived_from\" }, { \"from_id\" : \"mtg_committee_0612\" , \"to_id\" : \"doc_credit_memo\" , \"relation\" : \"cites\" } ] }, \"permission_boundary\" : { \"excluded_object_ids\" : [ \"doc_legal_memo\" ], \"reason\" : \"permission_restricted\" }, \"missing_evidence\" : [ \"missing_covenant_tracker\" ], \"conflicts\" : [ \"Pricing doc and CS plan show different discount levels.\" ] } Permission filter runs first Denied content never enters sources, claims, graphs, prompts, or summaries. Claim support is deterministic An LLM may propose claims, but citation scrubbing decides support. Mosaic protection is explicit Readable barrier-tagged material can still be held out of a shared packet."
+        "text": "/context is primarily a debugging endpoint. It lets developers inspect the precise bundle that downstream stages consume, including denied source ids and missing evidence codes. POST /context { \"user_id\" : \"u_rm\" , \"intent\" : \"prepare_decision_brief\" , \"sources\" : [ \"mtg_committee_0612\" , \"doc_credit_memo\" , \"doc_financials\" , \"wf_approval\" ], \"source_graph\" : { \"edges\" : [ { \"from_id\" : \"doc_credit_memo\" , \"to_id\" : \"doc_financials\" , \"relation\" : \"derived_from\" }, { \"from_id\" : \"mtg_committee_0612\" , \"to_id\" : \"doc_credit_memo\" , \"relation\" : \"cites\" } ] }, \"permission_boundary\" : { \"excluded_object_ids\" : [ \"doc_legal_memo\" ], \"reason\" : \"permission_restricted\" }, \"missing_evidence\" : [ \"missing_covenant_tracker\" ], \"conflicts\" : [ \"Pricing doc and CS plan show different discount levels.\" ] }"
+      },
+      {
+        "heading": "MissingEvidenceState",
+        "anchor": "missingevidencestate",
+        "text": "MissingEvidenceState is how the system stays honest about absent artifacts. Blocking gaps keep readiness rows in blocking status and keep related actions unexecutable until an event or source update supplies the evidence. In Acme, the final covenant tracker is missing, so the brief surfaces a blocker and offers a stageable task. When an evidence_uploaded lifecycle event arrives for the tracker, the context and brief recompute and that row can clear. Field Meaning code Stable machine code, such as missing_covenant_tracker. description Human-readable explanation for the missing artifact or source. blocking Whether the gap blocks readiness, execution, or sealing. Permission filter runs first Denied content never enters sources, claims, graphs, prompts, or summaries. Claim support is deterministic An LLM may propose claims, but citation scrubbing decides support. Mosaic protection is explicit Readable barrier-tagged material can still be held out of a shared packet."
       }
     ]
   },
@@ -296,6 +311,11 @@
         "heading": "Policy Artifact - policy-as-data",
         "anchor": "policy-artifact-policy-as-data",
         "text": "Create, version, and retrieve deterministic policy as a typed object. Policy Artifacts can be attached to Agent Recipes and Work Product Contracts. POST /v2/gating/policy-artifacts GET /v2/gating/policy-artifacts/{id} GET /v2/gating/policy-artifacts/{id}/versions Draft -> In review -> Replay passed -> Active -> Rolled back Transition to Active is blocked unless the EvalPack passes. Version history returns prior policy artifacts; rollback re-activates a prior version. policy_artifact { \"id\" : \"finance_credit_v1\" , \"object\" : \"policy_artifact\" , \"vertical\" : \"finance\" , \"version\" : 1 , \"status\" : \"active\" , \"owner\" : \"RevOps Policy Admin\" , \"evalpack_id\" : \"ep_finance\" , \"runtime_mode\" : \"advisory_hitl_writes\" , \"rules\" : [ { \"id\" : \"discount_authority\" , \"type\" : \"approval_threshold\" , \"severity\" : \"block\" , \"description\" : \"Discount exceeding delegated authority requires Credit Officer approval.\" , \"parameters\" : { \"authority_by_role\" : { \"account_executive\" : 0.1 , \"relationship_manager\" : 0.15 , \"vp_sales\" : 0.25 }, \"escalation_approver\" : \"credit_officer\" } }, { \"id\" : \"legal_approval\" , \"type\" : \"missing_approver\" , \"severity\" : \"block\" , \"description\" : \"Covenant modifications require Legal approval before final approval.\" , \"parameters\" : { \"required_approver\" : \"legal\" , \"trigger\" : \"covenant_modification\" } }, { \"id\" : \"permission_boundary\" , \"type\" : \"permission_gate\" , \"severity\" : \"block\" , \"description\" : \"Agent may only use content the requesting user can access; restricted sources are acknowledged as unavailable, never summarized.\" , \"parameters\" : { \"mode\" : \"user_scoped\" } }, { \"id\" : \"pre_commit_freshness\" , \"type\" : \"freshness_gate\" , \"severity\" : \"block\" , \"description\" : \"Blocks approval if the work product is already stale at commit time. Ongoing post-commit stale propagation belongs to Revalidation.\" , \"parameters\" : { \"watched_sources\" : [ \"pricing_exception\" , \"forecast_memo\" , \"legal_memo\" ] } } ] }"
+      },
+      {
+        "heading": "PolicyGraph - prerequisite order",
+        "anchor": "policygraph-prerequisite-order",
+        "text": "The Policy Artifact owns versioned rule values. PolicyGraph owns dependency order: each PolicyNode has an id , a short description , and requires edges to prerequisite nodes. The verifier can then compute readiness in a stable order instead of letting the model decide which blocker matters first. In Acme, the graph starts with permission boundary, then discount authority, required approvers, missing evidence, CS-plan reconciliation, and finally committee readiness. ComplianceTrace reports which rules fired; PolicyGraph explains why the blockers are ordered that way. policy_graph { \"id\" : \"finance_credit_readiness\" , \"vertical\" : \"finance\" , \"nodes\" : [ { \"id\" : \"permission_boundary\" , \"description\" : \"Only accessible sources may be used.\" , \"requires\" : [] }, { \"id\" : \"discount_authority\" , \"description\" : \"22% exceeds RM authority.\" , \"requires\" : [ \"permission_boundary\" ] }, { \"id\" : \"required_approvers\" , \"description\" : \"Credit Officer and Legal must clear.\" , \"requires\" : [ \"discount_authority\" ] }, { \"id\" : \"missing_evidence\" , \"description\" : \"Final covenant tracker must be present.\" , \"requires\" : [ \"required_approvers\" ] }, { \"id\" : \"conflict_reconciliation\" , \"description\" : \"CS plan must match approved discount.\" , \"requires\" : [ \"missing_evidence\" ] }, { \"id\" : \"committee_readiness\" , \"description\" : \"All prerequisites clear before committee decision.\" , \"requires\" : [ \"conflict_reconciliation\" ] } ] }"
       },
       {
         "heading": "Evaluate - the gate as a service",
@@ -325,6 +345,11 @@
         "text": "The action diff is the write boundary. Before an agent changes a workflow, routes an approval, creates a task, or edits a document, the user sees the exact before and after fields that would change."
       },
       {
+        "heading": "Why diffs exist",
+        "anchor": "why-diffs-exist",
+        "text": "Regulated approvals rarely live in one clean system. A Credit Officer may approve a pricing exception in workflow, Legal may answer in email, and a customer-success plan may still carry an older assumption. ActionDiff turns that scattered context into one concrete approval object: target, evidence, side-effect class, approver, and before/after fields. Diffs are also how conflicting dependencies become visible. When Acme's 22% exception is approved but the CS plan still assumes 18%, the agent stages a document-edit diff for the specific mismatch rather than claiming the packet is clean. Scattered approvals Slack, email, docs, and workflow state often disagree about what changed. Concrete consent The user approves a target object and exact field changes, not intent. Conflict surfacing A dependency conflict becomes a reconciliation diff instead of hidden prose."
+      },
+      {
         "heading": "Every write starts as a diff",
         "anchor": "every-write-starts-as-a-diff",
         "text": "Action Diff makes the user's approval concrete. The agent does not ask for permission to \"handle this.\" It shows the target object, source evidence, side-effect class, required approver, and exact before/after values. The same shape powers dry runs and rollback. A new task has an empty before ; a workflow update or document edit shows the changed fields. ActionDiff { \"tool\" : \"route_approval\" , \"reason\" : \"The 22% discount exceeds the RM's delegated authority.\" , \"required_approver\" : \"credit_officer\" , \"diff\" : { \"target_object_id\" : \"doc_pricing_exception\" , \"before\" : { \"approval_route\" : null }, \"after\" : { \"approval_route\" : \"Credit Officer\" , \"state\" : \"routed\" } } }"
@@ -333,6 +358,28 @@
         "heading": "Diffs are still gated before execution",
         "anchor": "diffs-are-still-gated-before-execution",
         "text": "A client cannot submit a hand-edited plan to bypass the gate. /actions/execute recomposes the server-side plan, checks approved indices against non-blocked actions, and emits audit events only for actions that are still executable. POST /actions/compose Return previewable ActionPlan POST /actions/execute Recompose and execute approved indices Approval target The approved object is the specific diff. If the source changes after preview, the agent must re-run composition and show the updated diff before commit."
+      }
+    ]
+  },
+  {
+    "id": "work-product-contract",
+    "route": "/developers/work-product-contract",
+    "title": "Work Product Contract",
+    "sections": [
+      {
+        "heading": "Work Product Contract",
+        "anchor": "work-product-contract",
+        "text": "Work Product Contract is the schema-level promise for a governed work product: who owns it, which sources it depends on, which rules can make sections stale, and what must be checked before the record is reused."
+      },
+      {
+        "heading": "The contract for governed work",
+        "anchor": "the-contract-for-governed-work",
+        "text": "WorkProductContract is the durable agreement between the decision product and the lifecycle engine. It says which schema the record follows, who owns it, which source objects it depends on, and which revalidation rules can mark sections stale later. A sealed record is an instance of this contract at a point in time. Minting pins source versions and creates the integrity seal; the contract remains the map that later source changes are checked against. WorkProductContract { \"id\" : \"wp_acme_committee_packet\" , \"schema_name\" : \"DecisionBrief\" , \"owners\" : [ \"relationship_manager\" , \"credit_officer\" ], \"source_dependencies\" : [ \"doc_credit_memo\" , \"doc_financials\" , \"wf_approval\" , \"doc_cs_plan\" ], \"revalidation_rules\" : [ \"approval_status_changed\" , \"financials_changed\" ], \"stale_sections\" : [] }"
+      },
+      {
+        "heading": "What each field owns",
+        "anchor": "what-each-field-owns",
+        "text": "The contract is deliberately small because it is used by several surfaces. The Decision Brief uses it to know what can refresh readiness, Sealed Records use it to store source provenance, and Revalidation uses it to decide whether a changed object affects policy gates, required approvals, facts, conflicts, or missing evidence. Field Job id Stable work-product identifier. schema_name The typed shape, such as DecisionBrief. owners Roles accountable for the governed product. source_dependencies Source object ids that can affect freshness. revalidation_rules Rule ids that map source changes to stale sections. stale_sections Current section-level freshness state. Freshness is not integrity A record can keep a valid seal and still become stale. The seal proves the record was not tampered with; the contract tells the system which source changes require recompute or reapproval before that record can be trusted again."
       }
     ]
   },
@@ -471,7 +518,12 @@
       {
         "heading": "Readiness rows explain what blocks the packet",
         "anchor": "readiness-rows-explain-what-blocks-the-packet",
-        "text": "Readiness is the user-facing view of the same deterministic state. It points to concrete remediation actions, such as routing the Credit Officer approval or creating a task for the missing covenant tracker. Gate Status Details Covenant tracker blocking Final tracker is required before the committee can decide. Credit Officer approval blocking Requested discount is 22%, above the RM approval threshold of 15%. Legal approval pending Legal review has not completed. DSCR calculation passed Recalculated at 1.28x and matches the updated financial model. Relationship Manager approval approved RM has signed off on the renewal package. Never override the gate The Acme packet remains not approval-ready even when the prose is well formed. Confidence reflects evidence quality and gate state; it is not a substitute for approval readiness."
+        "text": "Readiness is the user-facing view of the same deterministic state. It points to concrete remediation actions, such as routing the Credit Officer approval or creating a task for the missing covenant tracker. Gate Status Details Covenant tracker blocking Final tracker is required before the committee can decide. Credit Officer approval blocking Requested discount is 22%, above the RM approval threshold of 15%. Legal approval pending Legal review has not completed. DSCR calculation passed Recalculated at 1.28x and matches the updated financial model. Relationship Manager approval approved RM has signed off on the renewal package."
+      },
+      {
+        "heading": "DecisionReadinessRow is the stageable unit",
+        "anchor": "decisionreadinessrow-is-the-stageable-unit",
+        "text": "A readiness row is the bridge from deterministic state to a human-actionable remediation. id is the stable row key, gate is the user-facing blocker, source_ids point back to evidence, explainer links to a threshold or calculation trace, and action is an optional selector for a stageable remediation. Statuses are intentionally narrow: blocking means the packet cannot advance; pending means a route or request is in flight; passed means the deterministic check cleared; approved means a required human approval is present. Staging a row into Actions does not execute it; the server rebuilds the action from the current row and re-runs the gate. DecisionReadinessRow { \"id\" : \"credit_officer_approval\" , \"gate\" : \"Credit Officer approval\" , \"status\" : \"blocking\" , \"details\" : \"Requested discount is 22%, above the RM approval threshold of 15%.\" , \"source_ids\" : [ \"doc_pricing_exception\" , \"wf_approval\" ], \"explainer\" : { \"kind\" : \"threshold\" , \"rule_id\" : \"approval_threshold\" }, \"action\" : { \"label\" : \"Stage: route 22% to Credit Officer\" , \"tool\" : \"route_approval\" , \"target_object_id\" : \"doc_pricing_exception\" , \"required_approver\" : \"credit_officer\" } } Never override the gate The Acme packet remains not approval-ready even when the prose is well formed. Confidence reflects evidence quality and gate state; it is not a substitute for approval readiness."
       }
     ]
   },
@@ -493,19 +545,19 @@
       {
         "heading": "A card can suggest, but not commit",
         "anchor": "a-card-can-suggest-but-not-commit",
-        "text": "A proactive card may offer to route an approval or create a task, but it does so by moving into Action Packets. The card itself stays read-only; writes still require diff preview, gate validation, and human approval. card source { \"kind\" : \"open_approval\" , \"source\" : \"decision_readiness.rows[credit_officer_approval]\" , \"suggested_action\" : { \"label\" : \"Stage: route 22% to Credit Officer\" , \"tool\" : \"route_approval\" , \"target_object_id\" : \"doc_pricing_exception\" , \"required_approver\" : \"credit_officer\" , \"parameters\" : { \"business_label\" : \"22% pricing exception\" , \"requested_discount_percent\" : 22 , \"route_note\" : \"Route the 22% pricing exception to the Credit Officer; it exceeds the RM's delegated authority.\" } }, \"commit_path\" : \"/actions/compose\" }"
+        "text": "A proactive card may offer to route an approval or create a task, but it does so by moving into Actions. The card itself stays read-only; writes still require diff preview, gate validation, and human approval. card source { \"kind\" : \"open_approval\" , \"source\" : \"decision_readiness.rows[credit_officer_approval]\" , \"suggested_action\" : { \"label\" : \"Stage: route 22% to Credit Officer\" , \"tool\" : \"route_approval\" , \"target_object_id\" : \"doc_pricing_exception\" , \"required_approver\" : \"credit_officer\" , \"parameters\" : { \"business_label\" : \"22% pricing exception\" , \"requested_discount_percent\" : 22 , \"route_note\" : \"Route the 22% pricing exception to the Credit Officer; it exceeds the RM's delegated authority.\" } }, \"commit_path\" : \"/actions/compose\" }"
       }
     ]
   },
   {
     "id": "action-packets",
     "route": "/developers/action-packets",
-    "title": "Action Packets",
+    "title": "Actions",
     "sections": [
       {
-        "heading": "Action Packets",
-        "anchor": "action-packets",
-        "text": "Action packets package proposed tool calls with sources, side-effect class, risk, required approver, blocked reason, and an exact diff. The model proposes; the deterministic engine decides whether each action can run."
+        "heading": "Actions",
+        "anchor": "actions",
+        "text": "Actions package proposed tool calls with sources, side-effect class, risk, required approver, blocked reason, and an exact diff. The model proposes; the deterministic engine decides whether each action can run."
       },
       {
         "heading": "Actions are tool calls with governance attached",
@@ -513,9 +565,14 @@
         "text": "SafeActionComposer maps brief next steps onto registered ToolCards, then the deterministic engine validates permission, mosaic, injection, missing evidence, and approval gates. Model-supplied safety claims are ignored. Tool Effect Status Create task write ready Route approval propose approval Route approval propose approval Draft internal note draft ready Schedule meeting write blocked Draft internal note draft blocked"
       },
       {
+        "heading": "ToolCard registry",
+        "anchor": "toolcard-registry",
+        "text": "A ToolCard is the registered capability the composer is allowed to target. It declares the tool name, what the tool does, the side-effect class, the expected input schema, any required approver, and retry policy. The LLM can suggest intent, but it cannot invent a new tool outside the registry. The composer maps readiness rows and brief next steps onto ToolCards such as create_task , route_approval , and edit_document . The validation engine then checks permissions, missing evidence, mosaic risk, injection risk, approval requirements, and the resulting ActionDiff before anything can run. ToolCard { \"name\" : \"route_approval\" , \"description\" : \"Route an approval packet to a required approver and record sign-off.\" , \"side_effect\" : \"propose\" , \"input_schema\" : { \"approver_role\" : \"str\" , \"packet\" : \"str\" }, \"requires_approver\" : null , \"max_retries\" : 0 }"
+      },
+      {
         "heading": "Blocked actions remain visible but unexecutable",
         "anchor": "blocked-actions-remain-visible-but-unexecutable",
-        "text": "The blocked action in the Acme packet proposes scheduling the final committee meeting. The engine keeps it blocked because the covenant tracker and Credit Officer approval are still unresolved. This is important product behavior: the agent can show what it would do next without pretending the prerequisite is complete. blocked action { \"tool\" : \"schedule_meeting\" , \"reason\" : \"Book the final committee decision once prerequisites clear.\" , \"sources\" : [ { \"object_id\" : \"mtg_committee_0612\" } ], \"side_effect\" : \"write\" , \"risk\" : \"low\" , \"required_approver\" : null , \"blocked_reason\" : \"missing_evidence: blocked by ['missing_covenant_tracker'] (blocking evidence unresolved)\" , \"diff\" : { \"target_object_id\" : \"mtg_new_1\" , \"before\" : {}, \"after\" : { \"title\" : \"Acme — final committee decision\" , \"attendees\" : [ \"Dana R.\" , \"Chris O.\" , \"Priya N.\" , \"Sam L.\" ], \"proposed\" : \"2026-06-24 14:00\" } } } Rollback-ready Executed packets emit audit events with enough before/after detail to build a rollback plan. Preview, approval, execution, audit, and rollback all refer to the same diff."
+        "text": "The blocked action in the Acme flow proposes scheduling the final committee meeting. The engine keeps it blocked because the covenant tracker and Credit Officer approval are still unresolved. This is important product behavior: the agent can show what it would do next without pretending the prerequisite is complete. blocked action { \"tool\" : \"schedule_meeting\" , \"reason\" : \"Book the final committee decision once prerequisites clear.\" , \"sources\" : [ { \"object_id\" : \"mtg_committee_0612\" } ], \"side_effect\" : \"write\" , \"risk\" : \"low\" , \"required_approver\" : null , \"blocked_reason\" : \"missing_evidence: blocked by ['missing_covenant_tracker'] (blocking evidence unresolved)\" , \"diff\" : { \"target_object_id\" : \"mtg_new_1\" , \"before\" : {}, \"after\" : { \"title\" : \"Acme — final committee decision\" , \"attendees\" : [ \"Dana R.\" , \"Chris O.\" , \"Priya N.\" , \"Sam L.\" ], \"proposed\" : \"2026-06-24 14:00\" } } } Rollback-ready Unknown tools fail closed, model-supplied safety claims are ignored, and blocked actions remain visible with a blocked_reason . Executed actions emit audit events with enough before/after detail to build a rollback plan. Preview, approval, execution, audit, and rollback all refer to the same diff."
       }
     ]
   },
@@ -532,7 +589,7 @@
       {
         "heading": "The controlled loop is deterministic state transition",
         "anchor": "the-controlled-loop-is-deterministic-state-transition",
-        "text": "The loop runs on action packets and personas, but control flow is deterministic. Replies can be model-drafted in the future; assignments, escalations, approvals, scheduled work, and audit remain typed state. 1 distribute Assign owners Route action packets to Credit, Legal, and Analyst. 2 collect Gather replies Record sign-off, escalation, or acknowledgement. 3 escalate Handle blocked owners Legal escalates to Compliance; blocked actions route to Human Review. 4 schedule Queue next meeting Schedule only after prerequisites are understood. 5 close Close cycle Cycle completes while unresolved reviews remain visible."
+        "text": "The loop runs on actions and personas, but control flow is deterministic. Replies can be model-drafted in the future; assignments, escalations, approvals, scheduled work, and audit remain typed state. 1 distribute Assign owners Route actions to Credit, Legal, and Analyst. 2 collect Gather replies Record sign-off, escalation, or acknowledgement. 3 escalate Handle blocked owners Legal escalates to Compliance; blocked actions route to Human Review. 4 schedule Queue next meeting Schedule only after prerequisites are understood. 5 close Close cycle Cycle completes while unresolved reviews remain visible."
       },
       {
         "heading": "Closed means cycle-completed, not fully resolved",
@@ -582,6 +639,33 @@
         "heading": "The record knows what it depends on",
         "anchor": "the-record-knows-what-it-depends-on",
         "text": "The section dependency map is the bridge to lifecycle. It says which source objects can make each section stale later. Approval sections depend on approval workflow sources; factual sections depend on documents and models. Section Source dependencies policy_gates wf_approval required_approvals wf_approval what_changed doc_financials key_facts doc_financials, doc_credit_memo conflicts doc_pricing_exception, doc_cs_plan missing_evidence doc_covenant_tracker Permission omissions are explicit The legal memo was restricted at mint time and was not summarized. Source versions are pinned 10 source snapshots travel with the record. Integrity is server-minted The seal is HMAC-SHA256 over canonical JSON."
+      }
+    ]
+  },
+  {
+    "id": "lifecycle-events",
+    "route": "/developers/lifecycle-events",
+    "title": "Lifecycle Events",
+    "sections": [
+      {
+        "heading": "Lifecycle Events",
+        "anchor": "lifecycle-events",
+        "text": "Lifecycle events are content-free records of state changes. The demo appends them, derives current lifecycle state, and recomputes brief readiness from that state instead of trusting stale UI state."
+      },
+      {
+        "heading": "Events are content-free state changes",
+        "anchor": "events-are-content-free-state-changes",
+        "text": "A lifecycle event records that something changed; it does not carry raw document, transcript, prompt, or response content. The event gives the system enough typed context to derive state and recompute affected read models without storing sensitive bodies in the event log. The Acme demo keeps this log API-local and in memory. That is enough to prove the causal path: route approval, receive approval, request evidence, upload evidence, apply revalidation, and recompute the brief from the current state. POST /api/lifecycle/events { \"id\" : \"le_42\" , \"type\" : \"approval_returned\" , \"user_id\" : \"u_rm\" , \"intent\" : \"prepare_decision_brief\" , \"object_id\" : \"doc_pricing_exception\" , \"detail\" : { \"approver\" : \"credit_officer\" }, \"created_at\" : \"2026-06-28T16:30:00Z\" }"
+      },
+      {
+        "heading": "Event types",
+        "anchor": "event-types",
+        "text": "Event type is the stable machine signal. object_id points at the changed source or workflow object, while detail carries small typed hints such as the approver role. The event log is append-only for the active run; current state is derived from the scoped sequence. Type Effect decision_request_submitted Starts or refreshes the decision path. approval_routed Marks an approval request as in flight. approval_returned Records a returned approver decision and recomputes readiness. evidence_requested Marks missing evidence as requested but not yet cleared. evidence_uploaded Clears an evidence blocker when the expected object appears. source_changed Triggers conflict, freshness, or revalidation checks. revalidation_applied Records an accepted reconciliation after a source conflict."
+      },
+      {
+        "heading": "Append event, recompute state",
+        "anchor": "append-event-recompute-state",
+        "text": "The important behavior is causal recompute. A returned Credit Officer approval does not directly flip a UI badge. It appends approval_returned , derives lifecycle state, recomputes /api/brief , and then exposes updated readiness rows and any stageable reconciliation action. 1 append Record event POST /api/lifecycle/events stores the content-free change. 2 derive Build state LifecycleState derives routed, signed, uploaded, and reconciled flags. 3 brief Recompute brief /api/brief rebuilds DecisionReadiness from the current lifecycle state. 4 stage Stage action Rows with actions move into Actions, where execution re-gates. Prototype boundary The current demo has API-local lifecycle events and explicit reducers for Acme. The locked core contracts also define EventTrigger ; the general dispatcher that fans all trigger types into every read model is future platform work."
       }
     ]
   },
@@ -637,7 +721,7 @@
       {
         "heading": "Verticals",
         "anchor": "verticals",
-        "text": "Vertical expansion swaps recipes, policy artifacts, and eval packs while keeping the same substrate: permission-aware context, deterministic gates, action packets, lifecycle, and privacy-preserving evals."
+        "text": "Vertical expansion swaps recipes, policy artifacts, and eval packs while keeping the same substrate: permission-aware context, deterministic gates, actions, lifecycle, and privacy-preserving evals."
       },
       {
         "heading": "Same substrate, swapped vertical packs",

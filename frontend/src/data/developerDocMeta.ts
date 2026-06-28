@@ -4,6 +4,7 @@ export type DeveloperDocPageId =
   | "risks"
   | "contextAssembly"
   | "actionDiff"
+  | "workProductContract"
   | "evalTrace"
   | "complianceTrace"
   | "rag"
@@ -13,6 +14,7 @@ export type DeveloperDocPageId =
   | "orchestration"
   | "auditLog"
   | "sealedRecords"
+  | "lifecycleEvents"
   | "revalidation"
   | "aiStudio"
   | "verticals";
@@ -48,6 +50,11 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
     description:
       "Action Diff documentation for ActionPlan, ActionDiff, DryRunResult, preview-before-commit, and gated execution.",
   },
+  workProductContract: {
+    title: "Work Product Contract",
+    description:
+      "Work Product Contract documentation for governed work product schemas, source dependencies, revalidation rules, stale sections, and sealed records.",
+  },
   evalTrace: {
     title: "Eval Trace",
     description:
@@ -74,9 +81,9 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
       "Insight Cards documentation for proactive read-only cards derived from context, readiness, actions, and revalidation state.",
   },
   actionPackets: {
-    title: "Action Packets",
+    title: "Actions",
     description:
-      "Action Packets documentation for ToolCard, ApprovalPolicy, SafeActionComposer, gated action packets, human approval, rollback, and blocked actions.",
+      "Actions documentation for ToolCard, ApprovalPolicy, SafeActionComposer, gated actions, human approval, rollback, and blocked actions.",
   },
   orchestration: {
     title: "Orchestration",
@@ -92,6 +99,11 @@ export const developerDocMeta: Record<DeveloperDocPageId, DeveloperDocMeta> = {
     title: "Sealed records",
     description:
       "Sealed records documentation for WorkProductContract, governed records, source-version snapshots, permission omissions, and /workproducts/mint.",
+  },
+  lifecycleEvents: {
+    title: "Lifecycle Events",
+    description:
+      "Lifecycle Events documentation for content-free event logs, event-derived state, recompute, and stageable remediation.",
   },
   revalidation: {
     title: "Revalidation",

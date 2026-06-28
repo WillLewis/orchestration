@@ -23,6 +23,7 @@ const expectedHeadingsByRoute: Record<LiveDocsRoute, string[]> = {
   "/developers/context-assembly": ["Context Assembly", "From workspace objects to a usable bundle"],
   "/developers/gating": ["Deterministic Gating", "Policy Artifact - policy-as-data"],
   "/developers/action-diff": ["Action Diff", "Every write starts as a diff"],
+  "/developers/work-product-contract": ["Work Product Contract", "The contract for governed work"],
   "/developers/eval-trace": ["Eval Trace", "Cases run through the same substrate"],
   "/developers/compliance-trace": [
     "Compliance Trace",
@@ -37,16 +38,14 @@ const expectedHeadingsByRoute: Record<LiveDocsRoute, string[]> = {
     "Insight Cards",
     "Cards turn substrate state into proactive signals",
   ],
-  "/developers/action-packets": [
-    "Action Packets",
-    "Actions are tool calls with governance attached",
-  ],
+  "/developers/action-packets": ["Actions", "Actions are tool calls with governance attached"],
   "/developers/orchestration": [
     "Orchestration",
     "The controlled loop is deterministic state transition",
   ],
   "/developers/audit-log": ["Audit log", "Execution emits an ordered audit record"],
   "/developers/sealed-records": ["Sealed records", "Mint a governed work product"],
+  "/developers/lifecycle-events": ["Lifecycle Events", "Events are content-free state changes"],
   "/developers/revalidation": ["Revalidation", "Source changes mark sections stale"],
   "/developers/ai-studio": ["AI Studio", "Author configs, not new engines"],
   "/developers/verticals": ["Verticals", "Same substrate, swapped vertical packs"],

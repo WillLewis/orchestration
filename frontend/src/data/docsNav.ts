@@ -14,6 +14,7 @@ export type LiveDocsRoute =
   | "/developers/context-assembly"
   | "/developers/gating"
   | "/developers/action-diff"
+  | "/developers/work-product-contract"
   | "/developers/eval-trace"
   | "/developers/compliance-trace"
   | "/developers/ui-chat"
@@ -26,6 +27,7 @@ export type LiveDocsRoute =
   | "/developers/orchestration"
   | "/developers/audit-log"
   | "/developers/sealed-records"
+  | "/developers/lifecycle-events"
   | "/developers/revalidation"
   | "/developers/ai-studio"
   | "/developers/verticals";
@@ -67,6 +69,12 @@ export const docsNav: DocsNavSection[] = [
       { label: "Context Assembly", to: "/developers/context-assembly", live: true },
       { label: "Deterministic Gating", to: "/developers/gating", live: true },
       { label: "Action Diff", to: "/developers/action-diff", live: true },
+      { label: "Work Product Contract", to: "/developers/work-product-contract", live: true },
+    ],
+  },
+  {
+    label: "Observability",
+    items: [
       { label: "Eval Trace", to: "/developers/eval-trace", live: true },
       { label: "Compliance Trace", to: "/developers/compliance-trace", live: true },
     ],
@@ -90,7 +98,7 @@ export const docsNav: DocsNavSection[] = [
   {
     label: "Actions",
     items: [
-      { label: "Action Packets", to: "/developers/action-packets", live: true },
+      { label: "Actions", to: "/developers/action-packets", live: true },
       { label: "Orchestration", to: "/developers/orchestration", live: true },
       { label: "Audit log", to: "/developers/audit-log", live: true },
     ],
@@ -99,6 +107,7 @@ export const docsNav: DocsNavSection[] = [
     label: "Lifecycle",
     items: [
       { label: "Sealed records", to: "/developers/sealed-records", live: true },
+      { label: "Lifecycle Events", to: "/developers/lifecycle-events", live: true },
       { label: "Revalidation", to: "/developers/revalidation", live: true },
       { label: "AI Studio", to: "/developers/ai-studio", live: true },
       { label: "Verticals", to: "/developers/verticals", live: true },

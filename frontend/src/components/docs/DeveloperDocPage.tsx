@@ -68,67 +68,85 @@ const primitiveRows = [
     acmeExample: "Acme renewal credit decision",
   },
   {
-    primitive: "Permission Boundary",
+    primitive: <DocLink to="/developers/context-assembly">Permission Boundary</DocLink>,
     whatItIs: "Defines which sources and content the current user may use.",
     configuredBy: "User/document permissions, restricted-source handling",
     acmeExample: "Legal memo restricted, not summarized",
   },
   {
-    primitive: "Context Bundle",
+    primitive: <DocLink to="/developers/context-assembly">Context Bundle</DocLink>,
     whatItIs: "Packages permitted sources, claims, state, and versions for the agent.",
     configuredBy: "Meeting, docs, metadata, workflow state, source versions",
     acmeExample: "Memo + CS plan + approvals + tracker",
   },
   {
-    primitive: "RulePack",
+    primitive: <DocLink to="/developers/gating">Policy Artifact</DocLink>,
+    whatItIs: "Versioned policy-as-data that owns deterministic rule parameters.",
+    configuredBy: "Rules, thresholds, owners, eval pack, runtime mode",
+    acmeExample: "finance_credit_v1 active policy artifact",
+  },
+  {
+    primitive: <DocLink to="/developers/gating">RulePack</DocLink>,
     whatItIs: "Encodes deterministic thresholds, calculations, and blocked-action rules.",
     configuredBy: "Thresholds, calculations, blocked actions",
     acmeExample: "22% requires Credit Officer approval",
   },
   {
-    primitive: "ApprovalMatrix",
+    primitive: <DocLink to="/developers/compliance-trace">ApprovalMatrix</DocLink>,
     whatItIs: "Maps rule outcomes and action classes to required approvers.",
     configuredBy: "Required approver by rule or action class",
     acmeExample: "Credit Officer and Legal routes",
   },
   {
-    primitive: "PolicyGraph",
+    primitive: <DocLink to="/developers/gating">PolicyGraph</DocLink>,
     whatItIs: "Orders dependencies so readiness can be computed deterministically.",
     configuredBy: "Dependency order and readiness criteria",
     acmeExample: "Credit, Legal, tracker, CS-plan reconciliation",
   },
   {
-    primitive: "Decision Readiness Row",
+    primitive: <DocLink to="/developers/decision-brief">Decision Readiness Row</DocLink>,
     whatItIs: "Represents one blocker with its status and possible remediation.",
     configuredBy: "Typed blocker and stageable remediation",
     acmeExample: "Approval, missing evidence, conflict rows",
   },
   {
-    primitive: "ActionDiff",
+    primitive: <DocLink to="/developers/action-diff">ActionDiff</DocLink>,
     whatItIs: "Shows the exact proposed change before anything is committed.",
     configuredBy: "Validated change preview",
     acmeExample: "CS plan 18% -> 22% diff",
   },
   {
-    primitive: "LifecycleEvent",
+    primitive: <DocLink to="/developers/action-packets">ToolCard</DocLink>,
+    whatItIs: "Declares an action tool, its input contract, and side-effect class.",
+    configuredBy: "Allowed tools, input schema, approver requirement, retry policy",
+    acmeExample: "route_approval and edit_document cards",
+  },
+  {
+    primitive: <DocLink to="/developers/context-assembly">MissingEvidenceState</DocLink>,
+    whatItIs: "Names an evidence gap and whether it blocks readiness or execution.",
+    configuredBy: "Evidence requirements and blocking policy",
+    acmeExample: "missing_covenant_tracker blocks committee readiness",
+  },
+  {
+    primitive: <DocLink to="/developers/lifecycle-events">LifecycleEvent</DocLink>,
     whatItIs: "Records a state-changing event that can trigger recomputation.",
     configuredBy: "Event classes and recompute behavior",
     acmeExample: "Approval returned; evidence uploaded",
   },
   {
-    primitive: "WorkProductContract",
+    primitive: <DocLink to="/developers/work-product-contract">WorkProductContract</DocLink>,
     whatItIs: "Defines the sealed record, its sources, dependencies, and integrity checks.",
     configuredBy: "Record schema, sources, seal, dependencies",
     acmeExample: "Final governed Decision Brief",
   },
   {
-    primitive: "RevalidationRule",
+    primitive: <DocLink to="/developers/revalidation">RevalidationRule</DocLink>,
     whatItIs: "Declares which source changes make record sections stale.",
     configuredBy: "Freshness triggers and affected sections",
     acmeExample: "Source change marks section stale",
   },
   {
-    primitive: "EvalTrace",
+    primitive: <DocLink to="/developers/eval-trace">EvalTrace</DocLink>,
     whatItIs: "Captures content-free quality and safety measurements for replay.",
     configuredBy: "Quality, safety, and platform metrics",
     acmeExample: "Citation, permission, action, stale-record KPIs",
@@ -245,7 +263,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         description: "Permission filtering and mosaic protection start before retrieval.",
       },
       {
-        label: "Action Packets",
+        label: "Actions",
         to: "/developers/action-packets",
         description: "How risky writes are previewed, approved, or blocked.",
       },
@@ -293,15 +311,39 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
         description: "The typed work product that supplies next steps.",
       },
       {
-        label: "Action Packets",
+        label: "Actions",
         to: "/developers/action-packets",
-        description: "How multiple previewed diffs become governed action packets.",
+        description: "How multiple previewed diffs become governed actions.",
       },
     ],
     content: ActionDiffPage,
   },
-  evalTrace: {
+  workProductContract: {
     eyebrow: "Substrate",
+    title: "Work Product Contract",
+    description: (
+      <p>
+        Work Product Contract is the schema-level promise for a governed work product: who owns it,
+        which sources it depends on, which rules can make sections stale, and what must be checked
+        before the record is reused.
+      </p>
+    ),
+    related: [
+      {
+        label: "Sealed records",
+        to: "/developers/sealed-records",
+        description: "Where a contract becomes a minted governed record.",
+      },
+      {
+        label: "Revalidation",
+        to: "/developers/revalidation",
+        description: "How source changes are evaluated against the contract.",
+      },
+    ],
+    content: WorkProductContractPage,
+  },
+  evalTrace: {
+    eyebrow: "Observability",
     title: "Eval Trace",
     description: (
       <p>
@@ -325,7 +367,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     content: EvalTracePage,
   },
   complianceTrace: {
-    eyebrow: "Substrate",
+    eyebrow: "Observability",
     title: "Compliance Trace",
     description: (
       <p>
@@ -422,10 +464,10 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
   },
   actionPackets: {
     eyebrow: "Actions",
-    title: "Action Packets",
+    title: "Actions",
     description: (
       <p>
-        Action packets package proposed tool calls with sources, side-effect class, risk, required
+        Actions package proposed tool calls with sources, side-effect class, risk, required
         approver, blocked reason, and an exact diff. The model proposes; the deterministic engine
         decides whether each action can run.
       </p>
@@ -434,12 +476,12 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
       {
         label: "Action Diff",
         to: "/developers/action-diff",
-        description: "The preview surface inside every packet.",
+        description: "The preview surface inside every action.",
       },
       {
         label: "Orchestration",
         to: "/developers/orchestration",
-        description: "How approved packets fan out to owners.",
+        description: "How approved actions fan out to owners.",
       },
     ],
     content: ActionPacketsPage,
@@ -456,7 +498,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     ),
     related: [
       {
-        label: "Action Packets",
+        label: "Actions",
         to: "/developers/action-packets",
         description: "The governed inputs the loop distributes.",
       },
@@ -479,9 +521,9 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     ),
     related: [
       {
-        label: "Action Packets",
+        label: "Actions",
         to: "/developers/action-packets",
-        description: "Every audit event starts from a gated action packet.",
+        description: "Every audit event starts from a gated action.",
       },
       {
         label: "Sealed records",
@@ -514,6 +556,30 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
       },
     ],
     content: SealedRecordsPage,
+  },
+  lifecycleEvents: {
+    eyebrow: "Lifecycle",
+    title: "Lifecycle Events",
+    description: (
+      <p>
+        Lifecycle events are content-free records of state changes. The demo appends them, derives
+        current lifecycle state, and recomputes brief readiness from that state instead of trusting
+        stale UI state.
+      </p>
+    ),
+    related: [
+      {
+        label: "Decision Brief",
+        to: "/developers/decision-brief",
+        description: "The read surface whose readiness rows are recomputed from events.",
+      },
+      {
+        label: "Work Product Contract",
+        to: "/developers/work-product-contract",
+        description: "The contract that tells later lifecycle checks what can go stale.",
+      },
+    ],
+    content: LifecycleEventsPage,
   },
   revalidation: {
     eyebrow: "Lifecycle",
@@ -568,7 +634,7 @@ const pages: Record<DeveloperDocPageId, PageDefinition> = {
     description: (
       <p>
         Vertical expansion swaps recipes, policy artifacts, and eval packs while keeping the same
-        substrate: permission-aware context, deterministic gates, action packets, lifecycle, and
+        substrate: permission-aware context, deterministic gates, actions, lifecycle, and
         privacy-preserving evals.
       </p>
     ),
@@ -789,7 +855,7 @@ function RisksPage() {
           {
             risk: "Prompt injection",
             mitigation: "Action engine strips hidden-instruction content and blocks action use.",
-            owner: <DocLink to="/developers/action-packets">Action Packets</DocLink>,
+            owner: <DocLink to="/developers/action-packets">Actions</DocLink>,
           },
           {
             risk: "Raw telemetry exposure",
@@ -895,6 +961,77 @@ function ContextAssemblyPage() {
       </DocsSection>
 
       <DocsSection
+        label="boundary"
+        title="Permission Boundary"
+        aside={
+          <CodeBlock
+            title="PermissionBoundary"
+            body={{
+              excluded_object_ids: ["doc_legal_memo", "doc_private_side_sector_note"],
+              reason: "permission_restricted",
+            }}
+          />
+        }
+      >
+        <p>
+          Permission Boundary is the line between what the current actor may use and what the agent
+          must leave out. The filter runs before retrieval, summarization, claim extraction, and
+          action validation, so denied objects never become prompt text, citations, source graph
+          nodes, brief prose, or sealed-record evidence.
+        </p>
+        <p>
+          The boundary still records what was omitted. A restricted source can be acknowledged as
+          unavailable, but its contents are never summarized. Barrier-tagged material can also be
+          held out when combining otherwise readable sources would cross an information wall.
+        </p>
+      </DocsSection>
+
+      <DocsSection
+        label="bundle"
+        title="ContextBundle is the handoff object"
+        aside={
+          <CodeBlock
+            title="ContextBundle"
+            body={{
+              user_id: "u_rm",
+              intent: "prepare_decision_brief",
+              sources: [{ object_id: "doc_credit_memo" }, { object_id: "doc_financials" }],
+              source_graph: {
+                nodes: ["doc_credit_memo", "doc_financials", "wf_approval"],
+                edges: [{ from_id: "doc_credit_memo", to_id: "doc_financials" }],
+              },
+              claims: {
+                claims: [
+                  {
+                    id: "claim_revenue_revised",
+                    supported: true,
+                    sources: [{ object_id: "doc_financials" }],
+                  },
+                ],
+              },
+              permission_boundary: { excluded_object_ids: ["doc_legal_memo"] },
+              missing_evidence: [{ code: "missing_covenant_tracker", blocking: true }],
+              conflicts: [{ description: "Pricing exception and CS plan disagree." }],
+            }}
+          />
+        }
+      >
+        <p>
+          <code>ContextBundle</code> is the typed handoff from context assembly into RAG,
+          deterministic verification, brief synthesis, action validation, and revalidation. It is
+          not just retrieved text; it carries the sources, dependency graph, claims, omissions,
+          evidence gaps, and conflicts downstream stages must honor.
+        </p>
+        <p>
+          <code>ClaimMap</code> normalizes proposed facts into claim rows with accessible citations.
+          A claim is supported only when at least one permitted <code>SourceRef</code>
+          remains after permission scrubbing. Conflicts are source-backed disagreements preserved as
+          typed state so the brief can expose them and Actions can stage reconciliation instead of
+          hiding the disagreement in prose.
+        </p>
+      </DocsSection>
+
+      <DocsSection
         label="api"
         title="Debug the exact context used downstream"
         aside={
@@ -928,6 +1065,44 @@ function ContextAssemblyPage() {
         </p>
       </DocsSection>
 
+      <DocsSection
+        label="missing"
+        title="MissingEvidenceState"
+        aside={
+          <DataTable
+            columns={[
+              { key: "field", label: "Field" },
+              { key: "meaning", label: "Meaning" },
+            ]}
+            rows={[
+              {
+                field: <code>code</code>,
+                meaning: "Stable machine code, such as missing_covenant_tracker.",
+              },
+              {
+                field: <code>description</code>,
+                meaning: "Human-readable explanation for the missing artifact or source.",
+              },
+              {
+                field: <code>blocking</code>,
+                meaning: "Whether the gap blocks readiness, execution, or sealing.",
+              },
+            ]}
+          />
+        }
+      >
+        <p>
+          <code>MissingEvidenceState</code> is how the system stays honest about absent artifacts.
+          Blocking gaps keep readiness rows in <code>blocking</code> status and keep related actions
+          unexecutable until an event or source update supplies the evidence.
+        </p>
+        <p>
+          In Acme, the final covenant tracker is missing, so the brief surfaces a blocker and offers
+          a stageable task. When an <code>evidence_uploaded</code> lifecycle event arrives for the
+          tracker, the context and brief recompute and that row can clear.
+        </p>
+      </DocsSection>
+
       <SignalList
         items={[
           {
@@ -952,6 +1127,45 @@ function ContextAssemblyPage() {
 function ActionDiffPage() {
   return (
     <>
+      <DocsSection
+        label="why"
+        title="Why diffs exist"
+        aside={
+          <SignalList
+            items={[
+              {
+                title: "Scattered approvals",
+                detail: "Slack, email, docs, and workflow state often disagree about what changed.",
+                tone: "warn",
+              },
+              {
+                title: "Concrete consent",
+                detail: "The user approves a target object and exact field changes, not intent.",
+              },
+              {
+                title: "Conflict surfacing",
+                detail:
+                  "A dependency conflict becomes a reconciliation diff instead of hidden prose.",
+                tone: "warn",
+              },
+            ]}
+          />
+        }
+      >
+        <p>
+          Regulated approvals rarely live in one clean system. A Credit Officer may approve a
+          pricing exception in workflow, Legal may answer in email, and a customer-success plan may
+          still carry an older assumption. <code>ActionDiff</code> turns that scattered context into
+          one concrete approval object: target, evidence, side-effect class, approver, and
+          before/after fields.
+        </p>
+        <p>
+          Diffs are also how conflicting dependencies become visible. When Acme's 22% exception is
+          approved but the CS plan still assumes 18%, the agent stages a document-edit diff for the
+          specific mismatch rather than claiming the packet is clean.
+        </p>
+      </DocsSection>
+
       <DocsSection
         label="preview"
         title="Every write starts as a diff"
@@ -1325,6 +1539,45 @@ function DecisionBriefPage() {
         </p>
       </DocsSection>
 
+      <DocsSection
+        label="row"
+        title="DecisionReadinessRow is the stageable unit"
+        aside={
+          <CodeBlock
+            title="DecisionReadinessRow"
+            body={{
+              id: "credit_officer_approval",
+              gate: "Credit Officer approval",
+              status: "blocking",
+              details: "Requested discount is 22%, above the RM approval threshold of 15%.",
+              source_ids: ["doc_pricing_exception", "wf_approval"],
+              explainer: { kind: "threshold", rule_id: "approval_threshold" },
+              action: {
+                label: "Stage: route 22% to Credit Officer",
+                tool: "route_approval",
+                target_object_id: "doc_pricing_exception",
+                required_approver: "credit_officer",
+              },
+            }}
+          />
+        }
+      >
+        <p>
+          A readiness row is the bridge from deterministic state to a human-actionable remediation.
+          <code>id</code> is the stable row key, <code>gate</code> is the user-facing blocker,
+          <code>source_ids</code> point back to evidence, <code>explainer</code> links to a
+          threshold or calculation trace, and <code>action</code> is an optional selector for a
+          stageable remediation.
+        </p>
+        <p>
+          Statuses are intentionally narrow: <code>blocking</code> means the packet cannot advance;
+          <code>pending</code> means a route or request is in flight; <code>passed</code> means the
+          deterministic check cleared; <code>approved</code> means a required human approval is
+          present. Staging a row into Actions does not execute it; the server rebuilds the action
+          from the current row and re-runs the gate.
+        </p>
+      </DocsSection>
+
       <Callout title="Never override the gate">
         <p>
           The Acme packet remains not approval-ready even when the prose is well formed. Confidence
@@ -1393,8 +1646,8 @@ function InsightCardsPage() {
       >
         <p>
           A proactive card may offer to route an approval or create a task, but it does so by moving
-          into Action Packets. The card itself stays read-only; writes still require diff preview,
-          gate validation, and human approval.
+          into Actions. The card itself stays read-only; writes still require diff preview, gate
+          validation, and human approval.
         </p>
       </DocsSection>
     </>
@@ -1405,7 +1658,7 @@ function ActionPacketsPage() {
   return (
     <>
       <DocsSection
-        label="packet"
+        label="actions"
         title="Actions are tool calls with governance attached"
         aside={
           <DataTable
@@ -1442,12 +1695,43 @@ function ActionPacketsPage() {
       </DocsSection>
 
       <DocsSection
+        label="toolcard"
+        title="ToolCard registry"
+        aside={
+          <CodeBlock
+            title="ToolCard"
+            body={{
+              name: "route_approval",
+              description: "Route an approval packet to a required approver and record sign-off.",
+              side_effect: "propose",
+              input_schema: { approver_role: "str", packet: "str" },
+              requires_approver: null,
+              max_retries: 0,
+            }}
+          />
+        }
+      >
+        <p>
+          A <code>ToolCard</code> is the registered capability the composer is allowed to target. It
+          declares the tool name, what the tool does, the side-effect class, the expected input
+          schema, any required approver, and retry policy. The LLM can suggest intent, but it cannot
+          invent a new tool outside the registry.
+        </p>
+        <p>
+          The composer maps readiness rows and brief next steps onto ToolCards such as{" "}
+          <code>create_task</code>, <code>route_approval</code>, and <code>edit_document</code>. The
+          validation engine then checks permissions, missing evidence, mosaic risk, injection risk,
+          approval requirements, and the resulting <code>ActionDiff</code> before anything can run.
+        </p>
+      </DocsSection>
+
+      <DocsSection
         label="blocked"
         title="Blocked actions remain visible but unexecutable"
         aside={<CodeBlock title="blocked action" body={blockedAction} />}
       >
         <p>
-          The blocked action in the Acme packet proposes scheduling the final committee meeting. The
+          The blocked action in the Acme flow proposes scheduling the final committee meeting. The
           engine keeps it blocked because the covenant tracker and Credit Officer approval are still
           unresolved.
         </p>
@@ -1459,8 +1743,10 @@ function ActionPacketsPage() {
 
       <Callout title="Rollback-ready">
         <p>
-          Executed packets emit audit events with enough before/after detail to build a rollback
-          plan. Preview, approval, execution, audit, and rollback all refer to the same diff.
+          Unknown tools fail closed, model-supplied safety claims are ignored, and blocked actions
+          remain visible with a <code>blocked_reason</code>. Executed actions emit audit events with
+          enough before/after detail to build a rollback plan. Preview, approval, execution, audit,
+          and rollback all refer to the same diff.
         </p>
       </Callout>
     </>
@@ -1479,7 +1765,7 @@ function OrchestrationPage() {
               {
                 label: "distribute",
                 title: "Assign owners",
-                detail: "Route action packets to Credit, Legal, and Analyst.",
+                detail: "Route actions to Credit, Legal, and Analyst.",
               },
               {
                 label: "collect",
@@ -1506,9 +1792,9 @@ function OrchestrationPage() {
         }
       >
         <p>
-          The loop runs on action packets and personas, but control flow is deterministic. Replies
-          can be model-drafted in the future; assignments, escalations, approvals, scheduled work,
-          and audit remain typed state.
+          The loop runs on actions and personas, but control flow is deterministic. Replies can be
+          model-drafted in the future; assignments, escalations, approvals, scheduled work, and
+          audit remain typed state.
         </p>
       </DocsSection>
 
@@ -1597,6 +1883,91 @@ function AuditLogPage() {
   );
 }
 
+function WorkProductContractPage() {
+  return (
+    <>
+      <DocsSection
+        label="contract"
+        title="The contract for governed work"
+        aside={
+          <CodeBlock
+            title="WorkProductContract"
+            body={{
+              id: "wp_acme_committee_packet",
+              schema_name: "DecisionBrief",
+              owners: ["relationship_manager", "credit_officer"],
+              source_dependencies: [
+                "doc_credit_memo",
+                "doc_financials",
+                "wf_approval",
+                "doc_cs_plan",
+              ],
+              revalidation_rules: ["approval_status_changed", "financials_changed"],
+              stale_sections: [],
+            }}
+          />
+        }
+      >
+        <p>
+          <code>WorkProductContract</code> is the durable agreement between the decision product and
+          the lifecycle engine. It says which schema the record follows, who owns it, which source
+          objects it depends on, and which revalidation rules can mark sections stale later.
+        </p>
+        <p>
+          A sealed record is an instance of this contract at a point in time. Minting pins source
+          versions and creates the integrity seal; the contract remains the map that later source
+          changes are checked against.
+        </p>
+      </DocsSection>
+
+      <DocsSection
+        label="fields"
+        title="What each field owns"
+        aside={
+          <DataTable
+            columns={[
+              { key: "field", label: "Field" },
+              { key: "job", label: "Job" },
+            ]}
+            rows={[
+              { field: <code>id</code>, job: "Stable work-product identifier." },
+              { field: <code>schema_name</code>, job: "The typed shape, such as DecisionBrief." },
+              { field: <code>owners</code>, job: "Roles accountable for the governed product." },
+              {
+                field: <code>source_dependencies</code>,
+                job: "Source object ids that can affect freshness.",
+              },
+              {
+                field: <code>revalidation_rules</code>,
+                job: "Rule ids that map source changes to stale sections.",
+              },
+              {
+                field: <code>stale_sections</code>,
+                job: "Current section-level freshness state.",
+              },
+            ]}
+          />
+        }
+      >
+        <p>
+          The contract is deliberately small because it is used by several surfaces. The Decision
+          Brief uses it to know what can refresh readiness, Sealed Records use it to store source
+          provenance, and Revalidation uses it to decide whether a changed object affects policy
+          gates, required approvals, facts, conflicts, or missing evidence.
+        </p>
+      </DocsSection>
+
+      <Callout title="Freshness is not integrity">
+        <p>
+          A record can keep a valid seal and still become stale. The seal proves the record was not
+          tampered with; the contract tells the system which source changes require recompute or
+          reapproval before that record can be trusted again.
+        </p>
+      </Callout>
+    </>
+  );
+}
+
 function SealedRecordsPage() {
   const governance = governance_certificate.governance;
 
@@ -1665,6 +2036,140 @@ function SealedRecordsPage() {
           },
         ]}
       />
+    </>
+  );
+}
+
+function LifecycleEventsPage() {
+  return (
+    <>
+      <DocsSection
+        label="shape"
+        title="Events are content-free state changes"
+        aside={
+          <CodeBlock
+            method="POST"
+            path="/api/lifecycle/events"
+            body={{
+              id: "le_42",
+              type: "approval_returned",
+              user_id: "u_rm",
+              intent: "prepare_decision_brief",
+              object_id: "doc_pricing_exception",
+              detail: { approver: "credit_officer" },
+              created_at: "2026-06-28T16:30:00Z",
+            }}
+          />
+        }
+      >
+        <p>
+          A lifecycle event records that something changed; it does not carry raw document,
+          transcript, prompt, or response content. The event gives the system enough typed context
+          to derive state and recompute affected read models without storing sensitive bodies in the
+          event log.
+        </p>
+        <p>
+          The Acme demo keeps this log API-local and in memory. That is enough to prove the causal
+          path: route approval, receive approval, request evidence, upload evidence, apply
+          revalidation, and recompute the brief from the current state.
+        </p>
+      </DocsSection>
+
+      <DocsSection
+        label="types"
+        title="Event types"
+        aside={
+          <DataTable
+            columns={[
+              { key: "type", label: "Type" },
+              { key: "effect", label: "Effect" },
+            ]}
+            rows={[
+              {
+                type: <code>decision_request_submitted</code>,
+                effect: "Starts or refreshes the decision path.",
+              },
+              {
+                type: <code>approval_routed</code>,
+                effect: "Marks an approval request as in flight.",
+              },
+              {
+                type: <code>approval_returned</code>,
+                effect: "Records a returned approver decision and recomputes readiness.",
+              },
+              {
+                type: <code>evidence_requested</code>,
+                effect: "Marks missing evidence as requested but not yet cleared.",
+              },
+              {
+                type: <code>evidence_uploaded</code>,
+                effect: "Clears an evidence blocker when the expected object appears.",
+              },
+              {
+                type: <code>source_changed</code>,
+                effect: "Triggers conflict, freshness, or revalidation checks.",
+              },
+              {
+                type: <code>revalidation_applied</code>,
+                effect: "Records an accepted reconciliation after a source conflict.",
+              },
+            ]}
+          />
+        }
+      >
+        <p>
+          Event type is the stable machine signal. <code>object_id</code> points at the changed
+          source or workflow object, while <code>detail</code> carries small typed hints such as the
+          approver role. The event log is append-only for the active run; current state is derived
+          from the scoped sequence.
+        </p>
+      </DocsSection>
+
+      <DocsSection
+        label="recompute"
+        title="Append event, recompute state"
+        aside={
+          <FlowSteps
+            steps={[
+              {
+                label: "append",
+                title: "Record event",
+                detail: "POST /api/lifecycle/events stores the content-free change.",
+              },
+              {
+                label: "derive",
+                title: "Build state",
+                detail: "LifecycleState derives routed, signed, uploaded, and reconciled flags.",
+              },
+              {
+                label: "brief",
+                title: "Recompute brief",
+                detail: "/api/brief rebuilds DecisionReadiness from the current lifecycle state.",
+              },
+              {
+                label: "stage",
+                title: "Stage action",
+                detail: "Rows with actions move into Actions, where execution re-gates.",
+              },
+            ]}
+          />
+        }
+      >
+        <p>
+          The important behavior is causal recompute. A returned Credit Officer approval does not
+          directly flip a UI badge. It appends <code>approval_returned</code>, derives lifecycle
+          state, recomputes <code>/api/brief</code>, and then exposes updated readiness rows and any
+          stageable reconciliation action.
+        </p>
+      </DocsSection>
+
+      <Callout title="Prototype boundary" tone="amber">
+        <p>
+          The current demo has API-local lifecycle events and explicit reducers for Acme. The locked
+          core contracts also define <code>EventTrigger</code>; the general dispatcher that fans all
+          trigger types into every read model is future platform work.
+        </p>
+      </Callout>
     </>
   );
 }

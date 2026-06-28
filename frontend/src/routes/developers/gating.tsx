@@ -534,6 +534,70 @@ function GatingDocsPage() {
             />
 
             <DocsSection
+              number="1.5"
+              title="PolicyGraph"
+              subtitle="prerequisite order"
+              prose={
+                <>
+                  <p>
+                    The Policy Artifact owns versioned rule values. <code>PolicyGraph</code> owns
+                    dependency order: each <code>PolicyNode</code> has an <code>id</code>, a short{" "}
+                    <code>description</code>, and <code>requires</code> edges to prerequisite nodes.
+                    The verifier can then compute readiness in a stable order instead of letting the
+                    model decide which blocker matters first.
+                  </p>
+                  <p>
+                    In Acme, the graph starts with permission boundary, then discount authority,
+                    required approvers, missing evidence, CS-plan reconciliation, and finally
+                    committee readiness. ComplianceTrace reports which rules fired; PolicyGraph
+                    explains why the blockers are ordered that way.
+                  </p>
+                </>
+              }
+              code={
+                <CodeBlock
+                  title="policy_graph"
+                  body={{
+                    id: "finance_credit_readiness",
+                    vertical,
+                    nodes: [
+                      {
+                        id: "permission_boundary",
+                        description: "Only accessible sources may be used.",
+                        requires: [],
+                      },
+                      {
+                        id: "discount_authority",
+                        description: "22% exceeds RM authority.",
+                        requires: ["permission_boundary"],
+                      },
+                      {
+                        id: "required_approvers",
+                        description: "Credit Officer and Legal must clear.",
+                        requires: ["discount_authority"],
+                      },
+                      {
+                        id: "missing_evidence",
+                        description: "Final covenant tracker must be present.",
+                        requires: ["required_approvers"],
+                      },
+                      {
+                        id: "conflict_reconciliation",
+                        description: "CS plan must match approved discount.",
+                        requires: ["missing_evidence"],
+                      },
+                      {
+                        id: "committee_readiness",
+                        description: "All prerequisites clear before committee decision.",
+                        requires: ["conflict_reconciliation"],
+                      },
+                    ],
+                  }}
+                />
+              }
+            />
+
+            <DocsSection
               number="2"
               title="Evaluate"
               subtitle="the gate as a service"

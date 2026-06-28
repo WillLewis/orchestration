@@ -15,6 +15,7 @@ import { Route as LoopRouteImport } from './routes/loop'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DevelopersIndexRouteImport } from './routes/developers/index'
 import { Route as RecordRecordIdRouteImport } from './routes/record.$recordId'
+import { Route as DevelopersWorkProductContractRouteImport } from './routes/developers/work-product-contract'
 import { Route as DevelopersWhatsLiveRouteImport } from './routes/developers/whats-live'
 import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
 import { Route as DevelopersVerticalsRouteImport } from './routes/developers/verticals'
@@ -31,6 +32,7 @@ import { Route as DevelopersPrimitivesRouteImport } from './routes/developers/pr
 import { Route as DevelopersOverviewRouteImport } from './routes/developers/overview'
 import { Route as DevelopersOrchestrationRouteImport } from './routes/developers/orchestration'
 import { Route as DevelopersMetricsRouteImport } from './routes/developers/metrics'
+import { Route as DevelopersLifecycleEventsRouteImport } from './routes/developers/lifecycle-events'
 import { Route as DevelopersInsightCardsRouteImport } from './routes/developers/insight-cards'
 import { Route as DevelopersGatingRouteImport } from './routes/developers/gating'
 import { Route as DevelopersEvalTraceRouteImport } from './routes/developers/eval-trace'
@@ -72,6 +74,12 @@ const RecordRecordIdRoute = RecordRecordIdRouteImport.update({
   path: '/record/$recordId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersWorkProductContractRoute =
+  DevelopersWorkProductContractRouteImport.update({
+    id: '/developers/work-product-contract',
+    path: '/developers/work-product-contract',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DevelopersWhatsLiveRoute = DevelopersWhatsLiveRouteImport.update({
   id: '/developers/whats-live',
   path: '/developers/whats-live',
@@ -154,6 +162,12 @@ const DevelopersMetricsRoute = DevelopersMetricsRouteImport.update({
   path: '/developers/metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevelopersLifecycleEventsRoute =
+  DevelopersLifecycleEventsRouteImport.update({
+    id: '/developers/lifecycle-events',
+    path: '/developers/lifecycle-events',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DevelopersInsightCardsRoute = DevelopersInsightCardsRouteImport.update({
   id: '/developers/insight-cards',
   path: '/developers/insight-cards',
@@ -222,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/developers/eval-trace': typeof DevelopersEvalTraceRoute
   '/developers/gating': typeof DevelopersGatingRoute
   '/developers/insight-cards': typeof DevelopersInsightCardsRoute
+  '/developers/lifecycle-events': typeof DevelopersLifecycleEventsRoute
   '/developers/metrics': typeof DevelopersMetricsRoute
   '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
@@ -238,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/developers/whats-live': typeof DevelopersWhatsLiveRoute
+  '/developers/work-product-contract': typeof DevelopersWorkProductContractRoute
   '/record/$recordId': typeof RecordRecordIdRoute
   '/developers/': typeof DevelopersIndexRoute
 }
@@ -256,6 +272,7 @@ export interface FileRoutesByTo {
   '/developers/eval-trace': typeof DevelopersEvalTraceRoute
   '/developers/gating': typeof DevelopersGatingRoute
   '/developers/insight-cards': typeof DevelopersInsightCardsRoute
+  '/developers/lifecycle-events': typeof DevelopersLifecycleEventsRoute
   '/developers/metrics': typeof DevelopersMetricsRoute
   '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
@@ -272,6 +289,7 @@ export interface FileRoutesByTo {
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/developers/whats-live': typeof DevelopersWhatsLiveRoute
+  '/developers/work-product-contract': typeof DevelopersWorkProductContractRoute
   '/record/$recordId': typeof RecordRecordIdRoute
   '/developers': typeof DevelopersIndexRoute
 }
@@ -291,6 +309,7 @@ export interface FileRoutesById {
   '/developers/eval-trace': typeof DevelopersEvalTraceRoute
   '/developers/gating': typeof DevelopersGatingRoute
   '/developers/insight-cards': typeof DevelopersInsightCardsRoute
+  '/developers/lifecycle-events': typeof DevelopersLifecycleEventsRoute
   '/developers/metrics': typeof DevelopersMetricsRoute
   '/developers/orchestration': typeof DevelopersOrchestrationRoute
   '/developers/overview': typeof DevelopersOverviewRoute
@@ -307,6 +326,7 @@ export interface FileRoutesById {
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/developers/whats-live': typeof DevelopersWhatsLiveRoute
+  '/developers/work-product-contract': typeof DevelopersWorkProductContractRoute
   '/record/$recordId': typeof RecordRecordIdRoute
   '/developers/': typeof DevelopersIndexRoute
 }
@@ -327,6 +347,7 @@ export interface FileRouteTypes {
     | '/developers/eval-trace'
     | '/developers/gating'
     | '/developers/insight-cards'
+    | '/developers/lifecycle-events'
     | '/developers/metrics'
     | '/developers/orchestration'
     | '/developers/overview'
@@ -343,6 +364,7 @@ export interface FileRouteTypes {
     | '/developers/verticals'
     | '/developers/vision'
     | '/developers/whats-live'
+    | '/developers/work-product-contract'
     | '/record/$recordId'
     | '/developers/'
   fileRoutesByTo: FileRoutesByTo
@@ -361,6 +383,7 @@ export interface FileRouteTypes {
     | '/developers/eval-trace'
     | '/developers/gating'
     | '/developers/insight-cards'
+    | '/developers/lifecycle-events'
     | '/developers/metrics'
     | '/developers/orchestration'
     | '/developers/overview'
@@ -377,6 +400,7 @@ export interface FileRouteTypes {
     | '/developers/verticals'
     | '/developers/vision'
     | '/developers/whats-live'
+    | '/developers/work-product-contract'
     | '/record/$recordId'
     | '/developers'
   id:
@@ -395,6 +419,7 @@ export interface FileRouteTypes {
     | '/developers/eval-trace'
     | '/developers/gating'
     | '/developers/insight-cards'
+    | '/developers/lifecycle-events'
     | '/developers/metrics'
     | '/developers/orchestration'
     | '/developers/overview'
@@ -411,6 +436,7 @@ export interface FileRouteTypes {
     | '/developers/verticals'
     | '/developers/vision'
     | '/developers/whats-live'
+    | '/developers/work-product-contract'
     | '/record/$recordId'
     | '/developers/'
   fileRoutesById: FileRoutesById
@@ -430,6 +456,7 @@ export interface RootRouteChildren {
   DevelopersEvalTraceRoute: typeof DevelopersEvalTraceRoute
   DevelopersGatingRoute: typeof DevelopersGatingRoute
   DevelopersInsightCardsRoute: typeof DevelopersInsightCardsRoute
+  DevelopersLifecycleEventsRoute: typeof DevelopersLifecycleEventsRoute
   DevelopersMetricsRoute: typeof DevelopersMetricsRoute
   DevelopersOrchestrationRoute: typeof DevelopersOrchestrationRoute
   DevelopersOverviewRoute: typeof DevelopersOverviewRoute
@@ -446,6 +473,7 @@ export interface RootRouteChildren {
   DevelopersVerticalsRoute: typeof DevelopersVerticalsRoute
   DevelopersVisionRoute: typeof DevelopersVisionRoute
   DevelopersWhatsLiveRoute: typeof DevelopersWhatsLiveRoute
+  DevelopersWorkProductContractRoute: typeof DevelopersWorkProductContractRoute
   RecordRecordIdRoute: typeof RecordRecordIdRoute
   DevelopersIndexRoute: typeof DevelopersIndexRoute
 }
@@ -492,6 +520,13 @@ declare module '@tanstack/react-router' {
       path: '/record/$recordId'
       fullPath: '/record/$recordId'
       preLoaderRoute: typeof RecordRecordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/work-product-contract': {
+      id: '/developers/work-product-contract'
+      path: '/developers/work-product-contract'
+      fullPath: '/developers/work-product-contract'
+      preLoaderRoute: typeof DevelopersWorkProductContractRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/developers/whats-live': {
@@ -606,6 +641,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopersMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developers/lifecycle-events': {
+      id: '/developers/lifecycle-events'
+      path: '/developers/lifecycle-events'
+      fullPath: '/developers/lifecycle-events'
+      preLoaderRoute: typeof DevelopersLifecycleEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/developers/insight-cards': {
       id: '/developers/insight-cards'
       path: '/developers/insight-cards'
@@ -694,6 +736,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersEvalTraceRoute: DevelopersEvalTraceRoute,
   DevelopersGatingRoute: DevelopersGatingRoute,
   DevelopersInsightCardsRoute: DevelopersInsightCardsRoute,
+  DevelopersLifecycleEventsRoute: DevelopersLifecycleEventsRoute,
   DevelopersMetricsRoute: DevelopersMetricsRoute,
   DevelopersOrchestrationRoute: DevelopersOrchestrationRoute,
   DevelopersOverviewRoute: DevelopersOverviewRoute,
@@ -710,6 +753,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersVerticalsRoute: DevelopersVerticalsRoute,
   DevelopersVisionRoute: DevelopersVisionRoute,
   DevelopersWhatsLiveRoute: DevelopersWhatsLiveRoute,
+  DevelopersWorkProductContractRoute: DevelopersWorkProductContractRoute,
   RecordRecordIdRoute: RecordRecordIdRoute,
   DevelopersIndexRoute: DevelopersIndexRoute,
 }
