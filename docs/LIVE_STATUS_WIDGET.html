@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ConnectWork Live Status Widget</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #151613;
+        --panel: #292b27;
+        --panel-soft: #242620;
+        --panel-deep: #1c1d19;
+        --line: #3a3c36;
+        --line-green: #376f22;
+        --green: #82c44c;
+        --green-bright: #6fc43c;
+        --green-wash: #163f10;
+        --yellow: #dfa83d;
+        --yellow-wash: #4a3510;
+        --red: #f28a86;
+        --red-wash: #692928;
+        --blue: #6fa0d5;
+        --blue-wash: #21405f;
+        --text: #f0f1eb;
+        --muted: #a3a59d;
+        --dim: #777a72;
+        --shadow: rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(63, 95, 36, 0.18), transparent 34rem),
+          var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        letter-spacing: -0.01em;
+      }
+
+      .wrap {
+        width: min(1680px, calc(100vw - 28px));
+        margin: 0 auto;
+        padding: 10px 0 22px;
+      }
+
+      .widget {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.08)),
+          var(--panel-deep);
+        box-shadow: 0 18px 50px var(--shadow);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px 24px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .legend .note {
+        color: var(--dim);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+      }
+
+      .dot.live {
+        background: var(--green);
+      }
+
+      .dot.mock {
+        background: var(--yellow);
+      }
+
+      .dot.backlog {
+        background: var(--red);
+      }
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        padding: 0 14px 22px;
+      }
+
+      .card {
+        min-height: 246px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      }
+
+      .card.live-border {
+        border-color: var(--line-green);
+      }
+
+      .card.muted-border {
+        border-color: #4b4d48;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 24px 24px 14px;
+      }
+
+      .title {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        min-width: 0;
+        font-size: 24px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .route {
+        color: var(--dim);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        white-space: nowrap;
+        border-radius: 999px;
+        padding: 4px 11px 5px;
+        font-size: 16px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .pill.green {
+        background: var(--green-wash);
+        color: var(--green-bright);
+      }
+
+      .pill.yellow {
+        background: var(--yellow-wash);
+        color: var(--yellow);
+      }
+
+      .pill.blue {
+        background: var(--blue-wash);
+        color: var(--blue);
+      }
+
+      .rows {
+        display: grid;
+        gap: 13px;
+        padding: 8px 24px 24px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 15px minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 12px;
+        min-height: 22px;
+      }
+
+      .row .label {
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 850;
+        line-height: 1.05;
+      }
+
+      .row .meta {
+        justify-self: end;
+        max-width: 270px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        text-align: right;
+      }
+
+      .section {
+        margin: 0 14px 22px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 26px;
+        font-size: 18px;
+        font-weight: 950;
+      }
+
+      .section-head.red {
+        background: var(--red-wash);
+        color: var(--red);
+      }
+
+      .section-head.green {
+        background: var(--green-wash);
+        color: var(--green-bright);
+      }
+
+      .wide-rows {
+        display: grid;
+        gap: 13px;
+        padding: 20px 30px 22px;
+      }
+
+      .wide-row {
+        display: grid;
+        grid-template-columns: 15px minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 14px;
+      }
+
+      .wide-row .label {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 18px;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      .wide-row .meta {
+        max-width: 680px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 1.25;
+        text-align: right;
+      }
+
+      .callout {
+        padding: 12px 30px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        background: var(--green-wash);
+        color: var(--green-bright);
+        font-size: 18px;
+        font-weight: 950;
+      }
+
+      .substrate {
+        margin: 0 14px 14px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+      }
+
+      .substrate .heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 30px 6px;
+        font-size: 19px;
+        font-weight: 950;
+      }
+
+      .stack-icon {
+        display: inline-grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        color: var(--text);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .substrate .wide-row .label {
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        font-size: 17px;
+        letter-spacing: -0.01em;
+      }
+
+      .truth {
+        color: var(--green-bright);
+      }
+
+      .sim {
+        color: var(--yellow);
+      }
+
+      @media (max-width: 1180px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 780px) {
+        .wrap {
+          width: calc(100vw - 16px);
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+          padding-inline: 8px;
+        }
+
+        .section,
+        .substrate {
+          margin-inline: 8px;
+        }
+
+        .card-head {
+          padding: 20px 18px 12px;
+        }
+
+        .rows {
+          padding-inline: 18px;
+        }
+
+        .row,
+        .wide-row {
+          grid-template-columns: 15px minmax(0, 1fr);
+        }
+
+        .row .meta,
+        .wide-row .meta {
+          grid-column: 2;
+          justify-self: start;
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="widget" aria-label="ConnectWork live versus simulated status map">
+        <header class="legend">
+          <span class="legend-item"><span class="dot live"></span>wired - live-capable</span>
+          <span class="legend-item"><span class="dot mock"></span>simulated - deterministic demo</span>
+          <span class="legend-item"><span class="dot backlog"></span>backlog - built but not primary UI path</span>
+          <span class="note">default mocks; live = VITE_USE_MOCKS=false + make api</span>
+        </header>
+
+        <section class="grid">
+          <article class="card live-border">
+            <div class="card-head">
+              <div class="title">Meeting side panel <span class="route">/</span></div>
+              <span class="pill green">live event path</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">Chat input + @Agent routing</span
+                ><span class="meta">/chat - scripted in mock</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Memo + brief recompute</span
+                ><span class="meta">/api/brief + /api/lifecycle</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Decision readiness rows</span
+                ><span class="meta">/api/brief</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Suggested-action arc</span
+                ><span class="meta">/api/lifecycle/events</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Generate brief thinking</span
+                ><span class="meta">animation</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Participant rail</span
+                ><span class="meta">mock</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card live-border">
+            <div class="card-head">
+              <div class="title">Decision packet <span class="route">/packet</span></div>
+              <span class="pill green">live + staged remediation</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">Brief - readiness - gates - calcs</span
+                ><span class="meta">/api/brief</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Approval-ready banner</span
+                ><span class="meta">policy_gates.approval_ready</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Readiness row -> stage</span
+                ><span class="meta">/actions/staged-remediation</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Ask about packet</span
+                ><span class="meta">/chat</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Seal as governed record</span
+                ><span class="meta">/workproducts/mint</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Source rail - pin</span
+                ><span class="meta">client UI</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card live-border">
+            <div class="card-head">
+              <div class="title">Action diff drawer <span class="route">global</span></div>
+              <span class="pill green">live anti-bypass + staged</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">Action plan + diffs</span
+                ><span class="meta">/api/actions</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Staged remediation cards</span
+                ><span class="meta">/actions/staged-remediation</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Execute staged row</span
+                ><span class="meta">/staged-remediation/execute</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Run all on gateway</span
+                ><span class="meta">/actions/execute</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Changes count</span
+                ><span class="meta">/api/lifecycle</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Approve / edit staging</span
+                ><span class="meta">client store</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card live-border">
+            <div class="card-head">
+              <div class="title">Agent Ops <span class="route">/ops</span></div>
+              <span class="pill green">live</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">3-vertical scorecard</span
+                ><span class="meta">/ops/evals</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Eval rows + failed-row trace</span
+                ><span class="meta">/ops/evals</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Telemetry mix + taxonomy</span
+                ><span class="meta">/ops/evals</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Run evals</span
+                ><span class="meta">refetch + animation</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Tenant-local toggle</span
+                ><span class="meta">stub (no-op)</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card muted-border">
+            <div class="card-head">
+              <div class="title">Work loop <span class="route">/loop</span></div>
+              <span class="pill yellow">batch live - run orphaned</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">Loop dossier data</span
+                ><span class="meta">GET /api/loop</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Approve + run batch</span
+                ><span class="meta">/actions/execute - re-gates</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Approval matrix</span
+                ><span class="meta">/api/loop</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Distribute -> close playback</span
+                ><span class="meta">status - animation</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">CS / Legal replies</span
+                ><span class="meta">simulated - delay</span>
+              </div>
+              <div class="row">
+                <span class="dot backlog"></span><span class="label">Run loop server-side</span
+                ><span class="meta">POST /actions/loop</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card live-border">
+            <div class="card-head">
+              <div class="title">Governed record <span class="route">/record/:id</span></div>
+              <span class="pill green">mostly live</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">Mint + fetch record</span
+                ><span class="meta">/workproducts/*</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Verify - HMAC + freshness</span
+                ><span class="meta">/verify</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Dependency map</span
+                ><span class="meta">section_dependencies</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Event picker - legal/financials</span
+                ><span class="meta">/verify</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Print / save PDF</span
+                ><span class="meta">real</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">Share - download cert</span
+                ><span class="meta">stub</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card muted-border">
+            <div class="card-head">
+              <div class="title">Developer docs <span class="route">/developers/*</span></div>
+              <span class="pill blue">static docs - live chat</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="dot live"></span><span class="label">Docs chat inset</span
+                ><span class="meta">/docs/chat - LLM/det mode</span>
+              </div>
+              <div class="row">
+                <span class="dot live"></span><span class="label">Docs-chat observability</span
+                ><span class="meta">/ops/docs-chat</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">~25 doc pages</span
+                ><span class="meta">static content</span>
+              </div>
+              <div class="row">
+                <span class="dot mock"></span><span class="label">API ref - gating - traces</span
+                ><span class="meta">canned JSON - data/*</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-head red">
+            <span class="stack-icon">x</span>
+            Still built and tested, but no primary UI calls it
+          </div>
+          <div class="wide-rows">
+            <div class="wide-row">
+              <span class="dot backlog"></span><span class="label">POST /actions/loop</span
+              ><span class="meta">loop animates GET + runs /actions/execute</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot backlog"></span><span class="label">POST /revalidate</span
+              ><span class="meta">UI uses lifecycle + record verify</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot backlog"></span><span class="label">POST /actions/compose</span
+              ><span class="meta">superseded by staged-remediation seam</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot backlog"></span><span class="label">GET /api/ops/scorecard</span
+              ><span class="meta">superseded by /ops/evals</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot backlog"></span><span class="label">POST /brief - /context - /verify</span
+              ><span class="meta">canonical/debug - UI uses GET /api/* shims</span>
+            </div>
+          </div>
+          <div class="callout">
+            Newly wired: /api/lifecycle + events - /actions/staged-remediation + execute -
+            /docs/chat - /ops/docs-chat
+          </div>
+        </section>
+
+        <section class="substrate">
+          <div class="heading">
+            <span class="stack-icon">=</span>
+            Substrate - real vs simulated (the layer beneath the surfaces)
+          </div>
+          <div class="wide-rows">
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Permission filtering / context bundle</span
+              ><span class="meta truth">real</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Deterministic gate / approval threshold</span
+              ><span class="meta truth">real</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">/chat refusal + permission behavior</span
+              ><span class="meta truth">real</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Action diffs / blocked execution</span
+              ><span class="meta truth">real - server re-gate</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Staged remediation - row -> drawer card</span
+              ><span class="meta truth">real - composer-validated</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Lifecycle / event-driven recompute</span
+              ><span class="meta truth">real event log - deterministic actors</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Record revalidation / stale state</span
+              ><span class="meta truth">real WS-F - simulated trigger</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Eval scorecard</span
+              ><span class="meta truth">real harness - synthetic packs</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot live"></span><span class="label">Docs chat ACL + sealed derivatives</span
+              ><span class="meta truth">real - LLM optional</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot mock"></span><span class="label">Batch loop / owner replies</span
+              ><span class="meta sim">real engine - simulated CS+Legal</span>
+            </div>
+            <div class="wide-row">
+              <span class="dot mock"></span><span class="label">Synthetic Acme workspace / personas</span
+              ><span class="meta sim">simulated corpus</span>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
