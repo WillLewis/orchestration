@@ -23,7 +23,7 @@ body: |
 
   ## What would you cut from the roadmap if engineering only gave you one quarter?
 
-  Cut the lifecycle/revalidation phase and the legal/health recipes. Ship Phase 0-1 plus one governed-action slice in finance: grounding, the gate, the brief, action diffs, the sealed record. The substrate and one end-to-end vertical proof - not breadth.
+  Cut broad lifecycle automation, sealed-record source-change revalidation, AI Studio, and the legal/health recipes. Keep the narrow finance proof: permission-aware grounding, Policy Artifact gates, the Decision Brief, one row-derived Agent Actions route, lifecycle-event recompute through the active brief, and a sealed final record after readiness clears. The goal is one defensible end-to-end wedge, not breadth.
 
   ## What would you ship in the first 30/60/90 days?
 
@@ -35,11 +35,11 @@ body: |
 
   ## What are the top three KPIs for success?
 
-  North star: decision-to-closed-work-product cycle time for regulated review. Plus permission-leak rate (must be zero) and human-approval/acceptance rate on proposed actions. Value, safety, trust - one each.
+  North star: decision-to-ready cycle time for regulated review. Plus permission-leak rate, which must be zero, and human accept/edit/reject rate on proposed actions. That gives one value metric, one safety metric, and one trust/usability metric.
 
   ## How would you measure success?
 
-  The north star is decision-to-closed-work-product cycle time. Guardrails are equally important: zero permission leaks, zero unsupported approval claims, zero stale-source misses, deterministic rule pass rate, approval burden, latency, and cost.
+  The north star is decision-to-ready cycle time: how long it takes to move from discussed decision to approval-ready work product. Guardrails are equally important: zero permission leaks, zero unsupported approval claims, stale-record detection for sealed records, deterministic rule pass rate, approval burden, latency, and cost.
 
   ## What would make you decide not to ship this?
 
@@ -47,7 +47,7 @@ body: |
 
   ## What is the single north-star metric, and what is the lagging business metric behind it?
 
-  North star: decision-to-closed-work-product cycle time. Lagging business metric: review hours saved per decision converted to cost, plus renewal and expansion of the governance SKU - the cycle-time win has to show up as money and retention or it's vanity.
+  North star: decision-to-ready cycle time. Lagging business metric: review hours saved per decision converted to cost, plus renewal and expansion of the governance capability. The cycle-time win has to show up as money, risk reduction, and retention.
 
   ## The flip side of a deterministic gate is over-blocking. How do you measure the cost of a wrongly-blocked legitimate action?
 

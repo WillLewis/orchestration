@@ -59,7 +59,7 @@ body: |
 
   ## What would you ship first?
 
-  Ship the substrate and read path first: permission-aware context assembly, grounding with citations, the Decision Brief, and deterministic gates. Then add a narrow governed-action slice for one finance workflow before expanding to revalidation and AI Studio.
+  Ship the narrow finance wedge first: permission-aware context assembly, cited grounding, the Decision Brief, deterministic Policy Artifact gates, and one row-derived Agent Actions path for routing the 22% Acme exception. Prove that the brief can stage a remediation, the drawer can validate and execute it, and lifecycle events can recompute readiness before expanding to broader revalidation, more verticals, or AI Studio.
 
   ## What is the minimum lovable product versus the full platform vision?
 
@@ -71,6 +71,6 @@ body: |
 
   ## What existing ConnectWork primitives are you reusing versus creating new platform surface area?
 
-  Reuse: the permission model, existing RAG and Document Q&A, the Metadata Extraction API, the Workflow engine, and lineage/provenance (which already ships - the agent uses it rather than recreating it). New surface: the deterministic gate and Policy Artifact, the Action Diff and packet, the Work Product Contract and sealed record, and the revalidation engine.
+  Reuse the platform assumptions from the case: permissions, document Q&A/RAG, metadata extraction, workflow routing, search, and audit/provenance concepts. The new product surface is the governed orchestration layer: Policy Artifacts for deterministic gates, Decision Brief readiness rows, Agent Actions with exact diffs, Work Product Contracts, sealed governed records, lifecycle events, and sealed-record revalidation.
 
 ---

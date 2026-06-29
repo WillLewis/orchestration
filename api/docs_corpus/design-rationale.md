@@ -33,7 +33,7 @@ body: |
 
   Second, the deterministic policy gate decides what the agent may claim or do. The model can ground, draft, and propose, but deterministic controls own permission filtering, rule checks, calculation checks, approval-matrix state, schema validation, blocked reasons, and execution eligibility. The model proposes; the engine disposes.
 
-  Third, governed records and revalidation turn outputs into durable work products. A sealed record carries the brief, gate result, source-version snapshots, permission omissions, dependency map, approvals, and an integrity seal. When a source changes, the lifecycle engine maps that change to affected sections, marks them stale, recomputes gate state, and routes targeted reapproval.
+  Third, lifecycle and governed records turn the brief into durable work. During the active meeting flow, lifecycle events such as returned approvals, accepted diffs, and uploaded evidence recompute the Decision Brief through `/api/brief`. After the brief is approval-ready, a sealed record carries the final brief, gate result, source-version snapshots, permission omissions, dependency map, approvals, and integrity seal. Later source-change verification uses the sealed-record revalidation path, not the active meeting loop.
 
   ## Platform primitives
 
@@ -102,7 +102,7 @@ body: |
 
   ## Metrics and guardrails
 
-  The north-star metric is decision-to-closed-work-product cycle time for regulated review. The lagging business metric is review hours saved per decision, converted to cost and tied to renewal or expansion of the governance capability.
+  The north-star metric is decision-to-ready cycle time for regulated review. The lagging business metric is review hours saved per decision, converted to cost and tied to renewal or expansion of the governance capability.
 
   Safety metrics are equally important:
 
@@ -117,7 +117,7 @@ body: |
 
   ## Rollout sequence
 
-  The minimum lovable product is the governance substrate plus one thin vertical slice: permission-aware grounding with citations and missing-evidence states, deterministic gating, a Decision Brief, action diffs behind human approval, and a sealed record for a finance review scenario.
+  The minimum lovable product is the governance substrate plus one thin finance slice: permission-aware grounding with citations and missing-evidence states, deterministic Policy Artifact gates, a Decision Brief, row-derived Agent Actions with exact diffs, visible simulated counterparty responses for the prototype, lifecycle-event readiness recompute, and a sealed record after approval-ready is true.
 
   The first 30 days focus on discovery and instrumentation: where reviewers trust the agent, where they stall, and how much manual handoff time exists today. The next 30 days ship permission-aware cross-source grounding with citations and explicit missing-evidence states. By day 90, the deterministic gate and action diffs run behind approval on the finance scenario, with offline replay measuring block correctness before exposure.
 
