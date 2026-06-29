@@ -108,6 +108,39 @@ const evalKpiRows = [
     signal: "Replay aggregates latency, cost, tool outcomes, and regression pass rate.",
   },
 ];
+const fallbackPrivacySafeKpiRows = [
+  {
+    level: "Phase 0 north star",
+    metric: "Verified reference-loop completion rate",
+    use: "Proves the substrate works",
+  },
+  {
+    level: "Trust gates",
+    metric: "Permission-denial correctness, citation validity, missing-evidence honesty",
+    use: "Prevents unsafe wins",
+  },
+  {
+    level: "Action gates",
+    metric: "Correct action owner, action validation pass rate, invalid-action block rate",
+    use: "Proves governed execution",
+  },
+  {
+    level: "Trace gates",
+    metric: "Trace completeness, replayability, schema validity",
+    use: "Proves debuggability",
+  },
+  {
+    level: "Adoption signals",
+    metric:
+      "Admin recipe creation, brief generation, action stage/execute rate, accept/edit/reject",
+    use: "Proves usage without content inspection",
+  },
+  {
+    level: "Long-term outcome",
+    metric: "Decision-to-ready cycle time, workflow completion rate, first-pass-ready rate",
+    use: "Proves customer value in opt-in pilots",
+  },
+];
 type PrimitiveVertical = "finance" | "legal" | "health";
 
 type PrimitiveRow = {
@@ -842,6 +875,33 @@ function MetricsPage() {
           Replay values remain inputs, not the whole scorecard. They estimate block rate, approval
           burden, caught violations, latency, and cost before a Policy Artifact becomes active; the
           KPI areas define how those numbers roll up into product success.
+        </p>
+      </DocsSection>
+
+      <DocsSection
+        label="fallback"
+        title="Fallback privacy-safe KPIs"
+        aside={
+          <DataTable
+            columns={[
+              { key: "level", label: "Level" },
+              { key: "metric", label: "Metric" },
+              { key: "use", label: "Use" },
+            ]}
+            rows={fallbackPrivacySafeKpiRows}
+          />
+        }
+      >
+        <p>
+          Some customers will not share detailed operational logs or enough history to compare
+          decision-to-ready time against a manual baseline. The fallback scorecard focuses on
+          aggregatable, content-free measures they can share for support, reliability, and
+          governance review.
+        </p>
+        <p>
+          The first proof point is that a reference loop completes with correct gates, traceability,
+          and action validation. Longer-term outcome measures can come later through opt-in pilots
+          once customers are comfortable sharing cycle-time aggregates.
         </p>
       </DocsSection>
 
