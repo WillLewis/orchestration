@@ -8,8 +8,10 @@ governed record. This is presenter copy and product choreography, not a new back
 - The user asks for the 22% discount in chat, but the agent does not mutate the source directly.
 - The Decision Brief is the readiness surface. It stages remediations.
 - Agent Actions is the execution surface. It routes approvals, accepts diffs, and records audit.
-- Counterparty responses are visible simulated beats, not hidden timers.
-- The customer success plan conflict appears only after Credit Officer approval returns.
+- Human-latency beats are visible, intentional controls: Credit Officer and Legal responses and
+  Priya's covenant tracker upload are simulated, not hidden timers.
+- The customer success plan conflict appears only after Credit Officer approval returns; resolving
+  it is a reviewed CS-plan diff in Agent Actions, not an automatic fix.
 - The governed record is sealed after all demo dependencies clear.
 
 API note:

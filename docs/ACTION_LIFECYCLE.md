@@ -16,8 +16,10 @@ Do not edit `core/schemas.py` or `core/pipeline.py` for this work.
 
 ## Current repo reality
 
-The lifecycle primitives mostly exist, and the Acme live demo now has an API-local anti-drift seam.
-The remaining gap is a general `EventTrigger` dispatcher and persistent event log.
+The Acme live demo now has API-local lifecycle events and row-derived action composition. Staged
+drawer cards are rebuilt from the current readiness row and revalidated server-side before
+execution. The remaining platform gap is a general `EventTrigger` dispatcher and persistent
+lifecycle store.
 
 | Claim | Current state |
 |---|---|
@@ -445,7 +447,7 @@ This should be explainable as primitives, not an Acme script.
 | Primitive | Panel question | Configuration knob |
 |---|---|---|
 | `AgentRecipe` | Does this only work for credit? | Swap recipe id and allowed sources/actions. |
-| `Policy Artifact` / `Rule` | Who decided the 15% threshold? | Versioned policy artifact parameters. |
+| `Policy Artifact` | Who decided the 15% threshold? | Versioned policy artifact parameters compiled into the internal verifier rules. |
 | `ApprovalMatrix` / approval policy | Why Credit Officer? | Required approver by rule or side-effect class. |
 | `PolicyGraph` | Why this order? | Dependency edges and prerequisite ordering. |
 | `WorkProductContract` | What makes a brief stale? | Source dependencies and revalidation rules. |
@@ -457,9 +459,9 @@ One-line answer:
 > A Decision Brief is not chat-only. It recomputes when a decision is requested, a source changes,
 > or an approval returns. The brief stages remediations; Agent Actions executes validated diffs.
 
-## Build plan
+## Build status and remaining platform work
 
-### Phase 1 - demo coherence, no core changes
+### Phase 1 - demo coherence, no core changes - complete for the Acme walkthrough
 
 1. Clean the home memo copy so policy analysis is not shown before the brief and the customer
    success plan conflict is not shown before Credit Officer approval returns.
@@ -486,7 +488,7 @@ Acceptance tests for Phase 1:
 - `approval_ready` never flips true after CO sign-off while Legal, tracker, or CS reconciliation
   remain unresolved.
 
-### Phase 2 - backend anti-drift seam
+### Phase 2 - row-derived staged remediation - complete for the Acme walkthrough
 
 1. Replace the API demo path's fixed `AcmeFollowupProposer` for staged-row flows. **Done.**
 2. Add a composer entrypoint that accepts one staged remediation and returns one validated
@@ -525,7 +527,7 @@ Acceptance tests for Phase 1:
 | Mock mode still uses the deterministic frontend revalidation store. | `frontend/src/lib/revalidation-store.ts`. |
 | General `EventTrigger` dispatch into all read models is not wired. | Active demo uses explicit API endpoints and derived state. |
 | `/revalidate` is not the active meeting loop. | It remains the WS-F pinned work-product/source-change path. |
-| Counterparties are simulated, not external integrations. | Credit, Legal, and Priya responses are deterministic demo affordances. |
+| Counterparty timing is simulated, not external integrations. | In the Acme Decision Brief path, Credit Officer and Legal responses plus Priya's tracker upload are deterministic demo affordances; the CS-plan reconciliation is a reviewed diff. |
 
 ## Demo-safety rules
 
