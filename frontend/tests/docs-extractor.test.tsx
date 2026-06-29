@@ -14,6 +14,7 @@ import {
 const expectedHeadingsByRoute: Record<LiveDocsRoute, string[]> = {
   "/developers/overview": ["Overview", "Why this, not a smarter chatbot"],
   "/developers/vision": ["Agent Vision", "What fundamentally changes for the user"],
+  "/developers/use-cases": ["Use Cases", "Which decisions become briefs"],
   "/developers/prioritization": ["Prioritization", "How the themes rank"],
   "/developers/roadmap": ["Roadmap", "Substrate"],
   "/developers/p0": ["Phase 0 Narrow Wedge Loop", "Launch wedge and measures"],

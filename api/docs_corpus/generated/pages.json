@@ -64,6 +64,33 @@
     ]
   },
   {
+    "id": "use-cases",
+    "route": "/developers/use-cases",
+    "title": "Use Cases",
+    "sections": [
+      {
+        "heading": "Use Cases",
+        "anchor": "use-cases",
+        "text": "Model a decision when it has enough governance weight, repeatability, readiness criteria, actionability, and source evidence to justify becoming a Decision Brief. Meetings, Slack, email, documents, and workflows are capture surfaces. The use case is the decision class. Scoping rule Model decisions where the enterprise already has a shadow checklist, approval path, or audit burden. Do not turn every workplace choice into a Decision Brief."
+      },
+      {
+        "heading": "Which decisions become briefs",
+        "anchor": "which-decisions-become-briefs",
+        "text": "The mapping should be decision class -> Decision Brief , not document to brief or meeting to brief. A single meeting can contain multiple decision candidates; a single source document can support many decisions. The product scales by keeping the capture surfaces broad while activating the governed path only for configured decision classes. 1 detect Find a candidate decision Signals can come from meetings, Slack, email, docs, tasks, or workflows. 2 classify Match a configured use case Only governed decision classes become Decision Briefs. 3 govern Run the same substrate Context, Policy Artifact, readiness rows, actions, lifecycle, record. Criterion Model when Do not model when Finance example Governance weight The decision requires evidence, approval, policy, audit, or permissions. The work is ordinary coordination with low consequence. Approve a 22% pricing exception above delegated authority. Repeatability The decision class recurs and has a recognizable structure. It is a one-off strategic debate with no stable pattern. Credit renewals with pricing exceptions and covenant changes. Readiness criteria Ready can be expressed as rows: approver, evidence, conflict, threshold, or stale source. Readiness is mostly subjective or conversational. Credit Officer approval, Legal approval, final covenant tracker, CS-plan reconciliation. Action path The system can stage a legitimate next action. There is no governed next step beyond summarizing. Route approval, request evidence, reconcile a source, seal the record. Source graph The decision depends on identifiable sources that can be cited and revalidated. The decision has no durable evidence base. Meeting, credit memo, financial model, approval workflow, customer success plan. Business value The decision is frequent, costly, slow, or risky enough to justify modeling. The cost of modeling exceeds the value of control. High-volume exceptions that slow revenue or create approval risk. Admin configurability An admin can define triggers, required evidence, Policy Artifact, readiness rows, and allowed actions. It requires bespoke logic every time. Any discount above 15% requires Credit Officer approval."
+      },
+      {
+        "heading": "Simplified framework",
+        "anchor": "simplified-framework",
+        "text": "The detailed test can be reduced to three questions. A decision class should be governed, repeatable, and expressible before it becomes a modeled use case. Dimension Qualifies when... Disqualifies when... Sharpest test Governed The decision needs evidence, approval, policy, or a permission boundary, draws on citable sources, and has a legitimate next action to stage. It is ordinary low-risk coordination with no durable evidence base and nothing to stage beyond a summary. Is there a condition the agent must refuse outright? A clean hard-block line, such as 22% -> no direct mutation, is the strongest signal. Repeatable It is a recurring decision class with recognizable structure, so \"ready\" decomposes into typed rows: approver, evidence, conflict, threshold, stale source. It is a one-off with no stable pattern and readiness is subjective. Could an admin write the readiness rows once and have them fire every time? Credit renewal, contract redline, and data-access approval are strong candidates. Expressible An admin can define the trigger, required evidence, Policy Artifact, readiness rows, and allowed actions as an AgentRecipe - no bespoke code per instance. It needs bespoke logic every time. Does it reduce to \"any X above Y requires Z\"? If yes, it is a recipe."
+      },
+      {
+        "heading": "Use cases map to AgentRecipes",
+        "anchor": "use-cases-map-to-agentrecipes",
+        "text": "An AgentRecipe is the configuration object that turns a use case into a governed runtime path. It tells the agent which decision class it may create, which surfaces can trigger it, which sources are in scope, which Policy Artifact evaluates it, which ToolCards are allowed, and which EvalPack proves it before activation. That keeps expansion from becoming bespoke workflow code. Finance, Legal, and Health swap recipes, policy artifacts, and eval packs while sharing the same context, gating, action, lifecycle, and record substrate. AgentRecipe field Maps to Finance example Decision class The governed work object the agent is allowed to create. Acme renewal pricing exception Trigger surfaces Where candidate decisions can be detected or invoked. Meeting rail, chat, credit memo comment, approval workflow. Source scopes Objects allowed into the permission-filtered ContextBundle. Memo, model, approval workflow, tracker, customer success plan. Policy Artifact Deterministic rules for readiness, blockers, thresholds, and refusals. finance_credit_v1 Allowed ToolCards The actions that can be staged, validated, and human-approved. Route approval, request tracker, reconcile CS plan. EvalPack Replay cases proving the recipe behaves safely before activation. Threshold, citation, approval, conflict, and stale-source cases."
+      }
+    ]
+  },
+  {
     "id": "prioritization",
     "route": "/developers/prioritization",
     "title": "Prioritization",

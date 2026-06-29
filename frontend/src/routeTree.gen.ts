@@ -19,6 +19,7 @@ import { Route as DevelopersWorkProductContractRouteImport } from './routes/deve
 import { Route as DevelopersWhatsLiveRouteImport } from './routes/developers/whats-live'
 import { Route as DevelopersVisionRouteImport } from './routes/developers/vision'
 import { Route as DevelopersVerticalsRouteImport } from './routes/developers/verticals'
+import { Route as DevelopersUseCasesRouteImport } from './routes/developers/use-cases'
 import { Route as DevelopersUiMeetingsRouteImport } from './routes/developers/ui-meetings'
 import { Route as DevelopersUiDecisionBriefRouteImport } from './routes/developers/ui-decision-brief'
 import { Route as DevelopersUiChatRouteImport } from './routes/developers/ui-chat'
@@ -94,6 +95,11 @@ const DevelopersVisionRoute = DevelopersVisionRouteImport.update({
 const DevelopersVerticalsRoute = DevelopersVerticalsRouteImport.update({
   id: '/developers/verticals',
   path: '/developers/verticals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersUseCasesRoute = DevelopersUseCasesRouteImport.update({
+  id: '/developers/use-cases',
+  path: '/developers/use-cases',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevelopersUiMeetingsRoute = DevelopersUiMeetingsRouteImport.update({
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/developers/ui-chat': typeof DevelopersUiChatRoute
   '/developers/ui-decision-brief': typeof DevelopersUiDecisionBriefRoute
   '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
+  '/developers/use-cases': typeof DevelopersUseCasesRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/developers/whats-live': typeof DevelopersWhatsLiveRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/developers/ui-chat': typeof DevelopersUiChatRoute
   '/developers/ui-decision-brief': typeof DevelopersUiDecisionBriefRoute
   '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
+  '/developers/use-cases': typeof DevelopersUseCasesRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/developers/whats-live': typeof DevelopersWhatsLiveRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/developers/ui-chat': typeof DevelopersUiChatRoute
   '/developers/ui-decision-brief': typeof DevelopersUiDecisionBriefRoute
   '/developers/ui-meetings': typeof DevelopersUiMeetingsRoute
+  '/developers/use-cases': typeof DevelopersUseCasesRoute
   '/developers/verticals': typeof DevelopersVerticalsRoute
   '/developers/vision': typeof DevelopersVisionRoute
   '/developers/whats-live': typeof DevelopersWhatsLiveRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/developers/ui-chat'
     | '/developers/ui-decision-brief'
     | '/developers/ui-meetings'
+    | '/developers/use-cases'
     | '/developers/verticals'
     | '/developers/vision'
     | '/developers/whats-live'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/developers/ui-chat'
     | '/developers/ui-decision-brief'
     | '/developers/ui-meetings'
+    | '/developers/use-cases'
     | '/developers/verticals'
     | '/developers/vision'
     | '/developers/whats-live'
@@ -445,6 +456,7 @@ export interface FileRouteTypes {
     | '/developers/ui-chat'
     | '/developers/ui-decision-brief'
     | '/developers/ui-meetings'
+    | '/developers/use-cases'
     | '/developers/verticals'
     | '/developers/vision'
     | '/developers/whats-live'
@@ -483,6 +495,7 @@ export interface RootRouteChildren {
   DevelopersUiChatRoute: typeof DevelopersUiChatRoute
   DevelopersUiDecisionBriefRoute: typeof DevelopersUiDecisionBriefRoute
   DevelopersUiMeetingsRoute: typeof DevelopersUiMeetingsRoute
+  DevelopersUseCasesRoute: typeof DevelopersUseCasesRoute
   DevelopersVerticalsRoute: typeof DevelopersVerticalsRoute
   DevelopersVisionRoute: typeof DevelopersVisionRoute
   DevelopersWhatsLiveRoute: typeof DevelopersWhatsLiveRoute
@@ -561,6 +574,13 @@ declare module '@tanstack/react-router' {
       path: '/developers/verticals'
       fullPath: '/developers/verticals'
       preLoaderRoute: typeof DevelopersVerticalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers/use-cases': {
+      id: '/developers/use-cases'
+      path: '/developers/use-cases'
+      fullPath: '/developers/use-cases'
+      preLoaderRoute: typeof DevelopersUseCasesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/developers/ui-meetings': {
@@ -771,6 +791,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevelopersUiChatRoute: DevelopersUiChatRoute,
   DevelopersUiDecisionBriefRoute: DevelopersUiDecisionBriefRoute,
   DevelopersUiMeetingsRoute: DevelopersUiMeetingsRoute,
+  DevelopersUseCasesRoute: DevelopersUseCasesRoute,
   DevelopersVerticalsRoute: DevelopersVerticalsRoute,
   DevelopersVisionRoute: DevelopersVisionRoute,
   DevelopersWhatsLiveRoute: DevelopersWhatsLiveRoute,

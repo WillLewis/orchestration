@@ -71,6 +71,7 @@ mock.module("@tanstack/react-router", () => ({
 const routeModuleLoaders = {
   "/developers/overview": () => import("../src/routes/developers/overview"),
   "/developers/vision": () => import("../src/routes/developers/vision"),
+  "/developers/use-cases": () => import("../src/routes/developers/use-cases"),
   "/developers/prioritization": () => import("../src/routes/developers/prioritization"),
   "/developers/roadmap": () => import("../src/routes/developers/roadmap"),
   "/developers/p0": () => import("../src/routes/developers/p0"),
