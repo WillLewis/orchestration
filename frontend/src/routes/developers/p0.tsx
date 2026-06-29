@@ -39,8 +39,8 @@ const loopSteps = [
 const loopProofRows: TableRow[] = [
   {
     cells: [
-      "Agent does not mutate a source document directly",
-      "Permission boundary / Policy Artifact gate",
+      "Source changes require a staged, validated, human-approved diff",
+      "Permission boundary + Policy Artifact gate + action-diff execution",
     ],
   },
   {
