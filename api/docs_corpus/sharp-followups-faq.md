@@ -31,7 +31,7 @@ body: |
 
   ## What is the riskiest assumption in your proposal?
 
-  That regulated buyers will trust an agent to act - not just answer - on consequential content. The whole value depends on crossing from read to governed write; if buyers won't let agents act even behind a deterministic gate, the wedge shrinks to grounding.
+  That regulated buyers will allow agent-proposed actions when the action is staged, previewed, policy-gated, and explicitly approved by a human. If they only trust read-only grounding at first, the wedge still has value, but the larger business case depends on proving reviewed action safely.
 
   ## What assumption would you validate first with customers?
 
@@ -63,7 +63,7 @@ body: |
 
   ## What does shadow mode look like?
 
-  The agent grounds, drafts, and proposes actions, but humans make every decision; the system captures accept/edit/reject and runs offline replay against baselines. No writes commit - it proves safety and value before any exposure, the same production-readiness pattern used in regulated workflows.
+  The agent grounds, drafts, stages actions, and shows diffs, but humans decide what would be sent or committed. The system captures accept, edit, reject, block, and approval-return signals, then replays them against eval baselines. Early shadow mode can be read-only; the Acme prototype shows the later reviewed-action loop with visible simulated counterparties.
 
   ## What are the go/no-go gates before expanding beyond the first customer cohort?
 
@@ -103,7 +103,7 @@ body: |
 
   ## What is intentionally outside the prototype?
 
-  Full live gate-clearing and cascade parity for the revalidation prototype proof (the mock proves the behavior), real third-party connectors, and the legal/health corpora beyond stubs. Scope was deliberately the finance end-to-end loop plus a three-vertical eval proof, not production breadth.
+  Outside the prototype: a general lifecycle dispatcher, persistent event store, real external counterparty integrations, production third-party connectors, and full legal/health vertical implementations. The Acme loop is live enough to show blocked write, staged remediation, Agent Actions execution, visible simulated Credit Officer/Legal/CS responses, `/api/brief` recomputation, and sealing. `/revalidate` remains the sealed-record/source-change path, not the active meeting loop.
 
   ## What is the one thing stakeholders should remember?
 
@@ -115,7 +115,7 @@ body: |
 
   ## Does the "governed record" actually hold up in litigation, discovery, or a regulator's audit? What makes it admissible?
 
-  It's built for it: brief, gate result, source-version snapshots, permission omissions, dependency map, and an HMAC-SHA256 integrity seal over canonical JSON, with an independent freshness check. That gives an auditor or regulator a tamper-evident record of what was decided, on what evidence, under which policy version, approved by whom - the Article 14 human-interpretable-record requirement made concrete. Admissibility is ultimately a legal determination, so ConnectWork should have Legal validate the format against discovery standards.
+  It is designed to support audit and discovery, not to declare legal admissibility by itself. The governed record contains the brief, gate result, source versions, permission omissions, dependency map, approvers, Policy Artifact version, and an integrity seal, with freshness checked separately. Legal should validate retention, discovery, and evidentiary requirements before launch.
 
   ## How do legal hold and retention apply to agent-generated work product?
 

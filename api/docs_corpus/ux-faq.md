@@ -11,7 +11,7 @@ body: |
 
   ## Where does the user discover the enhanced agent?
 
-  In the chat and meeting surface where the Conversational Insights Agent already lives - the user asks for a summary and is offered the next step (draft the decision, route approvals) rather than discovering a new product. Proactive insight cards also surface it before the user asks.
+  In the chat and meeting surface where the Conversational Insights Agent already lives. The agent does not replace attendee chat; it turns a decision moment into a governed next step: open a Decision Brief, stage a remediation, or review an action in Agent Actions. Proactive insight cards can surface the same state when a source or sealed record changes.
 
   ## Why is the entry point in chat/meetings rather than documents, tasks, or workflow approvals?
 
@@ -27,11 +27,11 @@ body: |
 
   ## How do you make the agent understandable to a user who did not opt into AI?
 
-  It behaves like a colleague who did the prep: here's what was decided, here's the evidence, here's what's missing, here's what ConnectWork should do next - approve or edit. No prompt-craft required; the power-user paradigms are hidden behind a review-and-approve surface a non-opt-in user already understands.
+  It uses familiar work states instead of AI jargon: what decision is being prepared, which evidence supports it, what is missing, what is blocked, and what action is staged for review. A reluctant user can inspect citations, see permission omissions, accept, edit, or reject each action, and never has to rely on prompt-crafting or hidden automation.
 
   ## What is the happy path for a normal user?
 
-  Ask for the meeting summary; get a Decision Brief grounded across the memo, model, and prior approvals; review the proposed action diffs; approve; the agent routes the approvals and seals the record. Review, not assembly.
+  Dana asks from the meeting surface; the agent refuses the direct 22% write and opens a Decision Brief. Dana stages the Credit Officer row, reviews the validated Agent Actions card, routes it, and sees the visible simulated response return. The brief recomputes, exposes the CS-plan conflict, then Legal, covenant evidence, and reconciliation clear before Dana seals the approval-ready governed record. Review and control replace manual assembly.
 
   ## What is the second happy path beyond the Decision Brief?
 
@@ -39,7 +39,7 @@ body: |
 
   ## What is the most important edge case you chose to show, and why?
 
-  The blocked action - the agent proposes scheduling the committee meeting and keeps it blocked because the covenant tracker is missing and the exception exceeds Credit Officer authority. It's the edge case that proves the trust model: the agent is useful and won't act past policy.
+  The blocked 22% discount write. The agent refuses to mutate the work product because 22% exceeds Dana's delegated authority, then offers legitimate next steps: route Credit Officer approval or apply only what she is allowed to authorize. That edge case proves the trust model: useful, but unable to act past permission and policy.
 
   ## How does the user understand why the agent refused a request?
 
@@ -59,7 +59,7 @@ body: |
 
   ## What does the UI show when the user lacks permission?
 
-  The excluded content is omitted, and where appropriate the UI notes a source was held out - 'legal memo excluded because you lack clearance' - without revealing its contents. The user knows the answer is permission-scoped.
+  Permission filtering happens before retrieval. Denied content is omitted from the ContextBundle, prompts, summaries, and citations. Where the user already has a legitimate reference, the UI can say a source was excluded, without revealing its contents, so the user understands the answer is permission-scoped.
 
   ## What does the UI show when sources conflict?
 
@@ -67,7 +67,7 @@ body: |
 
   ## How does the user stay in control?
 
-  Every write is previewed as an exact diff, requires explicit approval, and is reversible; nothing commits on the model's say-so. The user approves a specific change, not a vague intent, and can edit or reject any of it.
+  The Decision Brief only stages work; Agent Actions executes it. Every write is previewed as an exact route, task, or diff, then the user can accept, edit, or reject it. Counterparty responses are visible simulated beats in the prototype, and nothing commits on the model's say-so.
 
   ## How do approve / edit / reject work?
 
@@ -115,7 +115,7 @@ body: |
 
   ## Trust is not static. How does the UI help a user calibrate as the agent succeeds and fails over weeks?
 
-  Cards and readiness rows give consistent, honest signals over time - the user learns the agent flags its own gaps and stale records reliably, which calibrates trust on evidence rather than vibes. Persistent visibility of misses, not just wins, is what makes trust track reality.
+  Cards and readiness rows give consistent signals over time: supported evidence, missing evidence, conflicts, permission omissions, and stale records. Trust improves when users repeatedly see the agent expose its limits and require review before action, not when it hides uncertainty.
 
   ## How do you stop approvers from rubber-stamping the diff without reading it (automation complacency)?
 
