@@ -981,7 +981,8 @@ function RisksPage() {
           },
           {
             risk: "Approval or policy bypass",
-            mitigation: "WS-C owns pass/fail; WS-E recomputes blocked_reason server-side.",
+            mitigation:
+              "Execution rebuilds the staged action server-side from the readiness row and active Policy Artifact; blocked actions stay refused even if the client submits them.",
             owner: <DocLink to="/developers/gating">Gating</DocLink>,
           },
           {
