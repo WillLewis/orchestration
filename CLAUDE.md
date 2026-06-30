@@ -1,8 +1,9 @@
 # CLAUDE.md — operating guide for Claude Code
 
-You are working in the **ConnectWork Command Agent** prototype. Read `WORKSTREAMS.md` and the
-dir `README.md` for your active branch before writing code. Strategy context lives in
-`ConnectWork_Case_Plan_of_Attack.md`.
+You are working in the **ConnectWork Command Agent** prototype. Read the relevant directory
+`README.md` and any task-specific docs under `docs/` before writing code. Current demo and
+lifecycle context lives in `demo-walkthrough.html`, `docs/DEMO_BEATS_APPLY_DISCOUNT_TO_SEAL.md`,
+and `docs/ACTION_LIFECYCLE.md`.
 
 ## Your lanes (Claude-owned)
 WS-0 `core/` · WS-B `context/` · WS-D `brief/` · WS-E (loop + personas) `actions/` ·
@@ -12,8 +13,9 @@ Codex owns the deterministic/data lanes (`corpus/`, `verification/`, `lifecycle/
 
 ## Non-negotiable rules
 1. **Contracts are locked.** Do not edit `core/schemas.py` or `core/pipeline.py` on a feature
-   branch. If a contract truly must change, open a small WS-0 PR titled `contract:` and flag it
-   in `WORKSTREAMS.md` so Codex can rebase. Drift here breaks every parallel stream.
+   branch. If a contract truly must change, open a small WS-0 PR titled `contract:` and flag it in
+   the relevant task handoff or PR notes so Codex can rebase. Drift here breaks every parallel
+   stream.
 2. **Stay in your directory.** One owner per dir.
 3. **Build against `fixtures/acme.py`** until the upstream stream lands; never block on another branch.
 4. **Deterministic vs. probabilistic boundary.** The LLM interprets evidence and drafts language.
